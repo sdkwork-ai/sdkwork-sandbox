@@ -53,6 +53,21 @@ The application code is `sandbox`, and the repository is `sdkwork-sandbox`. The 
 
 Rust components use responsibility-specific crate names, keep `lib.rs` and `main.rs` as assembly boundaries, forbid unsafe code unless an approved requirement and review authorize it, and expose only component-declared public entrypoints. Generic application-code crate suffixes such as `runtime`, `core`, `manager`, and `backend` are not allowed for new crates.
 
+## Int64 Wire Contract (API_SPEC §13.6)
+
+- OpenAPI `int64` fields and parameters `MUST` be `type: string`, `format: int64`,
+  a decimal `pattern` such as `^-?[0-9]+$`, and `x-sdkwork-int64-string: true`.
+  `type: integer, format: int64` is a contract violation: generated TypeScript
+  SDKs then emit `number`, and browsers silently round ids past
+  `Number.MAX_SAFE_INTEGER` (2^53), replaying wrong ids into lookups.
+- Rust response DTOs `MUST` serialize `i64` wire fields with
+  `#[serde(with = "sdkwork_utils_rust::serde_int64")]` (or `::option`); request
+  boundaries parse inbound strings with the same helper.
+- Generated TypeScript SDKs keep `int64` as `string`; frontend code `MUST NOT`
+  convert ids/snowflake ids/sequence ids to `number` for storage, comparison,
+  or submission.
+- Verification: `node <sdkwork-specs>/tools/check-api-operation-patterns.mjs --workspace .`
+
 ## Build, Test, And Verification
 
 Run commands from this repository root. Phase 0 verification is `cargo fmt --all -- --check`, `cargo check --workspace`, `cargo test --workspace`, the documentation checker, component port checker, packages-layout checker, and repository baseline audit listed in root `README.md`.
