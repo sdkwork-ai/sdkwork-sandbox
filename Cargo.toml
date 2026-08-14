@@ -29,7 +29,7 @@ version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0-or-later"
 authors = ["SDKWork Runtime Platform"]
-repository = "https://github.com/Sdkwork-Cloud/sdkwork-sandbox"
+repository = "https://github.com/sdkwork-ai/sdkwork-sandbox"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
