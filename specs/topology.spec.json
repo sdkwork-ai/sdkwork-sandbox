@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 5,
+  "kind": "sdkwork.app.topology",
+  "appId": "sdkwork-sandbox",
+  "applicationCode": "sandbox",
+  "archetype": "application-client-root",
+  "archetypeNotes": "No owned HTTP public-ingress; nginx webserver profile remains disabled.",
+  "cloudPublicHosts": {}
+}
