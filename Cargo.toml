@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/sdkwork-api-sandbox-assembly",
     "crates/sdkwork-sandbox-provider-spi",
     "crates/sdkwork-intelligence-sandbox-service",
     "crates/sdkwork-intelligence-sandbox-repository-memory",

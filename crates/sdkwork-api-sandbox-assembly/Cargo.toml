@@ -1,0 +1,16 @@
+[package]
+name = "sdkwork-api-sandbox-assembly"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Generated API assembly for sdkwork-sandbox application HTTP plane."
+
+[lib]
+name = "sdkwork_api_sandbox_assembly"
+path = "src/lib.rs"
+
+[dependencies]
+axum = "0.8"
+tokio.workspace = true
+sdkwork-web-bootstrap = { path = "../../../sdkwork-web-framework/crates/sdkwork-web-bootstrap" }
+sdkwork-web-core = { path = "../../../sdkwork-web-framework/crates/sdkwork-web-core" }
