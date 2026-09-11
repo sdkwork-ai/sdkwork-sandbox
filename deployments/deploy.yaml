@@ -2,28 +2,6 @@ version: 2
 defaultProfile: cloud.production
 
 profiles:
-  cloud.development:
-    deployment:
-      deploymentProfile: cloud
-      environment: development
-      deliveryKind: container-image
-      deploymentDriver: kubernetes
-      managementModel: sdkwork-managed
-      tenancyModel: multi-tenant
-      isolationModel: shared
-      networkExposure: public
-      rolloutStrategy: rolling
-      availabilityMode: high-availability
-    install:
-      layout: binary-package
-    expose: []
-    packages: []
-    overrides:
-      topology:
-        spec: specs/topology.spec.json
-        profile: cloud.development
-        env: etc/topology/cloud.development.env
-
   cloud.production:
     deployment:
       deploymentProfile: cloud
@@ -45,28 +23,6 @@ profiles:
         spec: specs/topology.spec.json
         profile: cloud.production
         env: etc/topology/cloud.production.env
-
-  standalone.development:
-    deployment:
-      deploymentProfile: standalone
-      environment: development
-      deliveryKind: host-package
-      deploymentDriver: host-service
-      managementModel: customer-managed
-      tenancyModel: single-tenant
-      isolationModel: dedicated
-      networkExposure: private
-      rolloutStrategy: recreate
-      availabilityMode: single-instance
-    install:
-      layout: binary-package
-    expose: []
-    packages: []
-    overrides:
-      topology:
-        spec: specs/topology.spec.json
-        profile: standalone.development
-        env: etc/topology/standalone.development.env
 
   standalone.production:
     deployment:
