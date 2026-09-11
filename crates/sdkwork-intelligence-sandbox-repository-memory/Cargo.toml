@@ -1,4 +1,5 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-intelligence-sandbox-repository-memory"
 description = "Tenant-scoped in-memory lifecycle repository adapter for SDKWork Sandbox development and tests."
 version.workspace = true

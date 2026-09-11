@@ -1,4 +1,5 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-sandbox-service-host"
 description = "Phase 0 composition boundary for the SDKWork Sandbox service host."
 version.workspace = true

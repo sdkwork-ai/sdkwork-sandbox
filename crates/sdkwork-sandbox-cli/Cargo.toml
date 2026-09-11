@@ -1,4 +1,5 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-sandbox-cli"
 description = "Phase 0 command boundary for SDKWork Sandbox local operation."
 version.workspace = true

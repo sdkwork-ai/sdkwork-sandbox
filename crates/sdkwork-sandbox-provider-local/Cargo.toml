@@ -1,4 +1,5 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-sandbox-provider-local"
 description = "Phase 0 adapter boundary for local SDKWork Sandbox execution."
 version.workspace = true

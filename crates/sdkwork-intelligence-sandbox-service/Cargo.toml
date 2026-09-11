@@ -1,4 +1,5 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-intelligence-sandbox-service"
 description = "Provider-neutral SDKWork Sandbox Session lifecycle service."
 version.workspace = true

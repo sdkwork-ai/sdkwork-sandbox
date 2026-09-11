@@ -1,4 +1,5 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-sandbox-provider-spi"
 description = "Provider SPI for pluggable SDKWork Sandbox execution environments."
 version.workspace = true
