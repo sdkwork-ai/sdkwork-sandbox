@@ -111,7 +111,7 @@ check-component-port-bindings.mjs --root . --strict             PASS
 audit-repository-baseline.mjs --root .                          PASS
 ```
 
-The Rust command was invoked through the installed toolchain at `C:\Users\admin\.cargo\bin\cargo.exe` because `cargo` was not present on the inherited PowerShell `PATH`.
+The Rust command was invoked through the installed toolchain at `<home>\.cargo\bin\cargo.exe` because `cargo` was not present on the inherited PowerShell `PATH`.
 
 ## Required Human Action
 
