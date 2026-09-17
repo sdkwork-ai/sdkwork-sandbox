@@ -1,3 +1,6 @@
+// WORKSPACE-PATH:allow-fixture: every path literal in this file is hostile input
+// the boundary must reject, so the fixture has to spell the machine path it
+// guards against.
 use std::collections::BTreeMap;
 
 use super::{SandboxFakeHostBoundary, SandboxFakeHostBoundaryError};
