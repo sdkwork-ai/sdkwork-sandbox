@@ -2,20 +2,26 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   CLAIM_COLUMNS,
+  COVERAGE_COLUMNS,
   GAP_COLUMNS,
   GAP_KINDS,
+  RULE_FAMILIES,
+  RULE_FAMILY_SURFACES,
   assessE2bParityMatrix,
+  discoverWorkspaceTests,
   formatE2bParityMatrixReport,
   parseClaimKeywords,
   parseClaimMarkers,
   parseCoverageGaps,
+  parseDeclaredRuleFamilies,
   parseE2bParityMatrixArgs,
   parseGapEvidence,
+  parseImplementationCoverage,
   parseCensus,
   parseMatrixCategories,
   parseRequirementClaimRegistry,
@@ -94,10 +100,36 @@ const CLAIMS = [
   "",
 ].join("\n");
 
+const RUST_TEST_FILE = "crates/fixture/src/lib.rs";
+
+/** A Rust source file whose single test the coverage table is expected to claim. */
+function rustTestSource(testName = "works") {
+  return ["#[cfg(test)]", "mod tests {", "    #[test]", `    fn ${testName}() {}`, "}", ""].join("\n");
+}
+
+const COVERAGE = [
+  "### 3.1 已实现面的覆盖",
+  "",
+  `| ${COVERAGE_COLUMNS.join(" | ")} |`,
+  "| --- | --- | --- | --- |",
+  `| fixture surface | \`${RUST_TEST_FILE}\` | \`${RUST_TEST_FILE}\` | \`works\` |`,
+  "",
+].join("\n");
+
+/** The prose that describes this gate itself, in the two languages it is written in. */
+function gateSurfacesFixture(ruleFamilyWord = "ten", chineseWord = "十") {
+  return {
+    rootReadme: `# Fixture Repository\n\nThe gate holds ${ruleFamilyWord} rule families.\n`,
+    toolsReadme: `${ruleFamilyWord[0].toUpperCase()}${ruleFamilyWord.slice(1)} rule families:\n`,
+    gateZeroView: `# Gate 0\n\n${chineseWord}条规则：词表、编号与形状。\n`,
+  };
+}
+
 function buildDocument({
   vocabulary = VOCABULARY,
   census = CENSUS,
   matrix = MATRIX,
+  coverage = COVERAGE,
   gaps = GAPS,
   claims = CLAIMS,
 } = {}) {
@@ -111,12 +143,7 @@ function buildDocument({
     matrix,
     "## 3. 测试覆盖矩阵",
     "",
-    "### 3.1 已实现面的覆盖",
-    "",
-    "| 实现面 | 实现点 | 测试全名 |",
-    "| --- | --- | --- |",
-    "| fixture | `crates/fixture/src/lib.rs` | `fixture::tests::works` |",
-    "",
+    coverage,
     gaps,
     "",
     claims,
@@ -128,6 +155,9 @@ function buildDocument({
  * Build a throwaway repository shaped like the real one for the checks this gate performs:
  *
  *   <tmp>/sdkwork-fixture/
+ *     README.md
+ *     tools/README.md
+ *     docs/architecture/views/gate-zero-current-state.md
  *     docs/INDEX.yaml
  *     docs/product/requirements/REQ-2026-0002-fixture.md          (status: draft)
  *     docs/product/requirements/REQ-2026-0003-fixture-ready.md    (status: ready)
@@ -136,15 +166,32 @@ function buildDocument({
  *     docs/architecture/tech/TECH_ARCHITECTURE.md
  *     docs/architecture/tech/README.md
  *     docs/architecture/tech/TECH-e2b-capability-parity.md
+ *     crates/fixture/src/lib.rs                                   (one #[test])
  */
-function createFixture({ document = buildDocument(), registerInIndex = true, registerInEntry = true } = {}) {
+function createFixture({
+  document = buildDocument(),
+  surfaces = gateSurfacesFixture(),
+  rustSource = rustTestSource(),
+  registerInIndex = true,
+  registerInEntry = true,
+} = {}) {
   const base = mkdtempSync(path.join(tmpdir(), "sdkwork-e2b-parity-"));
   const repo = path.join(base, "sdkwork-fixture");
   const techDirectory = path.join(repo, "docs", "architecture", "tech");
   const requirementsDirectory = path.join(repo, "docs", "product", "requirements");
   mkdirSync(requirementsDirectory, { recursive: true });
   mkdirSync(path.join(repo, "docs", "architecture", "decisions"), { recursive: true });
+  mkdirSync(path.join(repo, "docs", "architecture", "views"), { recursive: true });
   mkdirSync(techDirectory, { recursive: true });
+  mkdirSync(path.join(repo, "tools"), { recursive: true });
+  mkdirSync(path.join(repo, "crates", "fixture", "src"), { recursive: true });
+  writeFileSync(path.join(repo, RUST_TEST_FILE), rustSource);
+  writeFileSync(path.join(repo, "README.md"), surfaces.rootReadme);
+  writeFileSync(path.join(repo, "tools", "README.md"), surfaces.toolsReadme);
+  writeFileSync(
+    path.join(repo, "docs", "architecture", "views", "gate-zero-current-state.md"),
+    surfaces.gateZeroView,
+  );
   writeFileSync(
     path.join(requirementsDirectory, "REQ-2026-0002-fixture.md"),
     "# REQ-2026-0002\n\nid: REQ-2026-0002\n\nstatus: draft\n",
@@ -645,6 +692,250 @@ test("every requirement in this repository declares a readable status, and none 
       `${name} is ready; section 3.2's 治理阻塞 rows must be re-triaged`,
     );
   }
+});
+
+// ---- rule 9: IMPLEMENTATION COVERAGE
+
+test("the fixture's coverage table accounts for every test the fixture workspace declares", () => {
+  const assessment = inspect();
+
+  assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
+  assert.equal(assessment.workspaceTests, 1);
+  assert.equal(assessment.coveredTests, 1);
+});
+
+test("the repository's own coverage table accounts for every test the workspace declares", () => {
+  const assessment = assessE2bParityMatrix({ repoRoot });
+
+  assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
+  assert.equal(assessment.workspaceTests, 68);
+  assert.equal(assessment.coveredTests, 68);
+
+  const discovered = discoverWorkspaceTests(repoRoot);
+  let runnable = 0;
+  let ignored = 0;
+  for (const tests of discovered.values()) {
+    for (const entry of tests) {
+      if (entry.ignored) ignored += 1;
+      else runnable += 1;
+    }
+  }
+  // The two readings the audit quotes have to agree with the code: 68 declared, 67 of them
+  // runnable because one declares it needs an external PostgreSQL.
+  assert.equal(runnable + ignored, 68);
+  assert.equal(ignored, 1);
+});
+
+test("a test the workspace declares but the coverage table omits is rejected", () => {
+  // The table still cites a case, so every per-row check passes and only the two-way accounting
+  // catches the omission -- which is the direction that actually failed here: two repository crates
+  // and 19 of the workspace's 68 tests were absent while the table claimed to list them all.
+  const rustSource = rustTestSource().replace(
+    "    fn works() {}",
+    "    fn works() {}\n\n    #[test]\n    fn second() {}",
+  );
+
+  expectProblem(inspect({ rustSource }), "does not account for `second`");
+});
+
+test("a cited test name the cited test file does not declare is rejected", () => {
+  const coverage = COVERAGE.replace("| `works` |", "| `works`、`imaginary` |");
+
+  expectProblem(inspect({ document: buildDocument({ coverage }) }), "cites `imaginary`, which");
+});
+
+test("a cited implementation path that does not exist is rejected", () => {
+  const coverage = COVERAGE.replace(
+    `| \`${RUST_TEST_FILE}\` |`,
+    "| `crates/fixture/src/absent.rs` |",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ coverage }) }),
+    "`crates/fixture/src/absent.rs`, which does not exist",
+  );
+});
+
+test("a line anchor past the end of the cited file is rejected", () => {
+  const coverage = COVERAGE.replace(`| \`${RUST_TEST_FILE}\` |`, `| \`${RUST_TEST_FILE}:9999\` |`);
+
+  expectProblem(inspect({ document: buildDocument({ coverage }) }), "has 6 line(s)");
+});
+
+test("a cited test file that declares no test is rejected", () => {
+  expectProblem(
+    inspect({ rustSource: "pub fn plain() {}\n" }),
+    `names \`${RUST_TEST_FILE}\` as a test file, but a file under crates declares no \`#[test]\` at that path`,
+  );
+});
+
+test("the same case cited twice is rejected", () => {
+  const coverage = COVERAGE.replace("| `works` |", "| `works`、`works` |");
+
+  expectProblem(inspect({ document: buildDocument({ coverage }) }), "cites `works` a second time");
+});
+
+test("a coverage table with the wrong columns reports the header and stops", () => {
+  const coverage = COVERAGE.replace(
+    `| ${COVERAGE_COLUMNS.join(" | ")} |`,
+    "| 实现面 | 实现点 | 测试全名 |",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ coverage }) }),
+    `expected [${COVERAGE_COLUMNS.join(", ")}]`,
+  );
+});
+
+test("a test declared with attribute arguments is discovered, not dropped", () => {
+  // The first draft of this rule required `]` immediately after `test`, so
+  // `#[tokio::test(flavor = "multi_thread", worker_threads = 4)]` was invisible and the gate
+  // counted 67 tests where the workspace holds 68. A narrow pattern reports a coverage table as
+  // complete while a real test is missing from it, which is the same defect as the character class
+  // that once reported 36 uncovered operations instead of 19.
+  const rustSource = [
+    "#[cfg(test)]",
+    "mod tests {",
+    "    #[test]",
+    "    fn works() {}",
+    "",
+    '    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]',
+    "    async fn async_works() {}",
+    "}",
+    "",
+  ].join("\n");
+  const fixture = createFixture({ rustSource });
+  try {
+    assert.deepEqual(
+      discoverWorkspaceTests(fixture.repo)
+        .get(RUST_TEST_FILE)
+        .map((entry) => entry.name),
+      ["works", "async_works"],
+    );
+  } finally {
+    rmSync(fixture.base, { recursive: true, force: true });
+  }
+});
+
+test("an ignored test is recorded as ignored rather than dropped", () => {
+  const discovered = discoverWorkspaceTests(repoRoot);
+  const ignored = [...discovered]
+    .flatMap(([file, tests]) => tests.map((entry) => ({ ...entry, file })))
+    .filter((entry) => entry.ignored);
+
+  assert.deepEqual(
+    ignored.map((entry) => entry.name),
+    ["sandbox_postgres_repository_enforces_durable_lifecycle_contract"],
+  );
+});
+
+// ---- rule 10: SELF-DESCRIPTION
+
+test("every surface describing this gate declares the rule families it implements", () => {
+  assert.equal(RULE_FAMILIES.length, 10);
+  assert.equal(new Set(RULE_FAMILIES).size, RULE_FAMILIES.length, "family keys must be unique");
+
+  for (const surface of RULE_FAMILY_SURFACES) {
+    const text = readFileSync(join(repoRoot, surface.path), "utf8");
+    assert.equal(
+      parseDeclaredRuleFamilies(text, surface.language, { own: surface.own === true }),
+      RULE_FAMILIES.length,
+      `${surface.id} (${surface.path}) must declare ${RULE_FAMILIES.length} rule families`,
+    );
+  }
+});
+
+test("a surface declaring the wrong number of rule families is rejected", () => {
+  expectProblem(
+    inspect({ surfaces: gateSurfacesFixture("eight", "八") }),
+    `declares 8 rule families, this gate implements ${RULE_FAMILIES.length}`,
+  );
+});
+
+test("a surface declaring no rule-family count is rejected", () => {
+  expectProblem(
+    inspect({
+      surfaces: { ...gateSurfacesFixture(), toolsReadme: "# Tooling\n\nThis paragraph states no count.\n" },
+    }),
+    "declares no rule-family count",
+  );
+});
+
+test("a missing surface is reported rather than skipped", () => {
+  const fixture = createFixture();
+  try {
+    rmSync(join(fixture.repo, "tools", "README.md"));
+    const assessment = assessE2bParityMatrix({ repoRoot: fixture.repo });
+    assert.equal(assessment.ok, false);
+    assert.ok(
+      assessment.problems.some((problem) =>
+        problem.includes("the tools README (tools/README.md) is missing"),
+      ),
+      formatE2bParityMatrixReport(assessment),
+    );
+  } finally {
+    rmSync(fixture.base, { recursive: true, force: true });
+  }
+});
+
+test("the family count is read where this gate is described, not where another gate is", () => {
+  // `tools/README.md` describes this gate above the field gate, and a count read from the wrong
+  // section is attributed to the wrong gate.
+  const twoGates = [
+    "`check-sandbox-e2b-parity-matrix.mjs` keeps the matrix honest. Ten rule families:",
+    "",
+    "`check-sandbox-e2b-field-parity.mjs` keeps the baseline the matrix rests on.",
+    "",
+    "Ten rule families:",
+  ].join("\n");
+  assert.equal(parseDeclaredRuleFamilies(twoGates, "english"), 10);
+
+  // A count that stands outside the place this gate is described is not this gate's.
+  assert.equal(
+    parseDeclaredRuleFamilies(
+      ["Seven rule families:", "", "`check-sandbox-e2b-parity-matrix.mjs` is named with no count."].join("\n"),
+      "english",
+    ),
+    null,
+  );
+});
+
+test("a section is not credited with the next section's number", () => {
+  // `README.md`'s matrix and field paragraphs sit one block apart. Reading the naming block plus the
+  // following block unconditionally let the matrix section -- which states no count of its own --
+  // pass by borrowing the field section's "ten", which is the misattribution the scoping exists to
+  // prevent. A following block that names another gate is that gate's section, not a continuation.
+  const adjacent = [
+    "`check-sandbox-e2b-parity-matrix.mjs` keeps the matrix honest and states no count.",
+    "",
+    "`check-sandbox-e2b-field-parity.mjs` holds ten rule families.",
+  ].join("\n");
+  assert.equal(parseDeclaredRuleFamilies(adjacent, "english"), null);
+
+  // The widening is still allowed when the next block introduces no gate of its own, because a
+  // count written as a standalone line lands in the following paragraph by ordinary prose habit.
+  const standaloneLine = [
+    "`check-sandbox-e2b-parity-matrix.mjs` keeps the matrix honest.",
+    "",
+    "Ten rule families:",
+  ].join("\n");
+  assert.equal(parseDeclaredRuleFamilies(standaloneLine, "english"), 10);
+});
+
+test("a usage fence is not where the count lives", () => {
+  // The section's own usage fence names the gate file *after* the sentence that declares the count.
+  // Treating the fence as the naming block started the scope one block too late, so the gate
+  // reported "declares no rule-family count" against a section that states it plainly.
+  const withFence = [
+    "`check-sandbox-e2b-parity-matrix.mjs` keeps the matrix honest. Ten rule families:",
+    "",
+    "```bash",
+    "node tools/check-sandbox-e2b-parity-matrix.mjs",
+    "```",
+    "",
+    "A trailing paragraph with no count.",
+  ].join("\n");
+  assert.equal(parseDeclaredRuleFamilies(withFence, "english"), 10);
 });
 
 test("arguments are parsed strictly", () => {

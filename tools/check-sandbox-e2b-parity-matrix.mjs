@@ -12,7 +12,7 @@
  * 34-row `PRD-capabilities.md` census). A census that does not add up is worse than no census,
  * because the number gets quoted in review.
  *
- * Eight deterministic rule families:
+ * Ten deterministic rule families:
  *
  *   1. VOCABULARY. The document must declare exactly the four status markers in its status
  *      vocabulary section, and every matrix row must use one of them. A fifth marker invented
@@ -56,6 +56,21 @@
  *      of the field gate applies to operations. This is the rule that would have caught the false
  *      row rule 7 found: a row asserting no requirement owned the performance baseline, with
  *      `REQ-2026-0019-sandbox-runtime-pool-and-fast-allocation` in the tree.
+ *   9. IMPLEMENTATION COVERAGE. The section 3.1 table is the document's claim that a given
+ *      implementation surface is covered by a given test. It asserted it listed "every real
+ *      implementation in this repository" while the workspace held 68 tests across ten files and
+ *      the table accounted for 49 of them: two repository crates and 19 tests were simply absent,
+ *      so the most reassuring table in the audit was the one nothing checked. Every cited
+ *      implementation path must exist (and a `:line` anchor must still be inside the file), every
+ *      cited test name must be declared by the cited test file, and the accounting runs both ways
+ *      -- every `#[test]`/`#[tokio::test]` the workspace declares must be cited exactly once, or
+ *      the table is a sample presented as the whole.
+ *  10. SELF-DESCRIPTION. Every surface describing this gate -- its own header, `tools/README.md`,
+ *      root `README.md` and the Gate 0 view -- must declare the same number of rule families the
+ *      gate implements, and that number is derived from the registry rather than typed. Adding
+ *      family 9 above left two of the three prose surfaces still saying "eight": a gate that
+ *      understates its own coverage is making exactly the claim this gate rejects when the parity
+ *      document makes it.
  *
  * Usage:
  *   node tools/check-sandbox-e2b-parity-matrix.mjs
@@ -493,6 +508,228 @@ export function readRequirementStatus(repoRoot, id) {
   return { file: `${REQUIREMENTS_DIRECTORY}/${name}`, status: match ? match[1].toLowerCase() : null };
 }
 
+/**
+ * The rule families this gate implements, in the order the header documents them. This list -- not
+ * the prose -- is the authority for the count every registration surface declares. It is written
+ * out rather than derived from the code because a gate cannot infer how many things it checks; what
+ * it can do is make the number a single edit instead of a paragraph nobody revisits.
+ */
+export const RULE_FAMILIES = Object.freeze([
+  "vocabulary",
+  "numbering",
+  "status",
+  "category-alignment",
+  "census-arithmetic",
+  "citation-resolution-and-registration",
+  "residual-gaps",
+  "zero-requirement-claims",
+  "implementation-coverage",
+  "self-description",
+]);
+
+/** The surfaces that describe this gate, and the language each states the count in. */
+export const RULE_FAMILY_SURFACES = Object.freeze([
+  // `own` marks the surface that *is* this gate: it cannot confuse its count with another gate's,
+  // so the count may sit in any of its comment blocks.
+  { id: "gate header", path: "tools/check-sandbox-e2b-parity-matrix.mjs", language: "english", own: true },
+  { id: "tools README", path: "tools/README.md", language: "english" },
+  { id: "root README", path: "README.md", language: "english" },
+  { id: "Gate 0 view", path: "docs/architecture/views/gate-zero-current-state.md", language: "chinese" },
+]);
+
+const ENGLISH_COUNT_WORDS = Object.freeze({
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
+  seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+});
+
+const CHINESE_COUNT_WORDS = Object.freeze({
+  一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6,
+  七: 7, 八: 8, 九: 9, 十: 10, 十一: 11, 十二: 12,
+});
+
+export const GATE_FILE_NAME = "check-sandbox-e2b-parity-matrix.mjs";
+
+/**
+ * Any sibling gate file. A following block that names one belongs to that gate's section, so it
+ * cannot be the continuation of this gate's count statement. Without this, a section that states no
+ * count of its own silently borrowed the number from the section below it.
+ */
+const ANY_GATE_FILE = /check-sandbox-[a-z0-9-]+\.mjs/u;
+
+function safeReadText(absolutePath) {
+  try {
+    return readFileSync(absolutePath, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The candidate spans of a document that describe *this* gate, narrowest first. A file may describe
+ * several gates, and the first count in such a file belongs to whichever gate is described first:
+ * `tools/README.md` carries this gate's section above the field gate's. The naming block is tried
+ * alone first, because a document that states the count in the sentence naming the gate must not
+ * have the *next* paragraph's count attributed to it — reading the pair unconditionally let
+ * `README.md`'s two adjacent sections pass by borrowing each other's number, which is the same
+ * misattribution this scoping exists to prevent. Only when the naming block declares no count is
+ * the following block admitted, since a count introduced as a standalone line ("Ten rule
+ * families:") lands there by ordinary prose habit. A usage fence is not prose: it names the gate
+ * file *after* the sentence declaring the count, and treating it as the naming block started the
+ * scope one block too late. A surface that *is* this gate carries no ambiguity — its comment blocks
+ * are separated by ` *` lines — so it opts out of scoping.
+ */
+function declarationScopes(text, { own = false } = {}) {
+  const source = String(text);
+  if (own) return [source];
+  const blocks = source.split(/\n\s*\n/u);
+  const namesGate = (block) =>
+    block.includes(GATE_FILE_NAME) &&
+    !block.split(/\r?\n/u).some((line) => line.trimStart().startsWith("```"));
+  const index = blocks.findLastIndex(namesGate);
+  if (index === -1) return [source];
+  const scopes = [blocks[index]];
+  const next = blocks[index + 1];
+  // A count introduced as a standalone line ("Ten rule families:") lands in the next block, so the
+  // next block is admitted -- unless it names another gate file, which makes it that gate's section
+  // rather than the continuation of this one.
+  if (next !== undefined && !ANY_GATE_FILE.test(next.replaceAll(GATE_FILE_NAME, ""))) {
+    scopes.push(`${blocks[index]}\n\n${next}`);
+  }
+  return scopes;
+}
+
+/**
+ * The count a span declares, or null when it declares none. The alternation is anchored on the
+ * count words themselves: a looser `(\w+)\s+rule famil` reads "the gate then holds seven rule
+ * families" as "holds" and blames the document for the parser's greediness. At most one adjective
+ * may sit between the count and the noun, so "Ten deterministic rule families" parses like
+ * "nine rule families".
+ */
+function readRuleFamilyCount(source, language) {
+  if (language === "chinese") {
+    const match = /([一二三四五六七八九十]+)\s*条规则/u.exec(source);
+    return match ? CHINESE_COUNT_WORDS[match[1]] ?? null : null;
+  }
+  const pattern = new RegExp(
+    `(${Object.keys(ENGLISH_COUNT_WORDS).join("|")})(?:\\s+[A-Za-z]+)?\\s+rule famil(?:y|ies)`,
+    "iu",
+  );
+  const match = pattern.exec(source);
+  return match ? ENGLISH_COUNT_WORDS[match[1].toLowerCase()] ?? null : null;
+}
+
+export function parseDeclaredRuleFamilies(text, language, { own = false } = {}) {
+  for (const scope of declarationScopes(text, { own })) {
+    const declared = readRuleFamilyCount(scope, language);
+    if (declared !== null) return declared;
+  }
+  return null;
+}
+
+export const COVERAGE_SECTION = "### 3.1";
+export const COVERAGE_COLUMNS = Object.freeze(["实现面", "实现点", "测试文件", "用例"]);
+export const CRATES_DIRECTORY = "crates";
+
+/**
+ * A Rust test attribute. The argument list is part of the pattern on purpose: a test declared as
+ * `#[tokio::test(flavor = "multi_thread", worker_threads = 4)]` carries arguments, and a pattern
+ * requiring `]` immediately after `test` drops it silently. That is not hypothetical -- the first
+ * draft of this rule counted 67 tests where the workspace holds 68, because the ignored test in
+ * `crates/sdkwork-intelligence-sandbox-repository-sqlx/tests/postgres_repository.rs` is declared
+ * that way. A coverage table built on the narrow pattern would have reported every test accounted
+ * for while one was invisible: the same class of defect as the character class that once reported
+ * 36 uncovered operations instead of 19.
+ */
+const TEST_ATTRIBUTE = /^\s*#\[(?:tokio::)?test\b[^\]]*\]/u;
+const ATTRIBUTE_LINE = /^\s*#\[/u;
+const IGNORE_ATTRIBUTE = /^\s*#\[ignore\b/u;
+const TEST_FN = /^\s*(?:pub\s+)?(?:async\s+)?fn\s+([A-Za-z0-9_]+)/u;
+
+function listRustFiles(repoRoot, relativeDirectory) {
+  const found = [];
+  for (const entry of readdirSync(join(repoRoot, relativeDirectory), { withFileTypes: true })) {
+    const relative = `${relativeDirectory}/${entry.name}`;
+    if (entry.isDirectory()) found.push(...listRustFiles(repoRoot, relative));
+    else if (entry.name.endsWith(".rs")) found.push(relative);
+  }
+  return found;
+}
+
+/**
+ * Every `#[test]`/`#[tokio::test]` in the workspace, keyed by repository-relative file. The
+ * workspace is the authority for what a coverage table has to account for: a test that exists and
+ * is not in the table is an implementation nobody claims to have covered, which is exactly what
+ * the table exists to make visible.
+ */
+export function discoverWorkspaceTests(repoRoot) {
+  if (!existsSync(join(repoRoot, CRATES_DIRECTORY))) return new Map();
+  const byFile = new Map();
+  for (const relative of listRustFiles(repoRoot, CRATES_DIRECTORY).sort()) {
+    const lines = readFileSync(join(repoRoot, relative), "utf8").split(/\r?\n/u);
+    const tests = [];
+    for (let index = 0; index < lines.length; index += 1) {
+      if (!TEST_ATTRIBUTE.test(lines[index])) continue;
+      let ignored = IGNORE_ATTRIBUTE.test(lines[index]);
+      let cursor = index + 1;
+      while (cursor < lines.length && ATTRIBUTE_LINE.test(lines[cursor])) {
+        if (IGNORE_ATTRIBUTE.test(lines[cursor])) ignored = true;
+        cursor += 1;
+      }
+      const name = cursor < lines.length ? TEST_FN.exec(lines[cursor]) : null;
+      if (name) tests.push({ name: name[1], ignored, line: index + 1 });
+    }
+    if (tests.length) byFile.set(relative, tests);
+  }
+  return byFile;
+}
+
+/** The section 3.1 implementation-coverage table: which surface each workspace test covers. */
+export function parseImplementationCoverage(text) {
+  const lines = text.split(/\r?\n/u);
+  const start = lines.findIndex((line) => line.trim().startsWith(COVERAGE_SECTION));
+  if (start === -1) return null;
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^###\s/u.test(lines[index]) || /^##\s*4\.\s/u.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  let header = null;
+  const rows = [];
+  const malformed = [];
+  for (let index = start + 1; index < end; index += 1) {
+    const line = lines[index].trim();
+    if (!line.startsWith("|")) continue;
+    const cells = line
+      .replace(/^\|/u, "")
+      .replace(/\|$/u, "")
+      .split("|")
+      .map((cell) => cell.trim());
+    if (cells.every((cell) => /^:?-{2,}:?$/u.test(cell))) continue;
+    if (!header) {
+      header = cells;
+      continue;
+    }
+    if (cells.length !== header.length) {
+      malformed.push({ line: index + 1, cells });
+      continue;
+    }
+    const record = {};
+    COVERAGE_COLUMNS.forEach((column, position) => {
+      record[column] = cells[position] ?? "";
+    });
+    record.line = index + 1;
+    rows.push(record);
+  }
+  return { header, rows, malformed };
+}
+
+/** Backticked tokens in a cell. */
+function backtickedTokens(cell) {
+  return [...String(cell).matchAll(/`([^`]+)`/gu)].map((match) => match[1].trim());
+}
+
 export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
   const documentPath = join(repoRoot, PARITY_DOCUMENT);
   const problems = [];
@@ -504,6 +741,8 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
     rowCount: 0,
     gapCount: 0,
     claimCount: 0,
+    coveredTests: 0,
+    workspaceTests: 0,
     totals: { ok: 0, partial: 0, missing: 0, deliberate: 0 },
     problems,
   };
@@ -848,6 +1087,149 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
     }
   }
 
+  // ---- 9. IMPLEMENTATION COVERAGE
+  // Section 3.1 is the one place the document claims "this implementation is covered by this test".
+  // Nothing read it, so the claim could go stale in three directions at once and stay green: a test
+  // renamed, an implementation line moved, or -- the direction that actually failed here -- a whole
+  // tested crate simply left off the list. The table asserted it was "every real implementation in
+  // this repository" while the workspace held two repository crates and 19 of its 68 tests that the
+  // table never mentioned. The rule closes the loop in both directions: every cited reference must
+  // resolve, and every test the workspace declares must be cited exactly once.
+  const coverage = parseImplementationCoverage(text);
+  const discovered = discoverWorkspaceTests(repoRoot);
+  const testsByFile = new Map([...discovered].map(([file, tests]) => [file, new Set(tests.map((test) => test.name))]));
+  let workspaceTests = 0;
+  for (const names of testsByFile.values()) workspaceTests += names.size;
+  let coveredTests = 0;
+  const coverageColumnsMatch =
+    coverage?.header?.length === COVERAGE_COLUMNS.length &&
+    coverage.header.join("|") === COVERAGE_COLUMNS.join("|");
+  if (!coverage) {
+    problems.push(`${PARITY_DOCUMENT} has no "${COVERAGE_SECTION}" implementation-coverage section`);
+  } else if (!coverage.header) {
+    problems.push(`${PARITY_DOCUMENT} section 3.1 has no implementation-coverage table`);
+  } else if (!coverageColumnsMatch) {
+    // As in 3.2: a header mismatch reads every cell below at the wrong offset, so per-row findings
+    // would be artefacts of the misparse rather than defects in the document.
+    problems.push(
+      `${PARITY_DOCUMENT} section 3.1 implementation-coverage header is [${coverage.header.join(", ")}]; expected [${COVERAGE_COLUMNS.join(", ")}]`,
+    );
+  } else {
+    for (const row of coverage.malformed) {
+      problems.push(
+        `${PARITY_DOCUMENT}:${row.line} implementation-coverage row has ${row.cells.length} cell(s), expected ${COVERAGE_COLUMNS.length}`,
+      );
+    }
+    if (coverage.rows.length === 0) {
+      problems.push(
+        `${PARITY_DOCUMENT} section 3.1 accounts for no covered implementation surface, which asserts the repository has no tested implementation; state the surfaces or delete the section`,
+      );
+    }
+    const cited = new Set();
+    for (const row of coverage.rows) {
+      const label = `section 3.1 coverage row at line ${row.line}`;
+      const anchors = backtickedTokens(row["实现点"]);
+      if (anchors.length === 0) {
+        problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} names no backticked implementation path`);
+      }
+      for (const anchor of anchors) {
+        const parsed = /^(.+?)(?::(\d+))?$/u.exec(anchor);
+        const path = parsed[1];
+        const absolute = join(repoRoot, path);
+        if (!existsSync(absolute)) {
+          problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} cites \`${anchor}\`, which does not exist`);
+          continue;
+        }
+        // A line number is a snapshot of a file that keeps moving. It is allowed to be absent, so
+        // the table can point at a whole module; when it is present it must still be inside the
+        // file, or the reader following it lands past the end and trusts whatever they find there.
+        if (parsed[2] !== undefined) {
+          const total = readFileSync(absolute, "utf8").split(/\r?\n/u).length;
+          if (Number(parsed[2]) < 1 || Number(parsed[2]) > total) {
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} cites \`${anchor}\`, but ${path} has ${total} line(s)`,
+            );
+          }
+        }
+      }
+      const files = backtickedTokens(row["测试文件"]);
+      if (files.length !== 1) {
+        problems.push(
+          `${PARITY_DOCUMENT}:${row.line} ${label} names ${files.length} test file(s); exactly one is required so each case resolves against a known set`,
+        );
+        continue;
+      }
+      const testFile = files[0];
+      const known = testsByFile.get(testFile);
+      if (!known) {
+        problems.push(
+          `${PARITY_DOCUMENT}:${row.line} ${label} names \`${testFile}\` as a test file, but a file under ${CRATES_DIRECTORY} declares no \`#[test]\` at that path`,
+        );
+        continue;
+      }
+      const cases = backtickedTokens(row["用例"]);
+      if (cases.length === 0) {
+        problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} names no backticked test case`);
+        continue;
+      }
+      for (const name of cases) {
+        if (!known.has(name)) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} cites \`${name}\`, which \`${testFile}\` does not declare`,
+          );
+          continue;
+        }
+        const key = `${testFile}::${name}`;
+        if (cited.has(key)) {
+          problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} cites \`${name}\` a second time`);
+        }
+        cited.add(key);
+      }
+    }
+    coveredTests = cited.size;
+    for (const [file, names] of testsByFile) {
+      for (const name of names) {
+        if (!cited.has(`${file}::${name}`)) {
+          problems.push(
+            `${PARITY_DOCUMENT} section 3.1 does not account for \`${name}\` in \`${file}\`; every test the workspace declares must be claimed exactly once, or the coverage table is a sample presented as the whole`,
+          );
+        }
+      }
+    }
+  }
+
+  // ---- 10. SELF-DESCRIPTION
+  // Every surface that describes this gate states how many rule families it implements. That count
+  // is derived from RULE_FAMILIES rather than typed, so a family added without its description --
+  // or a description left behind by a family that moved -- is a finding. The rot is not
+  // hypothetical: adding the implementation-coverage family above left tools/README.md and the Gate
+  // 0 view both still saying "eight", which is precisely the claim this gate exists to reject when
+  // it appears in the parity document. Unlike the field gate's counterpart, this gate reports its
+  // findings as prose rather than tagged records, so this rule checks the count and not the
+  // attribution of individual findings; the count is the part that rots, so it is the part enforced.
+  const selfSource = safeReadText(fileURLToPath(import.meta.url));
+  for (const surface of RULE_FAMILY_SURFACES) {
+    const surfaceText = surface.own ? selfSource : safeReadText(join(repoRoot, surface.path));
+    if (surfaceText === null) {
+      problems.push(
+        `the ${surface.id} (${surface.path}) is missing, so it describes no rule families`,
+      );
+      continue;
+    }
+    const declared = parseDeclaredRuleFamilies(surfaceText, surface.language, { own: surface.own === true });
+    if (declared === null) {
+      problems.push(
+        `the ${surface.id} (${surface.path}) declares no rule-family count; it must say how many of the ${RULE_FAMILIES.length} families this gate implements`,
+      );
+      continue;
+    }
+    if (declared !== RULE_FAMILIES.length) {
+      problems.push(
+        `the ${surface.id} declares ${declared} rule families, this gate implements ${RULE_FAMILIES.length}`,
+      );
+    }
+  }
+
   problems.push(...checkCitations(text, repoRoot));
   problems.push(...checkRegistration(repoRoot));
 
@@ -859,6 +1241,8 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
     rowCount: rows.length,
     gapCount: gaps?.rows.length ?? 0,
     claimCount: claims?.rows.length ?? 0,
+    coveredTests,
+    workspaceTests,
     totals: census.total ?? summed,
     problems,
   };
@@ -873,6 +1257,7 @@ export function formatE2bParityMatrixReport(assessment) {
     `rows: ${assessment.rowCount}`,
     `residual gaps: ${assessment.gapCount}`,
     `zero-requirement claims: ${assessment.claimCount}`,
+    `implementation coverage: ${assessment.coveredTests} of ${assessment.workspaceTests} workspace test(s) accounted for`,
   ];
   if (assessment.totals) {
     lines.push(

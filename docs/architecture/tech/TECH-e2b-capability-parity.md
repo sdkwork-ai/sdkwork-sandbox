@@ -270,15 +270,29 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 
 ### 3.1 已实现面的覆盖（本仓全部真实实现）
 
-| 实现面 | 实现点 | 测试全名 |
-| --- | --- | --- |
-| Provider descriptor 能力/隔离等级 fail-closed | `crates/sdkwork-sandbox-provider-spi/src/provider.rs:12` | `provider::tests::sandbox_provider_descriptor_fails_closed_on_capability_and_assurance` |
-| Readiness 要求 Workspace Attachment + Policy 生效 | `crates/sdkwork-sandbox-provider-spi/src/provider.rs:101` | `provider::tests::sandbox_provider_readiness_requires_workspace_attachment_and_policy_enforcement` |
-| Tenant 标识拒绝 path-like 取值 | `crates/sdkwork-sandbox-provider-spi/src/identity.rs:43` | `identity::tests::rejects_path_like_tenant_identifiers` |
-| Provider Allocation 引用 Debug 脱敏 | `crates/sdkwork-sandbox-provider-spi/src/identity.rs:110` | `identity::tests::sandbox_provider_reference_debug_output_is_redacted` |
-| Fencing Token 拒绝 0 与有符号上溢 | `crates/sdkwork-sandbox-provider-spi/src/identity.rs:88` | `identity::tests::sandbox_fencing_token_rejects_zero_and_signed_maximum_overflow` |
-| Lifecycle 幂等/Lease/Fencing/Readiness | `crates/sdkwork-intelligence-sandbox-service/src/service.rs` | `cargo test -p sdkwork-intelligence-sandbox-service` |
-| Local Fake Host Boundary | `crates/sdkwork-sandbox-provider-local/src/fake_host_boundary/mod.rs` | `cargo test -p sdkwork-sandbox-provider-local` |
+本表是**逐用例**的：工作区里每一个 `#[test]` / `#[tokio::test]` 都必须在表中出现且只出现一次。这不是声明而是断言——`tools/check-sandbox-e2b-parity-matrix.mjs` 的第 9 条规则族自己遍历 `crates/**/*.rs` 把测试点出来，再与本表做**双向记账**：本表引用的实现路径必须存在（带 `:line` 时该行必须在文件内）、引用的用例必须由所引测试文件声明、而工作区声明的每个测试都必须被本表认领恰好一次。
+
+**这张表此前是不完整的，这正是第 9 条规则族的由来。** 它声称自己是"本仓全部真实实现"，实际只覆盖了 3 个 crate 的 49 个用例，而工作区有 10 个文件、68 个用例：两个仓储 crate（`…-repository-memory` 5 个、`…-repository-sqlx` 14 个，共 19 个用例）**根本没出现在表里**。也就是说整份审计里最让人安心的一张表，恰好是没有任何东西核过的一张。补齐的过程还顺手暴露了一个抽取口径缺陷：`#[tokio::test(flavor = "multi_thread", worker_threads = 4)]` 带参数，而只认 `#[tokio::test]` 的正则会**静默丢掉它**——第一版门禁数出 67 个测试，工作区实际是 68 个。这和"operationId 抽取漏了点号 ⇒ 一度报出 36 个未覆盖、真值 19"是同一类缺陷：**任何覆盖率结论，必须先对抽取规则做正反例自检再报数。**
+
+| 实现面 | 实现点 | 测试文件 | 用例 |
+| --- | --- | --- | --- |
+| Provider descriptor 能力与隔离等级的 fail-closed 协商 | `crates/sdkwork-sandbox-provider-spi/src/provider.rs:12` | `crates/sdkwork-sandbox-provider-spi/src/provider.rs` | `sandbox_provider_descriptor_fails_closed_on_capability_and_assurance` |
+| Readiness 必须要求 Workspace Attachment 且 Policy 生效 | `crates/sdkwork-sandbox-provider-spi/src/provider.rs:101` | `crates/sdkwork-sandbox-provider-spi/src/provider.rs` | `sandbox_provider_readiness_requires_workspace_attachment_and_policy_enforcement` |
+| Tenant 标识拒绝 path-like 取值 | `crates/sdkwork-sandbox-provider-spi/src/identity.rs:43` | `crates/sdkwork-sandbox-provider-spi/src/identity.rs` | `rejects_path_like_tenant_identifiers` |
+| Provider Allocation 引用与密钥材料的 Debug 脱敏 | `crates/sdkwork-sandbox-provider-spi/src/identity.rs:110` | `crates/sdkwork-sandbox-provider-spi/src/identity.rs` | `sandbox_provider_reference_debug_output_is_redacted` |
+| Fencing Token 拒绝 0 与有符号上溢 | `crates/sdkwork-sandbox-provider-spi/src/identity.rs:88` | `crates/sdkwork-sandbox-provider-spi/src/identity.rs` | `sandbox_fencing_token_rejects_zero_and_signed_maximum_overflow` |
+| 会话状态机、恢复重放与版本上界 | `crates/sdkwork-intelligence-sandbox-service/src/model.rs` | `crates/sdkwork-intelligence-sandbox-service/src/model.rs` | `sandbox_session_state_transition_matrix_matches_the_documented_state_machine`、`sandbox_session_transition_away_from_failed_clears_last_failure`、`sandbox_session_replay_distinguishes_matching_conflicting_and_missing_operations`、`sandbox_session_version_fails_closed_at_the_persistence_maximum` |
+| 快照校验、受保护分配引用与租约上界 | `crates/sdkwork-intelligence-sandbox-service/src/repository.rs` | `crates/sdkwork-intelligence-sandbox-service/src/repository.rs` | `sandbox_snapshot_validation_accepts_the_persisted_state_matrix`、`sandbox_snapshot_validation_rejects_invalid_cross_field_combinations`、`sandbox_snapshot_restore_rejects_invalid_state_before_decryption`、`sandbox_snapshot_rejects_versions_above_the_persistence_maximum`、`sandbox_protected_allocation_reference_enforces_storage_bounds`、`sandbox_session_lease_rejects_non_positive_expiry` |
+| Lifecycle 幂等 / Lease / Fencing / Readiness 端到端行为 | `crates/sdkwork-intelligence-sandbox-service/src/service.rs` | `crates/sdkwork-intelligence-sandbox-service/src/tests.rs` | `sandbox_create_rejects_sandbox_session_id_reuse_across_operations`、`sandbox_create_recovers_when_a_concurrent_identical_create_commits_first`、`sandbox_workspace_context_is_preserved_across_provider_attachment_requests`、`sandbox_lifecycle_commands_are_idempotent_without_duplicate_provider_effects`、`sandbox_stop_provider_failure_records_failed_operation_and_keeps_binding`、`sandbox_destroy_provider_failure_records_cleanup_failure_and_keeps_binding`、`sandbox_provider_selection_fails_closed_for_capability_assurance_and_health`、`sandbox_readiness_gate_cleans_binding_and_records_failed_operation`、`sandbox_retry_start_releases_failed_binding_before_allocating_again`、`sandbox_start_persists_recoverable_binding_intent_before_provider_allocation`、`sandbox_reconciler_recovers_after_allocation_persistence_failure`、`sandbox_tenant_scope_and_invalid_transitions_are_enforced`、`sandbox_reconciler_recovers_transient_sessions_with_bounded_pagination`、`sandbox_reconciler_omits_a_cursor_when_the_final_page_is_exactly_full`、`sandbox_reconciler_rejects_invalid_page_sizes_before_repository_access`、`sandbox_reconciler_skips_an_actively_leased_session`、`sandbox_reconciler_preserves_provider_failure_when_sandbox_lease_release_fails`、`sandbox_reconciler_reloads_authoritative_session_after_acquiring_the_sandbox_lease`、`successful_sandbox_lifecycle_maps_sandbox_lease_release_failure_to_lease_lost`、`sandbox_provider_call_maps_sandbox_lease_renewal_failure_to_lease_lost`、`sandbox_persistence_maps_sandbox_lease_conflict_to_lease_lost`、`sandbox_provider_timeout_is_bounded_and_persisted_as_a_typed_failure`、`sandbox_lifecycle_service_rejects_invalid_operation_policy_and_duplicate_providers`、`sandbox_allocation_protection_metadata_rejects_unsafe_key_identity`、`sandbox_lifecycle_guard_matrix_matches_the_documented_operation_contract`、`sandbox_lifecycle_replay_reports_an_in_progress_sandbox_operation`、`sandbox_stop_fails_closed_when_a_running_sandbox_session_has_no_runtime_binding`、`sandbox_lifecycle_create_start_benchmark` |
+| Session Repository 内存实现：tenant 隔离、CAS、租约竞争与接管 | `crates/sdkwork-intelligence-sandbox-repository-memory/src/lib.rs` | `crates/sdkwork-intelligence-sandbox-repository-memory/src/lib.rs` | `isolates_sandbox_sessions_by_tenant_and_indexes_sandbox_create_operations`、`rejects_stale_sandbox_session_compare_and_swap`、`rejects_invalid_sandbox_reconciliation_page_sizes`、`sandbox_session_insert_conflicts_are_scoped_by_tenant`、`enforces_sandbox_lease_competition_takeover_and_stale_token_rejection` |
+| SQLx 编解码：状态 / 能力 / 操作族的规范化往返与未知值拒绝 | `crates/sdkwork-intelligence-sandbox-repository-sqlx/src/codec.rs` | `crates/sdkwork-intelligence-sandbox-repository-sqlx/src/codec.rs` | `sandbox_capability_codec_is_canonical_and_rejects_duplicates`、`sandbox_state_codec_round_trips_every_state_and_rejects_unknown_values`、`sandbox_operation_kind_codec_round_trips_every_kind_and_rejects_unknown_values`、`sandbox_operation_outcome_codec_round_trips_every_outcome_and_rejects_mismatches`、`sandbox_session_failure_and_isolation_assurance_codecs_reject_unknown_values` |
+| SQLx 加密的 Provider 恢复元数据：上下文绑定、密钥身份与材料上界 | `crates/sdkwork-intelligence-sandbox-repository-sqlx/src/encryption.rs` | `crates/sdkwork-intelligence-sandbox-repository-sqlx/src/encryption.rs` | `sandbox_allocation_reference_is_encrypted_redacted_and_context_bound`、`sandbox_allocation_restore_rejects_wrong_key_identity`、`sandbox_allocation_key_debug_output_redacts_key_material`、`sandbox_allocation_key_rejects_unsafe_key_identity_and_invalid_material_bounds` |
+| SQLx 有界重加密的分页版本漂移拒绝 | `crates/sdkwork-intelligence-sandbox-repository-sqlx/src/reencryption.rs` | `crates/sdkwork-intelligence-sandbox-repository-sqlx/src/reencryption.rs` | `sandbox_reencryption_target_rejects_page_version_drift` |
+| SQLx 错误映射：唯一约束、完整性与瞬时码、连接失败的分类 | `crates/sdkwork-intelligence-sandbox-repository-sqlx/src/repository.rs` | `crates/sdkwork-intelligence-sandbox-repository-sqlx/src/repository.rs` | `sandbox_sqlx_error_mapping_classifies_unique_violations_by_constraint`、`sandbox_sqlx_error_mapping_classifies_integrity_and_transient_codes`、`sandbox_sqlx_error_mapping_maps_connection_failures_to_unavailable` |
+| SQLx 持久化生命周期（需外部 PostgreSQL） | `crates/sdkwork-intelligence-sandbox-repository-sqlx/tests/postgres_repository.rs` | `crates/sdkwork-intelligence-sandbox-repository-sqlx/tests/postgres_repository.rs` | `sandbox_postgres_destructive_test_requires_matching_non_echoing_database_urls`、`sandbox_postgres_repository_enforces_durable_lifecycle_contract` |
+| Local Fake Host Boundary：类型化参数、路径逃逸、环境上界 | `crates/sdkwork-sandbox-provider-local/src/fake_host_boundary/mod.rs` | `crates/sdkwork-sandbox-provider-local/src/fake_host_boundary/tests.rs` | `sandbox_fake_host_boundary_preserves_typed_arguments_without_shell_parsing`、`sandbox_fake_host_boundary_rejects_path_escape_and_windows_path_hazards`、`sandbox_fake_host_boundary_denies_command_strings_and_ambient_credentials`、`sandbox_fake_host_boundary_enforces_argument_and_environment_bounds`、`sandbox_fake_host_boundary_enforces_environment_entry_bound` |
+
+表内共 **68 个用例**（15 行），与工作区静态清点一致；其中 `sandbox_postgres_repository_enforces_durable_lifecycle_contract` 带 `#[ignore]`，是唯一不进默认运行的用例（它声明需要 `SDKWORK_DATABASE_TEST_POSTGRES_URL` 与一个已初始化的 PostgreSQL）。因此 `cargo test --workspace` 的读数是 **67 passed / 0 failed / 1 ignored**，68 = 67 + 1，两侧对得上。
 
 计数（2026-09-22 实测）：
 
@@ -292,7 +306,7 @@ cargo test --workspace
 node --test tests/contract/*.test.mjs
 ```
 
-`515 pass / 0 fail`（其中 E2B 矩阵门禁 50 个、E2B 基准门禁 29 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而套件与工作区早已是 515 与 67——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
+`533 pass / 0 fail`（其中 E2B 矩阵门禁 68 个、E2B 基准门禁 29 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
 
 ### 3.2 覆盖空档
 
@@ -303,7 +317,7 @@ node --test tests/contract/*.test.mjs
 | 1 | **已实现面没有任何消费点测试** | 治理阻塞 | `REQ-2026-0003` `REQ-2026-0008` | 5 个 SPI 测试全部落在谓词与构造器上，`allocate`/`start`/`stop`/`destroy` 的**真实 Provider 调用序列**没有任何实现可测——因为 Provider 不存在。两条能授权它的需求（安全本地 Provider、Firecracker Provider）都还是 `draft`，`AGENTS.md` 未放行，所以这不是"没写用例"而是"没有可写用例的实现"。本仓最深的空档 |
 | 2 | **PRD 状态机 ⊋ 实现状态机** | 缺门禁 | `docs/product/prd/PRD-capabilities.md` `crates/sdkwork-intelligence-sandbox-service/src/model.rs` | PRD 第 3 节的规范状态机含 `Pausing`/`Paused`/`Recovering`，实现枚举只有 8 态且无这三个，而 PRD 该处没有任何"未实现/目标态"标记。两份产物都在树里，只是**没有任何门禁把它们放在一起读**；补标记或补门禁都行，缺的是"有人读"这件事本身 |
 | 3 | **指标契约与指标族名不相交** | 缺门禁 | `apis/async/sandbox-observability-catalog.json` `docs/product/prd/PRD-sandbox-surfaces.md` | 前者的 32 个指标与后者第 13 节的 15 个指标族名字集完全不相交，9 个族无任何对应；且 PRD 的 `*_latency` 命名违反 `OBSERVABILITY_SPEC.md` 第 57 节"Duration 指标名必须含单位，通常 `_duration_seconds`"。两份清单都在树里，**无门禁比对** |
-| 4 | **`PRD-capabilities.md` 第 11 节与 E2B 基准之间仍无门禁** | 缺门禁 | `docs/product/prd/PRD-capabilities.md` `specs/sandbox-e2b-capability-baseline.json` | 本分片的 78 行已由 `tools/check-sandbox-e2b-parity-matrix.mjs` 自我校验（词表、编号与形状、分类对应、普查算术、引用解析、登记、空档），但第 11 节那 34 行到 E2B 的映射仍只存在于散文，会随基准演进而静默腐化 |
+| 4 | **`PRD-capabilities.md` 第 11 节与 E2B 基准之间仍无门禁** | 缺门禁 | `docs/product/prd/PRD-capabilities.md` `specs/sandbox-e2b-capability-baseline.json` | 本分片的 78 行已由 `tools/check-sandbox-e2b-parity-matrix.mjs` 自我校验（词表、编号与形状、状态、分类对应、普查算术、引用解析与登记、空档与取证、零需求断言登记、实现面覆盖、自描述计数，共 10 条），但第 11 节那 34 行到 E2B 的映射仍只存在于散文，会随基准演进而静默腐化 |
 | 5 | **PRD 第 8 节把"Benchmark 套件与容量基线"标为无需求承载，该结论已被推翻** | 缺门禁 | `docs/product/prd/PRD.md` `docs/product/requirements/REQ-2026-0019-sandbox-runtime-pool-and-fast-allocation.md` | PRD 第 8 节仍写着该行"无需求承载；无参考硬件定义"，而 `REQ-2026-0019`（runtime pool 与 fast allocation）已经存在，其 Goals 第 4 条正是"在公开参考环境和固定工作负载中证明 Pool Claim 到 Sandbox Running Ready 的 p50/p95/p99；产品目标为 p95 小于 500 ms"。散文里的"无需求"是一句会过期的断言，**没有门禁把 PRD 第 8 节的 `REQ-*` 断言与需求目录对账** |
 | 6 | **500 ms 热分配目标没有测量者，三份性能文档互不 join** | 治理阻塞 | `REQ-2026-0019` | 目标（`PRD.md` 第 6 节）说的是"公开参考环境中 Pool 到 Workspace 绑定 p95 小于 500 ms"；基线（`docs/architecture/tech/TECH-performance-baseline.md`）自述**发布门禁资格：不合格**，且其第 0.2 条明确"分子（编排）已测、分母（真实沙箱启动）不存在"，测的是编排地板；容量分片（`docs/architecture/tech/TECH-performance-and-capacity.md`）声明"全部数值都是工程目标"。三份文件各说各话、无人同时读它们。而 500 ms 对应的 Pool 路径由 `REQ-2026-0019` 承载且仍是 `draft`，所以**这里连可测的实现都还没有**，只能先作为阻塞登记 |
 
@@ -317,8 +331,8 @@ node --test tests/contract/*.test.mjs
 
 | 新增物 | 内容 | 用例数 | 变异自证 |
 | --- | --- | --- | --- |
-| `tools/check-sandbox-e2b-parity-matrix.mjs` | 8 条规则族：词表 / 编号与形状 / 状态 / 分类对应 / 普查算术 / 引用解析与登记 / 空档与取证 / 零需求断言登记 | — | 见下 |
-| `tests/contract/e2b-parity-matrix-tool.contract.test.mjs` | 50 个用例，每个规则族各有一条能变红的反面用例（空档族 12 条、零需求族 13 条） | 50 | 50/50 pass、逐族置空 8/8 转红 |
+| `tools/check-sandbox-e2b-parity-matrix.mjs` | 10 条规则族：词表 / 编号与形状 / 状态 / 分类对应 / 普查算术 / 引用解析与登记 / 空档与取证 / 零需求断言登记 / 实现面覆盖 / 自描述计数 | — | 见下 |
+| `tests/contract/e2b-parity-matrix-tool.contract.test.mjs` | 68 个用例，每个规则族各有一条能变红的反面用例（空档族 12 条、零需求族 13 条、实现面覆盖族 7 条、自描述族 3 条） | 68 | 68/68 pass、逐族置空 10/10 转红 |
 | `tools/check-sandbox-e2b-field-parity.mjs` | 10 条规则族：基准形状 / 逐来源 provenance / 逐行证据 / 分类对齐 / 与文档逐行 join / `基准仅索引` 棘轮 / operation 覆盖记账 / 登记 / 测试清单 / 自描述计数 | — | 见下 |
 | `tests/contract/sandbox-e2b-field-parity-tool.contract.test.mjs` | 29 个用例，10 条规则族各有一条能变红的反面用例，另加对照组与解析器回归 | 29 | 29/29 pass |
 
@@ -332,7 +346,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 **门禁自身踩到并修掉的静默漏洞**：合计行写作 `| **合计** | **78** | … |`，初版解析器用 `^\d+$` 判行，星号使其不被识别为合计行 ⇒ 全部合计断言被跳过，门禁把**重算值**当作**已核对值**打印。这正是本仓最在意的那类缺陷（"看着通过、实际什么都没查"），已改为先剥离 Markdown 强调再解析，并加"没有合计行即失败"与"计数非数字即报告而非静默丢弃"两条规则锁住。
 
-**矩阵门禁的逐族耦合自证**：契约套件里"每个规则族有一条反面用例"只证明用例存在，不证明**是这条规则**在报。于是再逐族把该族自己的判据做最小置空（`if (x) {` → `if (false) {`，或删掉 push 点），要求"转红的恰好是本族的反面用例"。8 / 8 全部成立：本族各翻 1–9 条、**异族 0 条**、套件总数全程 50 不变、跑完 `Buffer.compare` 逐字节还原。变异报告落盘在 `target/matrix-mutation-proof.json`（`target/` 被 gitignore，是证据不是缓存）。
+**矩阵门禁的逐族耦合自证**：契约套件里"每个规则族有一条反面用例"只证明用例存在，不证明**是这条规则**在报。于是再逐族把该族自己的判据做最小置空（`if (x) {` → `if (false) {`，或删掉 push 点），要求"转红的恰好是本族的反面用例"。10 / 10 全部成立：本族各翻 1–9 条、**异族 0 条**、套件总数全程 68 不变、跑完 `Buffer.compare` 逐字节还原。变异报告落盘在 `target/matrix-mutation-proof.json`（`target/` 被 gitignore，是证据不是缓存）。
 
 **这次置空顺手抓到一个真缺陷**：把"矩阵小节数与 census 分类数必须一一对应"这条判据置空后，越界读取 `census.categories[index]` 让门禁**抛 TypeError** 而不是报告——静态门禁在畸形输入上崩溃时，读起来像工具坏了而不是文档坏了。已补一层"取不到就跳过"的兜底，再复跑，转红集合重新变成"恰好本族"。
 
@@ -342,7 +356,13 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 1. **自描述解析器的贪婪**。它要读"本门禁有几条规则族"，初版用 `(\w+)\s+rule famil`，于是根 `README.md` 里的 "the gate then holds seven rule families" 被读成 `holds`，门禁反过来指责文档"声明了一个无法识别的计数"——解析器把自己的贪婪算在文档头上。改成以计数词本身做锚（`seven|eight|nine|ten|…`）后两个形态都能读对。
 2. **测试清单的口径**。第九条要求文档声明的用例数必须为真，但"真值"从哪来：契约数能打开 `tests/contract/*.test.mjs` 逐文件重算，Rust 读数不能——它只在构建并跑完之后存在。于是两者用两种口径：契约数**重算**，Rust 读数与产生它的命令一起**落盘**再比对，和来源 sha256 同一种诚实模型（抓取时刻的陈述，不是可离线复算的摘要）。
-3. **自描述计数的"第一处即答案"**。第十条要在四处措辞里读"本门禁有几条规则族"，初版取文件里的**第一处**匹配。本轮给 `tools/README.md` 与门禁视图加了矩阵门禁（七条）的段落，位置都在基准门禁段**之前**，于是同一个文件里出现了两个不同的规则族数，门禁立刻把七算到了自己头上并报"declares 7, implements 10"。这不是文档写错，是解析器把"本文件里第一个数字"当成了"本门禁的数字"：一个表面同时描述两条门禁时，计数必须**按提及本门禁的位置定界**（取最后一段点名本门禁的块及其后一块），而**本门禁自己的源码**不需要定界（它不会把自己的数记到别人头上），所以那一面显式 `own: true` 退出定界。这件事本身就是第十条的加强版教训：**声明与归属要一起长大**。
+3. **自描述计数的"第一处即答案"**。第十条要在四处措辞里读"本门禁有几条规则族"，初版取文件里的**第一处**匹配。本轮给 `tools/README.md` 与门禁视图加了矩阵门禁（七条）的段落，位置都在基准门禁段**之前**，于是同一个文件里出现了两个不同的规则族数，门禁立刻把七算到了自己头上并报"declares 7, implements 10"。这不是文档写错，是解析器把"本文件里第一个数字"当成了"本门禁的数字"：一个表面同时描述两条门禁时，计数必须**按提及本门禁的位置定界**（本版取最后一段点名本门禁的块及其后一块；矩阵门禁补齐同名规则时又发现这个取法仍有两个洞，见上文第十条规则族），而**本门禁自己的源码**不需要定界（它不会把自己的数记到别人头上），所以那一面显式 `own: true` 退出定界。这件事本身就是第十条的加强版教训：**声明与归属要一起长大**。
+
+**第九条规则族：实现面覆盖（§3.1 从散文变成断言）。** §3.1 声称自己是"本仓全部真实实现"，但**没有任何东西读它**——它只覆盖 3 个 crate 的 49 个用例，而工作区有 10 个文件、68 个用例：两个仓储 crate（`…-repository-memory` 与 `…-repository-sqlx`）连同 19 个用例根本没进表。也就是说整份审计里最让人安心的一张表，恰好是唯一没人核过的一张。现在该表是逐用例的，门禁自己遍历 `crates/**/*.rs` 把测试点出来，再做**双向记账**：本表引用的实现路径必须存在（带 `:line` 时该行必须在文件内）、引用的用例必须由所引测试文件声明、而工作区声明的每个 `#[test]` / `#[tokio::test]` 必须被认领恰好一次。
+
+写这条规则时**又踩到同一类抽取口径缺陷**：`#[tokio::test(flavor = "multi_thread", worker_threads = 4)]` 带参数，只认 `#[tokio::test]` 的正则会**静默丢掉它**，第一版数出 67 个测试而工作区是 68 个。这与"operationId 抽取漏掉点号 ⇒ 一度报出 36 个未覆盖、真值 19"完全同源。连续两次栽在同一处，说明这不是偶然失误而是一个**必须写进检查表的动作**：任何覆盖率/缺口数结论，先对抽取规则做正反例自检（本轮的正例就是那条带参数的 `#[tokio::test]`，已锁进契约测试）。68 这个数与 `cargo test --workspace` 的 `67 passed / 1 ignored` 对得上：68 = 67 + 1，唯一的 `#[ignore = "..."]`（需要外部 PostgreSQL）不进默认运行。
+
+**第十条规则族：自描述计数。** 门禁必须能被查问"你到底实现了多少条规则族"，答案必须由代码里的 `RULE_FAMILIES` 注册表推导，而不是手打的散文。加完第九条后，`tools/README.md` 与门禁视图**两个表面仍写着"八条"**，门禁立刻转红——这条门禁低估自己的覆盖范围，恰好就是它拒绝文档做出那类断言。读这个数还要求解析器分清散文与代码围栏：一节的结尾若是它自己的 usage 围栏，文件名会出现在声明计数那句话**之后**，把围栏当成"点名本门禁的块"会让定界晚一块，门禁于是对一节写得很清楚的散文报「没有声明规则族数」；而"命名块 + 其后一块"的取法还有第二个坑——`README.md` 的矩阵段与基准段只隔一个空行，矩阵段自己没有计数时会**借走**基准段的"ten"而静默通过。修法是**由窄到宽**：先只读命名块，读不到计数器才允许并入后一块，且后一块若点名了另一条门禁（即它属于那一节）则不并入。三处表面（`tools/README.md`、根 `README.md`、门禁视图）现在都各自声明同一个数。
 
 ### 3.4 零需求断言
 

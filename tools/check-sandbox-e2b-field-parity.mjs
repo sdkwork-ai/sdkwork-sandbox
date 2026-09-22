@@ -143,22 +143,44 @@ const CHINESE_COUNT_WORDS = Object.freeze({
 export const GATE_FILE_NAME = "check-sandbox-e2b-field-parity.mjs";
 
 /**
- * The span of a document that describes *this* gate. A surface may describe several gates, and the
- * first count in such a file belongs to whichever gate is described first: `tools/README.md` now
- * carries a matrix-gate section above this gate's section, so reading the file's first count
- * attributed seven families to a gate that implements ten. The span is the last block naming this
- * gate plus the block that follows it, because a count introduced as a standalone line ("Ten rule
- * families:") lands in the next paragraph by ordinary prose habit. A surface that *is* this gate
- * carries no ambiguity -- its comment blocks are separated by ` *` lines, and the block that names
- * the file (the usage lines) is not where the count lives -- so it opts out of scoping.
+ * Any sibling gate file. A following block that names one belongs to that gate's section, so it
+ * cannot be the continuation of this gate's count statement. Without this, a section that states no
+ * count of its own silently borrowed the number from the section below it.
  */
-function declarationScope(text, { own = false } = {}) {
+const ANY_GATE_FILE = /check-sandbox-[a-z0-9-]+\.mjs/u;
+
+/**
+ * The candidate spans of a document that describe *this* gate, narrowest first. A surface may
+ * describe several gates, and the first count in such a file belongs to whichever gate is described
+ * first: `tools/README.md` now carries a matrix-gate section above this gate's section, so reading
+ * the file's first count attributed seven families to a gate that implements ten. The naming block
+ * is tried alone first, because a document that states the count in the sentence naming the gate
+ * must not have the *next* paragraph's count attributed to it -- reading the pair unconditionally
+ * let `README.md`'s two adjacent sections pass by borrowing each other's number. Only when the
+ * naming block declares no count is the following block admitted, since a count introduced as a
+ * standalone line ("Ten rule families:") lands there by ordinary prose habit. A usage fence is not
+ * prose: it names the gate file *after* the sentence declaring the count, and treating it as the
+ * naming block started the scope one block too late. A surface that *is* this gate carries no
+ * ambiguity -- its comment blocks are separated by ` *` lines -- so it opts out of scoping.
+ */
+function declarationScopes(text, { own = false } = {}) {
   const source = String(text);
-  if (own) return source;
+  if (own) return [source];
   const blocks = source.split(/\n\s*\n/u);
-  const index = blocks.findLastIndex((block) => block.includes(GATE_FILE_NAME));
-  if (index === -1) return source;
-  return index + 1 < blocks.length ? `${blocks[index]}\n\n${blocks[index + 1]}` : blocks[index];
+  const namesGate = (block) =>
+    block.includes(GATE_FILE_NAME) &&
+    !block.split(/\r?\n/u).some((line) => line.trimStart().startsWith("```"));
+  const index = blocks.findLastIndex(namesGate);
+  if (index === -1) return [source];
+  const scopes = [blocks[index]];
+  const next = blocks[index + 1];
+  // A count introduced as a standalone line ("Ten rule families:") lands in the next block, so the
+  // next block is admitted -- unless it names another gate file, which makes it that gate's section
+  // rather than the continuation of this one.
+  if (next !== undefined && !ANY_GATE_FILE.test(next.replaceAll(GATE_FILE_NAME, ""))) {
+    scopes.push(`${blocks[index]}\n\n${next}`);
+  }
+  return scopes;
 }
 
 /**
@@ -166,20 +188,25 @@ function declarationScope(text, { own = false } = {}) {
  * The alternation is anchored on the count words themselves: a looser `(\w+)\s+rule famil` reads
  * "the gate then holds seven rule families" as "holds" and reports an unrecognized count, which is
  * the parser blaming the document for its own greediness. At most one adjective may sit between the
- * count and the noun, so "Eight deterministic rule families" parses like "seven rule families".
+ * count and the noun, so "Ten deterministic rule families" parses like "seven rule families".
  */
 export function parseDeclaredRuleFamilies(text, language, { own = false } = {}) {
-  const source = declarationScope(text, { own });
-  if (language === "chinese") {
-    const match = /([一二三四五六七八九十]+)\s*条规则/.exec(source);
-    return match ? CHINESE_COUNT_WORDS[match[1]] ?? null : null;
+  for (const source of declarationScopes(text, { own })) {
+    if (language === "chinese") {
+      const match = /([一二三四五六七八九十]+)\s*条规则/.exec(source);
+      const declared = match ? CHINESE_COUNT_WORDS[match[1]] ?? null : null;
+      if (declared !== null) return declared;
+      continue;
+    }
+    const pattern = new RegExp(
+      `(${Object.keys(ENGLISH_COUNT_WORDS).join("|")})(?:\\s+[A-Za-z]+)?\\s+rule famil(?:y|ies)`,
+      "i",
+    );
+    const match = pattern.exec(source);
+    const declared = match ? ENGLISH_COUNT_WORDS[match[1].toLowerCase()] ?? null : null;
+    if (declared !== null) return declared;
   }
-  const pattern = new RegExp(
-    `(${Object.keys(ENGLISH_COUNT_WORDS).join("|")})(?:\\s+[A-Za-z]+)?\\s+rule famil(?:y|ies)`,
-    "i",
-  );
-  const match = pattern.exec(source);
-  return match ? ENGLISH_COUNT_WORDS[match[1].toLowerCase()] ?? null : null;
+  return null;
 }
 
 const SHA256 = /^[0-9a-f]{64}$/;
