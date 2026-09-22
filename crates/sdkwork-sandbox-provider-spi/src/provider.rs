@@ -31,22 +31,27 @@ impl SandboxProviderDescriptor {
         }
     }
 
+    #[must_use]
     pub fn sandbox_provider_id(&self) -> &SandboxProviderId {
         &self.sandbox_provider_id
     }
 
+    #[must_use]
     pub fn sandbox_provider_kind(&self) -> &SandboxProviderKind {
         &self.sandbox_provider_kind
     }
 
+    #[must_use]
     pub fn sandbox_runtime_capabilities(&self) -> &BTreeSet<RuntimeCapability> {
         &self.sandbox_capabilities
     }
 
+    #[must_use]
     pub fn sandbox_isolation_assurance(&self) -> IsolationAssurance {
         self.sandbox_isolation_assurance
     }
 
+    #[must_use]
     pub fn satisfies_sandbox_requirements(
         &self,
         sandbox_required_capabilities: &BTreeSet<RuntimeCapability>,
@@ -105,6 +110,7 @@ pub struct SandboxProviderReadiness {
 }
 
 impl SandboxProviderReadiness {
+    #[must_use]
     pub fn is_sandbox_running_ready(self) -> bool {
         self.sandbox_provider_ready
             && self.sandbox_policy_enforced

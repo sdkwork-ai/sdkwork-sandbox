@@ -20,6 +20,11 @@ pub struct SandboxProviderAllocationKey {
 }
 
 impl SandboxProviderAllocationKey {
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::ProtectionFailed` when the
+    /// injected key material or key identity fails validation.
     pub fn new(
         sandbox_allocation_key_id: impl Into<String>,
         sandbox_allocation_key_version: u64,
@@ -60,10 +65,20 @@ impl fmt::Debug for SandboxProviderAllocationKey {
 }
 
 pub trait SandboxProviderAllocationKeySource: Send + Sync {
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::ProtectionFailed` when the
+    /// active allocation key cannot be resolved from the injected key source.
     fn current_sandbox_allocation_key(
         &self,
     ) -> SandboxSessionRepositoryResult<SandboxProviderAllocationKey>;
 
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::ProtectionFailed` when the
+    /// requested key version cannot be resolved from the injected key source.
     fn sandbox_allocation_key(
         &self,
         sandbox_allocation_key_id: &str,

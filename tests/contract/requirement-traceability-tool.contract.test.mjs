@@ -16,6 +16,25 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 
 const CAPABILITY_MATRIX = `# SDKWork Sandbox 能力与生命周期需求
 
+## 3. Sandbox Session 状态机
+
+\`\`\`mermaid
+stateDiagram-v2
+    [*] --> Created
+    Created --> Starting: start accepted
+    Starting --> Running: provider ready
+    Starting --> Failed: allocation failure
+    Running --> Pausing: pause accepted
+    Pausing --> Paused: checkpoint durable
+    Paused --> Starting: resume accepted
+    Running --> Recovering: provider lost
+    Stopping --> Stopped: execution quiesced
+    Destroying --> Destroyed: allocation released
+\`\`\`
+
+- 目标态标记：\`Pausing\`、\`Paused\`、\`Recovering\`。
+- 这三个状态是本图的规范目标态，实现枚举尚未包含它们。
+
 ## 11. 能力对齐矩阵 (Capability Alignment Matrix)
 
 本产品以成熟 microVM Agent Runtime 的公开能力集合为对齐基线。
@@ -30,6 +49,69 @@ const CAPABILITY_MATRIX = `# SDKWork Sandbox 能力与生命周期需求
 其余正文。
 `;
 
+const IMPLEMENTATION_MODEL_RS = `use crate::SandboxLifecycleError;
+
+pub enum SandboxSessionState {
+    Created,
+    Starting,
+    Running,
+    Stopping,
+    Stopped,
+    Failed,
+    Destroying,
+    Destroyed,
+}
+`;
+
+const OBSERVABILITY_SURFACES = `# SDKWork Sandbox 能力面与访问路径需求
+
+## 13. 可观测性能力面
+
+必须提供的指标族至少包括：
+
+\`\`\`text
+sandbox_create_duration_seconds
+sandbox_snapshot_restore_duration_seconds
+sandbox_runtime_pool_claims_total
+\`\`\`
+
+## 14. 未决门禁
+`;
+
+const OBSERVABILITY_CATALOG = {
+  metrics: {
+    catalog: [
+      { name: "sdkwork_sandbox_lifecycle_operation_duration_seconds", type: "histogram", unit: "seconds" },
+      { name: "sdkwork_sandbox_provider_operation_duration_seconds", type: "histogram", unit: "seconds" },
+    ],
+    productFamilies: {
+      families: [
+        {
+          name: "sandbox_create_duration_seconds",
+          plane: "control-plane",
+          kind: "duration",
+          catalogMetrics: ["sdkwork_sandbox_lifecycle_operation_duration_seconds"],
+          note: "lifecycle operation duration by sandbox_operation label.",
+        },
+        {
+          name: "sandbox_snapshot_restore_duration_seconds",
+          plane: "control-plane",
+          kind: "duration",
+          catalogMetrics: ["sdkwork_sandbox_provider_operation_duration_seconds"],
+          note: "provider operation duration by sandbox_operation label.",
+        },
+        {
+          name: "sandbox_runtime_pool_claims_total",
+          plane: "control-plane",
+          kind: "counter",
+          catalogMetrics: [],
+          note: "pool claim counter; carrier recorded at PRD-capabilities.md 第 11 节行 20.",
+        },
+      ],
+    },
+  },
+};
+
 /**
  * Build a throwaway repository that owns one requirement record and one decision record, so the
  * gate has authorities to resolve against:
@@ -40,7 +122,15 @@ const CAPABILITY_MATRIX = `# SDKWork Sandbox 能力与生命周期需求
  *     docs/product/prd/PRD-capabilities.md
  *     README.md                     <- keeps both records from being orphans
  */
-function createFixture({ documents = {}, requirements = {}, decisions = {}, capabilityMatrix } = {}) {
+function createFixture({
+  documents = {},
+  requirements = {},
+  decisions = {},
+  capabilityMatrix,
+  surfacesDoc = OBSERVABILITY_SURFACES,
+  modelRs = IMPLEMENTATION_MODEL_RS,
+  catalog = OBSERVABILITY_CATALOG,
+} = {}) {
   const base = mkdtempSync(path.join(tmpdir(), "sdkwork-req-traceability-"));
   const repo = path.join(base, "sdkwork-fixture");
 
@@ -60,6 +150,12 @@ function createFixture({ documents = {}, requirements = {}, decisions = {}, capa
     path.join("docs", "product", "prd", "PRD-capabilities.md"),
     capabilityMatrix ?? CAPABILITY_MATRIX,
   );
+  write(path.join("docs", "product", "prd", "PRD-sandbox-surfaces.md"), surfacesDoc);
+  write(
+    path.join("crates", "sdkwork-intelligence-sandbox-service", "src", "model.rs"),
+    modelRs,
+  );
+  write(path.join("apis", "async", "sandbox-observability-catalog.json"), `${JSON.stringify(catalog, null, 2)}\n`);
   for (const [relativePath, contents] of Object.entries(documents)) {
     write(relativePath, contents);
   }
@@ -78,6 +174,9 @@ function inspect(overrides = {}) {
     decisions: DEFAULT_DECISIONS,
     documents: { "README.md": DEFAULT_INDEX, ...overrides.documents },
     ...("capabilityMatrix" in overrides ? { capabilityMatrix: overrides.capabilityMatrix } : {}),
+    ...("surfacesDoc" in overrides ? { surfacesDoc: overrides.surfacesDoc } : {}),
+    ...("modelRs" in overrides ? { modelRs: overrides.modelRs } : {}),
+    ...("catalog" in overrides ? { catalog: overrides.catalog } : {}),
     ...("requirements" in overrides ? { requirements: overrides.requirements } : {}),
     ...("decisions" in overrides ? { decisions: overrides.decisions } : {}),
   });
@@ -112,6 +211,32 @@ test("the repository's own traceability chain resolves and the gate is not vacuo
   assert.equal(assessment.requirementsOnRecord, 27);
   assert.equal(assessment.decisionsOnRecord, 27);
   assert.equal(assessment.capabilityRowsUnattributed, 0);
+});
+
+test("the repository's own product joins hold at the recorded readings", () => {
+  const assessment = assessRequirementTraceability({ repoRoot });
+
+  assert.equal(assessment.ok, true, formatRequirementTraceabilityReport(assessment));
+  // The PRD diagram carries 11 states, the implementation enum 8, and the difference is exactly
+  // the three states the `目标态标记` line declares — this triple IS the closed state-machine gap.
+  assert.equal(assessment.stateMachineStates, 11);
+  assert.equal(assessment.implementedStates.length, 8);
+  assert.deepEqual([...assessment.declaredTargetStates].sort(), ["Paused", "Pausing", "Recovering"]);
+  // 13 product families against the 32-metric control-plane catalog, 7 of them runtime-plane.
+  assert.equal(assessment.observabilityFamilies, 13);
+  assert.equal(assessment.catalogMetrics, 32);
+  assert.deepEqual(
+    [...assessment.runtimePlaneFamilies].sort(),
+    [
+      "sandbox_cpu_used_ratio",
+      "sandbox_disk_used_bytes",
+      "sandbox_fork_duration_seconds",
+      "sandbox_memory_used_bytes",
+      "sandbox_network_received_bytes_total",
+      "sandbox_network_transmitted_bytes_total",
+      "sandbox_template_cache_requests_total",
+    ],
+  );
 });
 
 test("the census states what the capability matrix literally says", () => {
@@ -423,6 +548,169 @@ test("authority discovery reads both record families", () => {
   } finally {
     rmSync(fixture.base, { recursive: true, force: true });
   }
+});
+
+test("a fixture with a consistent state machine join passes, and every mismatch reddens", () => {
+  // Control: the default fixture joins cleanly (11 diagram states, 8 implemented, 3 declared).
+  const control = inspect();
+  assert.equal(control.ok, true, formatRequirementTraceabilityReport(control));
+  assert.equal(control.stateMachineStates, 11);
+  assert.equal(control.implementedStates.length, 8);
+  assert.deepEqual(
+    [...control.declaredTargetStates].sort(),
+    ["Paused", "Pausing", "Recovering"],
+  );
+
+  // A diagram state that is neither implemented nor declared leaves the reader unable to tell
+  // whether it is a promise.
+  const unmarked = inspect({
+    capabilityMatrix: CAPABILITY_MATRIX.replace(
+      "- 目标态标记：`Pausing`、`Paused`、`Recovering`。\n",
+      "- 目标态标记：`Pausing`。\n",
+    ),
+  });
+  assert.equal(unmarked.ok, false);
+  const unmarkedFailures = failuresFor(unmarked, "unmarked-target-state");
+  assert.equal(unmarkedFailures.length, 2);
+  assert.match(unmarkedFailures[0].message, /`Paused`|`Recovering`/u);
+
+  // A target that reached the implementation must shrink the marker, or the PRD keeps claiming
+  // the implementation does not exist.
+  const stale = inspect({
+    modelRs: IMPLEMENTATION_MODEL_RS.replace("    Created,\n", "    Created,\n    Pausing,\n"),
+  });
+  assert.equal(stale.ok, false);
+  assert.equal(failuresFor(stale, "stale-target-state").length, 1);
+  assert.match(failuresFor(stale, "stale-target-state")[0].message, /shrink the marker/u);
+
+  // A marker naming a state the diagram does not declare is a typo nobody would ever catch by hand.
+  const unknown = inspect({
+    capabilityMatrix: CAPABILITY_MATRIX.replace(
+      "- 目标态标记：`Pausing`、`Paused`、`Recovering`。\n",
+      "- 目标态标记：`Pausing`、`Paused`、`Recovering`、`Bogus`。\n",
+    ),
+  });
+  assert.equal(unknown.ok, false);
+  assert.equal(failuresFor(unknown, "unknown-target-state").length, 1);
+  assert.match(failuresFor(unknown, "unknown-target-state")[0].message, /`Bogus`/u);
+
+  // The product canon must know every state the implementation declares.
+  const unlisted = inspect({
+    modelRs: IMPLEMENTATION_MODEL_RS.replace("    Destroyed,\n", "    Destroyed,\n    ExtraState,\n"),
+  });
+  assert.equal(unlisted.ok, false);
+  assert.equal(failuresFor(unlisted, "unlisted-implementation-state").length, 1);
+  assert.match(failuresFor(unlisted, "unlisted-implementation-state")[0].message, /`ExtraState`/u);
+});
+
+test("a fixture with a consistent observability join passes, and every mismatch reddens", () => {
+  // Every join direction gets its own red below; the green control is the state-machine test.
+
+  const missingEntry = inspect({
+    catalog: {
+      metrics: {
+        catalog: OBSERVABILITY_CATALOG.metrics.catalog,
+        productFamilies: {
+          families: OBSERVABILITY_CATALOG.metrics.productFamilies.families.slice(0, 2),
+        },
+      },
+    },
+  });
+  assert.equal(missingEntry.ok, false);
+  const missing = failuresFor(missingEntry, "observability-family-join");
+  assert.ok(
+    missing.some((failure) => failure.message.includes("sandbox_runtime_pool_claims_total")),
+    formatRequirementTraceabilityReport(missingEntry),
+  );
+
+  const unknownMapped = inspect({
+    catalog: {
+      metrics: {
+        catalog: OBSERVABILITY_CATALOG.metrics.catalog,
+        productFamilies: {
+          families: [
+            ...OBSERVABILITY_CATALOG.metrics.productFamilies.families,
+            {
+              name: "sandbox_ghost_family_total",
+              plane: "control-plane",
+              kind: "counter",
+              catalogMetrics: [],
+              note: "maps a family the PRD does not declare.",
+            },
+          ],
+        },
+      },
+    },
+  });
+  assert.equal(unknownMapped.ok, false);
+  assert.ok(
+    failuresFor(unknownMapped, "observability-family-join").some((failure) =>
+      failure.message.includes("does not declare"),
+    ),
+    formatRequirementTraceabilityReport(unknownMapped),
+  );
+
+  const wrongKind = inspect({
+    catalog: {
+      metrics: {
+        catalog: OBSERVABILITY_CATALOG.metrics.catalog,
+        productFamilies: {
+          families: OBSERVABILITY_CATALOG.metrics.productFamilies.families.map((family) =>
+            family.name === "sandbox_create_duration_seconds" ? { ...family, kind: "counter" } : family,
+          ),
+        },
+      },
+    },
+  });
+  assert.equal(wrongKind.ok, false);
+  assert.ok(
+    failuresFor(wrongKind, "observability-family-join").some((failure) =>
+      failure.message.includes("_duration_seconds"),
+    ),
+    formatRequirementTraceabilityReport(wrongKind),
+  );
+
+  const danglingMetric = inspect({
+    catalog: {
+      metrics: {
+        catalog: OBSERVABILITY_CATALOG.metrics.catalog,
+        productFamilies: {
+          families: OBSERVABILITY_CATALOG.metrics.productFamilies.families.map((family) =>
+            family.name === "sandbox_create_duration_seconds"
+              ? { ...family, catalogMetrics: ["sdkwork_sandbox_ghost_metric"] }
+              : family,
+          ),
+        },
+      },
+    },
+  });
+  assert.equal(danglingMetric.ok, false);
+  assert.ok(
+    failuresFor(danglingMetric, "observability-family-join").some((failure) =>
+      failure.message.includes("sdkwork_sandbox_ghost_metric"),
+    ),
+    formatRequirementTraceabilityReport(danglingMetric),
+  );
+
+  const carrierless = inspect({
+    catalog: {
+      metrics: {
+        catalog: OBSERVABILITY_CATALOG.metrics.catalog,
+        productFamilies: {
+          families: OBSERVABILITY_CATALOG.metrics.productFamilies.families.map((family) =>
+            family.catalogMetrics.length === 0 ? { ...family, note: "short" } : family,
+          ),
+        },
+      },
+    },
+  });
+  assert.equal(carrierless.ok, false);
+  assert.ok(
+    failuresFor(carrierless, "observability-family-join").some((failure) =>
+      failure.message.includes("must name the requirement or PRD row"),
+    ),
+    formatRequirementTraceabilityReport(carrierless),
+  );
 });
 
 test("argument parsing accepts --json and --root and rejects anything else", () => {

@@ -29,6 +29,14 @@
  *       `crates/sdkwork-api-<application-code>-assembly/`, `component.surface: "api-assembly"`,
  *       `contracts.layerRole: "runtime-composition"`, owning `assembly-manifest.json`, and
  *       carrying that sentence's seven canonical specs.
+ *   R7  Crate <-> component-spec reconciliation (SOUL.md section 2: every authored module
+ *       MUST maintain `<module-root>/specs/component.spec.json`). A `crates/<name>/`
+ *       directory that owns a `Cargo.toml` but no component spec is an authored module
+ *       outside the contract system, and a component spec under `crates/<name>/` whose
+ *       directory owns no `Cargo.toml` describes a crate that does not exist. The human
+ *       module inventory missed `sdkwork-api-sandbox-assembly` exactly this way (the F-07
+ *       finding in REVIEW-20260922), so the two sets are reconciled by the gate instead of
+ *       by whoever remembers to re-read the list.
  *
  * Deliberately not enforced, with the evidence for each decision:
  *
@@ -200,6 +208,7 @@ export function assessComponentContractAlignment({ repoRoot = repositoryRoot } =
   const specPaths = discoverComponentSpecs(repoRoot);
   const failures = [];
   const components = [];
+  const componentRelPathsUnderCrates = [];
 
   for (const specPath of specPaths) {
     const componentRoot = dirname(dirname(specPath));
@@ -222,6 +231,9 @@ export function assessComponentContractAlignment({ repoRoot = repositoryRoot } =
     const contracts = spec.contracts ?? {};
     const specFiles = (spec.canonicalSpecs ?? []).map((entry) => entry.file);
     const languages = Array.isArray(component.languages) ? component.languages : [];
+    if (rel.startsWith("crates/")) {
+      componentRelPathsUnderCrates.push(rel);
+    }
 
     for (const field of REQUIRED_COMPONENT_FIELDS) {
       if (typeof component[field] !== "string" || component[field].trim() === "") {
@@ -401,10 +413,51 @@ export function assessComponentContractAlignment({ repoRoot = repositoryRoot } =
     });
   }
 
+  // R7  Crate <-> component-spec reconciliation, both directions. The human
+  // module inventory missed a whole crate (F-07), so the gate reconciles the
+  // crate set against the spec set instead of trusting either list.
+  const cratesDirectory = join(repoRoot, "crates");
+  let crateDirectories = [];
+  try {
+    crateDirectories = readdirSync(cratesDirectory, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+  } catch {
+    // A repository without crates/ has no crate side to reconcile.
+  }
+  let cratesChecked = 0;
+  for (const crateName of crateDirectories) {
+    const crateRoot = join(cratesDirectory, crateName);
+    if (!existsSync(join(crateRoot, "Cargo.toml"))) {
+      continue;
+    }
+    cratesChecked += 1;
+    if (!existsSync(join(crateRoot, "specs", "component.spec.json"))) {
+      failures.push({
+        component: `crates/${crateName}`,
+        reason: "missing-crate-component-spec",
+        message:
+          `crates/${crateName} owns a Cargo.toml but no specs/component.spec.json; ` +
+          "every authored module must stay inside the component-contract system",
+      });
+    }
+  }
+  for (const rel of componentRelPathsUnderCrates) {
+    if (!existsSync(join(repoRoot, rel, "Cargo.toml"))) {
+      failures.push({
+        component: rel,
+        reason: "crate-spec-without-crate",
+        message: `the component spec at ${rel}/specs describes a crate that does not exist: the directory owns no Cargo.toml`,
+      });
+    }
+  }
+
   return {
     ok: failures.length === 0,
     repoRoot,
     componentsChecked: components.length,
+    cratesChecked,
     components,
     failures,
   };

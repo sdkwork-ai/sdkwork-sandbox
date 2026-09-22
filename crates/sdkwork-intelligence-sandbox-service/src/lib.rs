@@ -17,14 +17,14 @@ pub use model::{
 };
 pub use port::SandboxSessionLifecyclePort;
 pub use reconciliation::{
-    SandboxSessionReconciliationItem, SandboxSessionReconciliationOutcome,
-    SandboxSessionReconciliationPage,
+    SandboxSessionReconciliationCandidate, SandboxSessionReconciliationItem,
+    SandboxSessionReconciliationOutcome, SandboxSessionReconciliationPage,
 };
 pub use repository::{
-    SandboxProtectedProviderAllocationRef, SandboxProviderAllocationProtectionContext,
-    SandboxProviderAllocationProtectionVersion, SandboxProviderAllocationProtector,
-    SandboxRuntimeBindingRepositorySnapshot, SandboxSessionLease,
-    SandboxSessionOperationRepositorySnapshot, SandboxSessionRepository,
+    validate_sandbox_session_persisted_invariants, SandboxProtectedProviderAllocationRef,
+    SandboxProviderAllocationProtectionContext, SandboxProviderAllocationProtectionVersion,
+    SandboxProviderAllocationProtector, SandboxRuntimeBindingRepositorySnapshot,
+    SandboxSessionLease, SandboxSessionOperationRepositorySnapshot, SandboxSessionRepository,
     SandboxSessionRepositoryError, SandboxSessionRepositoryResult,
     SandboxSessionRepositorySnapshot,
 };

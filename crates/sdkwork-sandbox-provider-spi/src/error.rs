@@ -32,6 +32,7 @@ pub struct SandboxProviderError {
 }
 
 impl SandboxProviderError {
+    #[must_use]
     pub fn new(
         sandbox_provider_id: SandboxProviderId,
         sandbox_provider_operation: SandboxProviderOperation,
@@ -44,14 +45,17 @@ impl SandboxProviderError {
         }
     }
 
+    #[must_use]
     pub fn sandbox_provider_id(&self) -> &SandboxProviderId {
         &self.sandbox_provider_id
     }
 
+    #[must_use]
     pub fn sandbox_provider_operation(&self) -> SandboxProviderOperation {
         self.sandbox_provider_operation
     }
 
+    #[must_use]
     pub fn sandbox_provider_error_kind(&self) -> SandboxProviderErrorKind {
         self.sandbox_provider_error_kind
     }

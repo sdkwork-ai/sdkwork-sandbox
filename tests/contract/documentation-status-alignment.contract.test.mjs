@@ -15,6 +15,16 @@ function parseIndexEntries() {
   let currentEntry;
 
   for (const line of readText("docs/INDEX.yaml").split(/\r?\n/u)) {
+    // `domains:` and `canon:` are top-level sections whose children also carry a four-space
+    // `path:` key (`    path: docs/product/prd/`). Without resetting the cursor on a top-level
+    // key, the first `path:` after `entries:` ends silently overwrote the LAST entry, which made
+    // the "every working document is indexed" assertion structurally unable to see a working
+    // document registered in the last position.
+    if (/^[^\s]/u.test(line)) {
+      currentEntry = undefined;
+      continue;
+    }
+
     const idMatch = line.match(/^  - id:\s*(\S+)\s*$/u);
     if (idMatch) {
       currentEntry = { id: idMatch[1] };

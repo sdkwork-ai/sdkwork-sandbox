@@ -13,7 +13,7 @@ use thiserror::Error;
 use crate::{
     model::MAX_SANDBOX_SESSION_VERSION, SandboxOperationOutcome, SandboxRuntimeBinding,
     SandboxSession, SandboxSessionFailure, SandboxSessionOperation, SandboxSessionOperationKind,
-    SandboxSessionState,
+    SandboxSessionReconciliationCandidate, SandboxSessionState,
 };
 
 fn is_safe_sandbox_allocation_key_id(sandbox_allocation_key_id: &str) -> bool {
@@ -58,6 +58,11 @@ pub struct SandboxSessionLease {
 }
 
 impl SandboxSessionLease {
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::InvalidStoredData` when the
+    /// expiry violates the lease bounds.
     pub fn new(
         tenant_id: TenantId,
         sandbox_session_id: SandboxSessionId,
@@ -77,22 +82,27 @@ impl SandboxSessionLease {
         })
     }
 
+    #[must_use]
     pub fn tenant_id(&self) -> &TenantId {
         &self.tenant_id
     }
 
+    #[must_use]
     pub fn sandbox_session_id(&self) -> &SandboxSessionId {
         &self.sandbox_session_id
     }
 
+    #[must_use]
     pub fn sandbox_lease_owner_id(&self) -> &SandboxLeaseOwnerId {
         &self.sandbox_lease_owner_id
     }
 
+    #[must_use]
     pub fn sandbox_fencing_token(&self) -> SandboxFencingToken {
         self.sandbox_fencing_token
     }
 
+    #[must_use]
     pub fn sandbox_lease_expires_at_unix_millis(&self) -> i64 {
         self.sandbox_lease_expires_at_unix_millis
     }
@@ -106,6 +116,7 @@ pub struct SandboxProviderAllocationProtectionContext {
 }
 
 impl SandboxProviderAllocationProtectionContext {
+    #[must_use]
     pub fn for_repository(
         tenant_id: TenantId,
         sandbox_session_id: SandboxSessionId,
@@ -118,14 +129,17 @@ impl SandboxProviderAllocationProtectionContext {
         }
     }
 
+    #[must_use]
     pub fn tenant_id(&self) -> &TenantId {
         &self.tenant_id
     }
 
+    #[must_use]
     pub fn sandbox_session_id(&self) -> &SandboxSessionId {
         &self.sandbox_session_id
     }
 
+    #[must_use]
     pub fn sandbox_runtime_binding_id(&self) -> &SandboxRuntimeBindingId {
         &self.sandbox_runtime_binding_id
     }
@@ -140,6 +154,11 @@ pub struct SandboxProtectedProviderAllocationRef {
 }
 
 impl SandboxProtectedProviderAllocationRef {
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::InvalidStoredData` when the
+    /// protected reference text violates its bounds.
     pub fn new(
         sandbox_allocation_ciphertext: impl Into<String>,
         sandbox_allocation_key_id: impl Into<String>,
@@ -164,18 +183,22 @@ impl SandboxProtectedProviderAllocationRef {
         })
     }
 
+    #[must_use]
     pub fn sandbox_allocation_ciphertext(&self) -> &str {
         &self.sandbox_allocation_ciphertext
     }
 
+    #[must_use]
     pub fn sandbox_allocation_key_id(&self) -> &str {
         &self.sandbox_allocation_key_id
     }
 
+    #[must_use]
     pub fn sandbox_allocation_key_version(&self) -> u64 {
         self.sandbox_allocation_key_version
     }
 
+    #[must_use]
     pub fn sandbox_allocation_crypto_version(&self) -> u16 {
         self.sandbox_allocation_crypto_version
     }
@@ -207,6 +230,11 @@ pub struct SandboxProviderAllocationProtectionVersion {
 }
 
 impl SandboxProviderAllocationProtectionVersion {
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::ProtectionFailed` when the
+    /// protection version is outside the accepted range.
     pub fn new(
         sandbox_allocation_key_id: impl Into<String>,
         sandbox_allocation_key_version: u64,
@@ -226,18 +254,22 @@ impl SandboxProviderAllocationProtectionVersion {
         })
     }
 
+    #[must_use]
     pub fn sandbox_allocation_key_id(&self) -> &str {
         &self.sandbox_allocation_key_id
     }
 
+    #[must_use]
     pub fn sandbox_allocation_key_version(&self) -> u64 {
         self.sandbox_allocation_key_version
     }
 
+    #[must_use]
     pub fn sandbox_allocation_crypto_version(&self) -> u16 {
         self.sandbox_allocation_crypto_version
     }
 
+    #[must_use]
     pub fn matches_sandbox_protected_allocation_reference(
         &self,
         sandbox_protected_allocation_reference: &SandboxProtectedProviderAllocationRef,
@@ -252,22 +284,42 @@ impl SandboxProviderAllocationProtectionVersion {
 }
 
 pub trait SandboxProviderAllocationProtector: Send + Sync {
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::ProtectionFailed` when the
+    /// current protection version cannot be resolved from the key source.
     fn current_sandbox_allocation_protection_version(
         &self,
     ) -> SandboxSessionRepositoryResult<SandboxProviderAllocationProtectionVersion>;
 
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::ProtectionFailed` when the
+    /// allocation reference cannot be protected under the context.
     fn protect_sandbox_allocation_reference(
         &self,
         sandbox_protection_context: &SandboxProviderAllocationProtectionContext,
         sandbox_allocation_reference: &SandboxProviderAllocationRef,
     ) -> SandboxSessionRepositoryResult<SandboxProtectedProviderAllocationRef>;
 
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::ProtectionFailed` when the
+    /// protected reference cannot be restored under the context.
     fn restore_sandbox_allocation_reference(
         &self,
         sandbox_protection_context: &SandboxProviderAllocationProtectionContext,
         sandbox_protected_allocation_reference: &SandboxProtectedProviderAllocationRef,
     ) -> SandboxSessionRepositoryResult<SandboxProviderAllocationRef>;
 
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::ProtectionFailed` when the
+    /// reference cannot be re-encrypted under the target key version.
     fn reencrypt_sandbox_allocation_reference(
         &self,
         sandbox_protection_context: &SandboxProviderAllocationProtectionContext,
@@ -283,6 +335,7 @@ pub struct SandboxSessionOperationRepositorySnapshot {
 }
 
 impl SandboxSessionOperationRepositorySnapshot {
+    #[must_use]
     pub fn new(
         sandbox_operation_id: OperationId,
         sandbox_operation_kind: SandboxSessionOperationKind,
@@ -295,14 +348,17 @@ impl SandboxSessionOperationRepositorySnapshot {
         }
     }
 
+    #[must_use]
     pub fn sandbox_operation_id(&self) -> &OperationId {
         &self.sandbox_operation_id
     }
 
+    #[must_use]
     pub fn sandbox_operation_kind(&self) -> SandboxSessionOperationKind {
         self.sandbox_operation_kind
     }
 
+    #[must_use]
     pub fn sandbox_operation_outcome(&self) -> SandboxOperationOutcome {
         self.sandbox_operation_outcome
     }
@@ -317,6 +373,7 @@ pub struct SandboxRuntimeBindingRepositorySnapshot {
 }
 
 impl SandboxRuntimeBindingRepositorySnapshot {
+    #[must_use]
     pub fn new(
         sandbox_id: SandboxId,
         sandbox_runtime_binding_id: SandboxRuntimeBindingId,
@@ -331,18 +388,22 @@ impl SandboxRuntimeBindingRepositorySnapshot {
         }
     }
 
+    #[must_use]
     pub fn sandbox_id(&self) -> &SandboxId {
         &self.sandbox_id
     }
 
+    #[must_use]
     pub fn sandbox_runtime_binding_id(&self) -> &SandboxRuntimeBindingId {
         &self.sandbox_runtime_binding_id
     }
 
+    #[must_use]
     pub fn sandbox_provider_id(&self) -> &SandboxProviderId {
         &self.sandbox_provider_id
     }
 
+    #[must_use]
     pub fn sandbox_protected_allocation_reference(
         &self,
     ) -> Option<&SandboxProtectedProviderAllocationRef> {
@@ -366,165 +427,186 @@ pub struct SandboxSessionRepositorySnapshot {
 
 impl SandboxSessionRepositorySnapshot {
     fn validate_sandbox_persisted_invariants(&self) -> SandboxSessionRepositoryResult<()> {
-        if self.sandbox_version > MAX_SANDBOX_SESSION_VERSION {
-            return Err(SandboxSessionRepositoryError::InvalidStoredData);
-        }
-        let mut sandbox_operation_ids = BTreeSet::new();
-        let mut sandbox_operations = self.sandbox_operations.iter();
-        let Some(sandbox_create_operation) = sandbox_operations.next() else {
-            return Err(SandboxSessionRepositoryError::InvalidStoredData);
-        };
-        if sandbox_create_operation.sandbox_operation_kind() != SandboxSessionOperationKind::Create
-            || sandbox_create_operation.sandbox_operation_outcome()
-                != SandboxOperationOutcome::Succeeded
-            || !sandbox_operation_ids.insert(sandbox_create_operation.sandbox_operation_id())
-        {
-            return Err(SandboxSessionRepositoryError::InvalidStoredData);
-        }
-
-        let mut replayed_sandbox_session_state = SandboxSessionState::Created;
-        let mut replayed_sandbox_last_failure = None;
-        for sandbox_operation in sandbox_operations {
-            if !sandbox_operation_ids.insert(sandbox_operation.sandbox_operation_id()) {
-                return Err(SandboxSessionRepositoryError::InvalidStoredData);
-            }
-            let sandbox_operation_kind = sandbox_operation.sandbox_operation_kind();
-            let sandbox_operation_outcome = sandbox_operation.sandbox_operation_outcome();
-            let sandbox_failure_kind_is_valid = matches!(
-                (sandbox_operation_kind, sandbox_operation_outcome),
-                (
-                    SandboxSessionOperationKind::Start,
-                    SandboxOperationOutcome::InProgress | SandboxOperationOutcome::Succeeded
-                ) | (
-                    SandboxSessionOperationKind::Start,
-                    SandboxOperationOutcome::Failed(
-                        SandboxSessionFailure::Provider
-                            | SandboxSessionFailure::Readiness
-                            | SandboxSessionFailure::Cleanup
-                    )
-                ) | (
-                    SandboxSessionOperationKind::Stop,
-                    SandboxOperationOutcome::InProgress | SandboxOperationOutcome::Succeeded
-                ) | (
-                    SandboxSessionOperationKind::Stop,
-                    SandboxOperationOutcome::Failed(SandboxSessionFailure::Provider)
-                ) | (
-                    SandboxSessionOperationKind::Destroy,
-                    SandboxOperationOutcome::InProgress | SandboxOperationOutcome::Succeeded
-                ) | (
-                    SandboxSessionOperationKind::Destroy,
-                    SandboxOperationOutcome::Failed(SandboxSessionFailure::Cleanup)
-                )
-            );
-            if !sandbox_failure_kind_is_valid {
-                return Err(SandboxSessionRepositoryError::InvalidStoredData);
-            }
-
-            replayed_sandbox_session_state = match (
-                replayed_sandbox_session_state,
-                sandbox_operation_kind,
-                sandbox_operation_outcome,
-            ) {
-                (
-                    SandboxSessionState::Created
-                    | SandboxSessionState::Stopped
-                    | SandboxSessionState::Failed,
-                    SandboxSessionOperationKind::Start,
-                    SandboxOperationOutcome::InProgress,
-                ) => SandboxSessionState::Starting,
-                (
-                    SandboxSessionState::Created
-                    | SandboxSessionState::Stopped
-                    | SandboxSessionState::Failed,
-                    SandboxSessionOperationKind::Start,
-                    SandboxOperationOutcome::Succeeded,
-                ) => SandboxSessionState::Running,
-                (
-                    SandboxSessionState::Created
-                    | SandboxSessionState::Stopped
-                    | SandboxSessionState::Failed,
-                    SandboxSessionOperationKind::Start,
-                    SandboxOperationOutcome::Failed(_),
-                ) => SandboxSessionState::Failed,
-                (
-                    SandboxSessionState::Running,
-                    SandboxSessionOperationKind::Stop,
-                    SandboxOperationOutcome::InProgress,
-                ) => SandboxSessionState::Stopping,
-                (
-                    SandboxSessionState::Running,
-                    SandboxSessionOperationKind::Stop,
-                    SandboxOperationOutcome::Succeeded,
-                ) => SandboxSessionState::Stopped,
-                (
-                    SandboxSessionState::Running,
-                    SandboxSessionOperationKind::Stop,
-                    SandboxOperationOutcome::Failed(_),
-                ) => SandboxSessionState::Failed,
-                (
-                    SandboxSessionState::Created
-                    | SandboxSessionState::Stopped
-                    | SandboxSessionState::Failed,
-                    SandboxSessionOperationKind::Destroy,
-                    SandboxOperationOutcome::InProgress,
-                ) => SandboxSessionState::Destroying,
-                (
-                    SandboxSessionState::Created
-                    | SandboxSessionState::Stopped
-                    | SandboxSessionState::Failed,
-                    SandboxSessionOperationKind::Destroy,
-                    SandboxOperationOutcome::Succeeded,
-                ) => SandboxSessionState::Destroyed,
-                (
-                    SandboxSessionState::Created
-                    | SandboxSessionState::Stopped
-                    | SandboxSessionState::Failed,
-                    SandboxSessionOperationKind::Destroy,
-                    SandboxOperationOutcome::Failed(_),
-                ) => SandboxSessionState::Failed,
-                _ => return Err(SandboxSessionRepositoryError::InvalidStoredData),
-            };
-            replayed_sandbox_last_failure = match sandbox_operation_outcome {
-                SandboxOperationOutcome::Failed(sandbox_session_failure) => {
-                    Some(sandbox_session_failure)
-                }
-                SandboxOperationOutcome::InProgress | SandboxOperationOutcome::Succeeded => None,
-            };
-        }
-
-        if replayed_sandbox_session_state != self.sandbox_session_state
-            || replayed_sandbox_last_failure != self.sandbox_last_failure
-        {
-            return Err(SandboxSessionRepositoryError::InvalidStoredData);
-        }
-
-        let sandbox_has_runtime_binding = self.sandbox_runtime_binding.is_some();
-        let sandbox_has_allocation_reference =
+        validate_sandbox_persisted_state(
+            self.sandbox_session_state,
+            self.sandbox_last_failure,
+            self.sandbox_version,
+            self.sandbox_runtime_binding.is_some(),
             self.sandbox_runtime_binding
                 .as_ref()
                 .is_some_and(|sandbox_runtime_binding| {
                     sandbox_runtime_binding
                         .sandbox_protected_allocation_reference
                         .is_some()
-                });
-        let sandbox_state_is_consistent = match self.sandbox_session_state {
-            SandboxSessionState::Created => !sandbox_has_runtime_binding,
-            SandboxSessionState::Starting => sandbox_has_runtime_binding,
-            SandboxSessionState::Running => sandbox_has_allocation_reference,
-            SandboxSessionState::Stopping => sandbox_has_allocation_reference,
-            SandboxSessionState::Stopped => sandbox_has_allocation_reference,
-            SandboxSessionState::Failed => true,
-            SandboxSessionState::Destroying => true,
-            SandboxSessionState::Destroyed => !sandbox_has_runtime_binding,
-        };
-        if !sandbox_state_is_consistent {
+                }),
+            &self.sandbox_operations,
+        )
+    }
+}
+
+/// The shared persisted-state invariant core behind
+/// [`SandboxSessionRepositorySnapshot::validate_sandbox_persisted_invariants`]
+/// and [`validate_sandbox_session_persisted_invariants`].
+fn validate_sandbox_persisted_state(
+    sandbox_session_state: SandboxSessionState,
+    sandbox_last_failure: Option<SandboxSessionFailure>,
+    sandbox_version: u64,
+    sandbox_has_runtime_binding: bool,
+    sandbox_has_allocation_reference: bool,
+    sandbox_operations: &[SandboxSessionOperationRepositorySnapshot],
+) -> SandboxSessionRepositoryResult<()> {
+    if sandbox_version > MAX_SANDBOX_SESSION_VERSION {
+        return Err(SandboxSessionRepositoryError::InvalidStoredData);
+    }
+    let mut sandbox_operation_ids = BTreeSet::new();
+    let mut sandbox_operations = sandbox_operations.iter();
+    let Some(sandbox_create_operation) = sandbox_operations.next() else {
+        return Err(SandboxSessionRepositoryError::InvalidStoredData);
+    };
+    if sandbox_create_operation.sandbox_operation_kind() != SandboxSessionOperationKind::Create
+        || sandbox_create_operation.sandbox_operation_outcome()
+            != SandboxOperationOutcome::Succeeded
+        || !sandbox_operation_ids.insert(sandbox_create_operation.sandbox_operation_id())
+    {
+        return Err(SandboxSessionRepositoryError::InvalidStoredData);
+    }
+
+    let mut replayed_sandbox_session_state = SandboxSessionState::Created;
+    let mut replayed_sandbox_last_failure = None;
+    for sandbox_operation in sandbox_operations {
+        if !sandbox_operation_ids.insert(sandbox_operation.sandbox_operation_id()) {
+            return Err(SandboxSessionRepositoryError::InvalidStoredData);
+        }
+        let sandbox_operation_kind = sandbox_operation.sandbox_operation_kind();
+        let sandbox_operation_outcome = sandbox_operation.sandbox_operation_outcome();
+        let sandbox_failure_kind_is_valid = matches!(
+            (sandbox_operation_kind, sandbox_operation_outcome),
+            (
+                SandboxSessionOperationKind::Start,
+                SandboxOperationOutcome::InProgress | SandboxOperationOutcome::Succeeded
+            ) | (
+                SandboxSessionOperationKind::Start,
+                SandboxOperationOutcome::Failed(
+                    SandboxSessionFailure::Provider
+                        | SandboxSessionFailure::Readiness
+                        | SandboxSessionFailure::Cleanup
+                )
+            ) | (
+                SandboxSessionOperationKind::Stop,
+                SandboxOperationOutcome::InProgress | SandboxOperationOutcome::Succeeded
+            ) | (
+                SandboxSessionOperationKind::Stop,
+                SandboxOperationOutcome::Failed(SandboxSessionFailure::Provider)
+            ) | (
+                SandboxSessionOperationKind::Destroy,
+                SandboxOperationOutcome::InProgress | SandboxOperationOutcome::Succeeded
+            ) | (
+                SandboxSessionOperationKind::Destroy,
+                SandboxOperationOutcome::Failed(SandboxSessionFailure::Cleanup)
+            )
+        );
+        if !sandbox_failure_kind_is_valid {
             return Err(SandboxSessionRepositoryError::InvalidStoredData);
         }
 
-        Ok(())
+        replayed_sandbox_session_state = match (
+            replayed_sandbox_session_state,
+            sandbox_operation_kind,
+            sandbox_operation_outcome,
+        ) {
+            (
+                SandboxSessionState::Created
+                | SandboxSessionState::Stopped
+                | SandboxSessionState::Failed,
+                SandboxSessionOperationKind::Start,
+                SandboxOperationOutcome::InProgress,
+            ) => SandboxSessionState::Starting,
+            (
+                SandboxSessionState::Created
+                | SandboxSessionState::Stopped
+                | SandboxSessionState::Failed,
+                SandboxSessionOperationKind::Start,
+                SandboxOperationOutcome::Succeeded,
+            ) => SandboxSessionState::Running,
+            (
+                SandboxSessionState::Created
+                | SandboxSessionState::Stopped
+                | SandboxSessionState::Failed,
+                SandboxSessionOperationKind::Start,
+                SandboxOperationOutcome::Failed(_),
+            ) => SandboxSessionState::Failed,
+            (
+                SandboxSessionState::Running,
+                SandboxSessionOperationKind::Stop,
+                SandboxOperationOutcome::InProgress,
+            ) => SandboxSessionState::Stopping,
+            (
+                SandboxSessionState::Running,
+                SandboxSessionOperationKind::Stop,
+                SandboxOperationOutcome::Succeeded,
+            ) => SandboxSessionState::Stopped,
+            (
+                SandboxSessionState::Running,
+                SandboxSessionOperationKind::Stop,
+                SandboxOperationOutcome::Failed(_),
+            ) => SandboxSessionState::Failed,
+            (
+                SandboxSessionState::Created
+                | SandboxSessionState::Stopped
+                | SandboxSessionState::Failed,
+                SandboxSessionOperationKind::Destroy,
+                SandboxOperationOutcome::InProgress,
+            ) => SandboxSessionState::Destroying,
+            (
+                SandboxSessionState::Created
+                | SandboxSessionState::Stopped
+                | SandboxSessionState::Failed,
+                SandboxSessionOperationKind::Destroy,
+                SandboxOperationOutcome::Succeeded,
+            ) => SandboxSessionState::Destroyed,
+            (
+                SandboxSessionState::Created
+                | SandboxSessionState::Stopped
+                | SandboxSessionState::Failed,
+                SandboxSessionOperationKind::Destroy,
+                SandboxOperationOutcome::Failed(_),
+            ) => SandboxSessionState::Failed,
+            _ => return Err(SandboxSessionRepositoryError::InvalidStoredData),
+        };
+        replayed_sandbox_last_failure = match sandbox_operation_outcome {
+            SandboxOperationOutcome::Failed(sandbox_session_failure) => {
+                Some(sandbox_session_failure)
+            }
+            SandboxOperationOutcome::InProgress | SandboxOperationOutcome::Succeeded => None,
+        };
     }
 
+    if replayed_sandbox_session_state != sandbox_session_state
+        || replayed_sandbox_last_failure != sandbox_last_failure
+    {
+        return Err(SandboxSessionRepositoryError::InvalidStoredData);
+    }
+
+    let sandbox_state_is_consistent = match sandbox_session_state {
+        SandboxSessionState::Created => !sandbox_has_runtime_binding,
+        SandboxSessionState::Starting => sandbox_has_runtime_binding,
+        SandboxSessionState::Running => sandbox_has_allocation_reference,
+        SandboxSessionState::Stopping => sandbox_has_allocation_reference,
+        SandboxSessionState::Stopped => sandbox_has_allocation_reference,
+        SandboxSessionState::Failed => true,
+        SandboxSessionState::Destroying => true,
+        SandboxSessionState::Destroyed => !sandbox_has_runtime_binding,
+    };
+    if !sandbox_state_is_consistent {
+        return Err(SandboxSessionRepositoryError::InvalidStoredData);
+    }
+
+    Ok(())
+}
+
+impl SandboxSessionRepositorySnapshot {
     #[allow(clippy::too_many_arguments)]
+    #[must_use]
     pub fn new(
         tenant_id: TenantId,
         sandbox_workspace_id: SandboxWorkspaceId,
@@ -551,6 +633,12 @@ impl SandboxSessionRepositorySnapshot {
         }
     }
 
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::ProtectionFailed` when the
+    /// allocation protector rejects the reference, and
+    /// `InvalidStoredData` when the persisted-state invariants fail.
     pub fn capture(
         sandbox_session: &SandboxSession,
         sandbox_allocation_protector: &dyn SandboxProviderAllocationProtector,
@@ -608,6 +696,12 @@ impl SandboxSessionRepositorySnapshot {
         Ok(sandbox_snapshot)
     }
 
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::ProtectionFailed` when the
+    /// allocation protector rejects the reference, and
+    /// `InvalidStoredData` when the persisted-state invariants fail.
     pub fn restore(
         self,
         sandbox_allocation_protector: &dyn SandboxProviderAllocationProtector,
@@ -665,42 +759,52 @@ impl SandboxSessionRepositorySnapshot {
         ))
     }
 
+    #[must_use]
     pub fn tenant_id(&self) -> &TenantId {
         &self.tenant_id
     }
 
+    #[must_use]
     pub fn sandbox_workspace_id(&self) -> &SandboxWorkspaceId {
         &self.sandbox_workspace_id
     }
 
+    #[must_use]
     pub fn sandbox_session_id(&self) -> &SandboxSessionId {
         &self.sandbox_session_id
     }
 
+    #[must_use]
     pub fn sandbox_session_state(&self) -> SandboxSessionState {
         self.sandbox_session_state
     }
 
+    #[must_use]
     pub fn sandbox_required_capabilities(&self) -> &BTreeSet<RuntimeCapability> {
         &self.sandbox_required_capabilities
     }
 
+    #[must_use]
     pub fn sandbox_minimum_assurance(&self) -> IsolationAssurance {
         self.sandbox_minimum_assurance
     }
 
+    #[must_use]
     pub fn sandbox_runtime_binding(&self) -> Option<&SandboxRuntimeBindingRepositorySnapshot> {
         self.sandbox_runtime_binding.as_ref()
     }
 
+    #[must_use]
     pub fn sandbox_last_failure(&self) -> Option<SandboxSessionFailure> {
         self.sandbox_last_failure
     }
 
+    #[must_use]
     pub fn sandbox_operations(&self) -> &[SandboxSessionOperationRepositorySnapshot] {
         &self.sandbox_operations
     }
 
+    #[must_use]
     pub fn sandbox_version(&self) -> u64 {
         self.sandbox_version
     }
@@ -756,7 +860,52 @@ pub trait SandboxSessionRepository: Send + Sync {
         tenant_id: &TenantId,
         after_sandbox_session_id: Option<&SandboxSessionId>,
         sandbox_page_size: u16,
-    ) -> SandboxSessionRepositoryResult<Vec<SandboxSession>>;
+    ) -> SandboxSessionRepositoryResult<Vec<SandboxSessionReconciliationCandidate>>;
+}
+
+/// Validates the persisted-state invariants of a sandbox session without
+/// touching allocation protection: the operation ledger must replay to the
+/// session's stored state and last failure, the first operation must be a
+/// succeeded create, operation ids must be unique, and the runtime binding /
+/// allocation reference presence must match the state matrix. The PostgreSQL
+/// adapter runs this on every write through
+/// [`SandboxSessionRepositorySnapshot::capture`]; the in-memory adapter calls
+/// it directly so both adapters admit the same writes
+/// (REQ-2026-0005 acceptance: memory and PostgreSQL semantics must agree).
+///
+/// # Errors
+///
+/// Returns `SandboxSessionRepositoryError::InvalidStoredData` when the
+/// ledger replay, operation bounds, or state/binding matrix disagree
+/// with the session's persisted fields.
+pub fn validate_sandbox_session_persisted_invariants(
+    sandbox_session: &SandboxSession,
+) -> SandboxSessionRepositoryResult<()> {
+    let sandbox_operations = sandbox_session
+        .sandbox_operations()
+        .iter()
+        .map(|sandbox_operation| {
+            SandboxSessionOperationRepositorySnapshot::new(
+                sandbox_operation.sandbox_operation_id().clone(),
+                sandbox_operation.sandbox_operation_kind(),
+                sandbox_operation.sandbox_operation_outcome(),
+            )
+        })
+        .collect::<Vec<_>>();
+    validate_sandbox_persisted_state(
+        sandbox_session.sandbox_session_state(),
+        sandbox_session.sandbox_last_failure(),
+        sandbox_session.sandbox_version(),
+        sandbox_session.sandbox_runtime_binding().is_some(),
+        sandbox_session
+            .sandbox_runtime_binding()
+            .is_some_and(|sandbox_runtime_binding| {
+                sandbox_runtime_binding
+                    .sandbox_allocation_reference()
+                    .is_some()
+            }),
+        &sandbox_operations,
+    )
 }
 
 #[cfg(test)]

@@ -56,6 +56,15 @@
  *      of the field gate applies to operations. This is the rule that would have caught the false
  *      row rule 7 found: a row asserting no requirement owned the performance baseline, with
  *      `REQ-2026-0019-sandbox-runtime-pool-and-fast-allocation` in the tree.
+ *      The phrasing is not local to this document, and section 3.4 knows it: its registry covers the
+ *      claims made *here*. The same sentence appears in four other documents, sixteen more times, and
+ *      none of those was read -- one of them was false. So the rule also walks section 3.5, which
+ *      counts the claim per document section (a recount, not a declaration) and records every claim
+ *      that has been refuted: a refuted claim must name the requirement carrying it and leave behind
+ *      a probe string that must no longer appear, which is what makes "this was corrected" falsifiable
+ *      rather than a sentence the reader has to believe. Widening the keyword scope instead was
+ *      measured and rejected: moving it to the records' Goals catches neither the false claim nor a
+ *      smaller set of false positives.
  *   9. IMPLEMENTATION COVERAGE. The section 3.1 table is the document's claim that a given
  *      implementation surface is covered by a given test. It asserted it listed "every real
  *      implementation in this repository" while the workspace held 68 tests across ten files and
@@ -414,6 +423,33 @@ export const CLAIM_SECTION = "### 3.4";
 export const CLAIM_COLUMNS = Object.freeze(["#", "主题", "关键词", "说明"]);
 
 /**
+ * Section 3.5: the same claim class, in the documents section 3.4 does not own.
+ *
+ * Section 3.4 registers only *this* document's zero-requirement claims, and its two-way accounting
+ * only walks this document. The phrasing itself is not local to this document -- it appears in five
+ * documents and twenty-six lines -- so four documents and sixteen lines were making a claim about
+ * the requirements directory that nothing read. One of them was already false.
+ *
+ * Lexical refutation cannot close that hole, and this gate measured it rather than assuming it.
+ * Widening the keyword scope from id/slug/title to id/slug/title/Goals neither catches the claim
+ * that was wrong (`benchmark` appears in no record's id, slug, title or Goals) nor avoids new
+ * false positives (`snapshot`, `cache` and `port` each match several unrelated records' Goals).
+ * So section 3.4's narrow scope stands, and what widens is the *account*: every document's claims
+ * are counted per section, and a claim that has been refuted must name the requirement carrying it
+ * and leave behind a probe string that must no longer appear. That probe is the falsifier -- the
+ * same shape section 1.2 uses when it requires an absence claim to name what is absent.
+ */
+export const CLAIM_SURFACE_SECTION = "### 3.5";
+export const CLAIM_CENSUS_COLUMNS = Object.freeze(["#", "文档", "段落", "断言数"]);
+export const CLAIM_CORRECTION_COLUMNS = Object.freeze(["#", "文档", "能力", "承载需求", "缺失探针"]);
+
+/** Where the census scans for the claim phrasing. The phrasing is confined to the documentation. */
+export const ZERO_REQUIREMENT_SCAN_ROOT = "docs";
+
+/** A census row's section cell, for a document whose whole text is the section. */
+export const WHOLE_DOCUMENT = "全文";
+
+/**
  * The section 3.4 registry: which capabilities this document asserts are unowned, and the keywords
  * that stand for each. The keywords are the falsifiable part -- they are matched against every
  * requirement record, so the claim dies the moment a record claims the capability.
@@ -459,6 +495,114 @@ export function parseRequirementClaimRegistry(text) {
   return { header, rows, malformed, start: start + 1, end };
 }
 
+/** A cell that carries a backticked token rather than prose. */
+function stripBackticks(value) {
+  return String(value).split("`").join("").trim();
+}
+
+/**
+ * The section 3.5 registry. Two tables, parsed separately and told apart by their headers: the
+ * census says how many times each document section makes the claim, and the correction ledger
+ * records the claims that were refuted and fixed.
+ */
+export function parseClaimSurfaceRegistry(text) {
+  const lines = String(text).split(/\r?\n/u);
+  const start = lines.findIndex((line) => line.trim().startsWith(CLAIM_SURFACE_SECTION));
+  if (start === -1) return null;
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^#{2,4}\s/u.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  const tables = [];
+  let current = null;
+  for (let index = start + 1; index < end; index += 1) {
+    const cells = splitTableRow(lines[index]);
+    if (!cells) {
+      current = null;
+      continue;
+    }
+    if (isSeparatorRow(cells)) continue;
+    if (!current) {
+      current = { header: cells, rows: [], malformed: [], line: index + 1 };
+      tables.push(current);
+      continue;
+    }
+    if (cells.length !== current.header.length) {
+      current.malformed.push({ line: index + 1, cells });
+      continue;
+    }
+    const record = {};
+    current.header.forEach((column, position) => {
+      record[column] = cells[position] ?? "";
+    });
+    record.line = index + 1;
+    current.rows.push(record);
+  }
+  return {
+    census: tables.find((table) => table.header.join("|") === CLAIM_CENSUS_COLUMNS.join("|")) ?? null,
+    corrections:
+      tables.find((table) => table.header.join("|") === CLAIM_CORRECTION_COLUMNS.join("|")) ?? null,
+    tables,
+    start: start + 1,
+    end,
+  };
+}
+
+/**
+ * The line span each markdown heading owns: from the heading to the next heading of the same or a
+ * shallower level. Counting a claim inside a section is only well defined if the section's end is,
+ * and a nested subsection must not be folded into its parent's count or a claim would be counted
+ * twice.
+ */
+export function markdownHeadingSpans(text) {
+  const lines = String(text).split(/\r?\n/u);
+  const headings = [];
+  lines.forEach((line, index) => {
+    const match = /^(#{1,6})\s+(.*)$/u.exec(line);
+    if (match) headings.push({ level: match[1].length, title: match[2].trim(), line: index + 1 });
+  });
+  return headings.map((heading, position) => {
+    let end = lines.length;
+    for (let index = position + 1; index < headings.length; index += 1) {
+      if (headings[index].level <= heading.level) {
+        end = headings[index].line - 1;
+        break;
+      }
+    }
+    return { title: heading.title, level: heading.level, start: heading.line, end };
+  });
+}
+
+/** Every line of a document that asserts a capability has no requirement behind it. */
+export function zeroRequirementClaimLines(text) {
+  const pattern = new RegExp(ZERO_REQUIREMENT_PATTERNS.join("|"), "u");
+  const lines = [];
+  String(text).split(/\r?\n/u).forEach((line, index) => {
+    if (pattern.test(line)) lines.push(index + 1);
+  });
+  return lines;
+}
+
+/** Markdown files under a repository-relative directory, sorted, so the completeness scan is stable. */
+export function listMarkdownFiles(repoRoot, relativeDirectory) {
+  const found = [];
+  if (!existsSync(join(repoRoot, relativeDirectory))) return found;
+  const walk = (relative) => {
+    for (const entry of readdirSync(join(repoRoot, relative), { withFileTypes: true }).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    )) {
+      const child = `${relative}/${entry.name}`;
+      if (entry.isDirectory()) walk(child);
+      else if (entry.name.endsWith(".md")) found.push(child);
+    }
+  };
+  walk(relativeDirectory);
+  return found;
+}
+
 /**
  * Every requirement record, reduced to the parts that can assert ownership: the id, the file slug
  * and the title. The body is deliberately excluded -- a requirement that says "resume cursor" or
@@ -484,6 +628,20 @@ export function requirementOwnershipIndex(repoRoot) {
         needle: `${id} ${slug} ${titleText}`.toLowerCase(),
       };
     });
+}
+
+/**
+ * Whether a record claims a keyword. The match is on token boundaries, not on substrings.
+ *
+ * Substring matching reads `port` out of `transport`, `support` and `import`, so a registry row
+ * asserting that no requirement owns 端口暴露 would turn red the moment any record's slug happened
+ * to contain `transport` -- a finding about the record's spelling reported as a finding about the
+ * capability. No record does today, which is exactly why the defect would have shipped: it is
+ * latent, not absent, and the gate that reports it would have been believed.
+ */
+export function requirementOwnsKeyword(record, keyword) {
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "u").test(record.needle);
 }
 
 /** The registry row numbers a line cites. */
@@ -1196,6 +1354,8 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
     rowCount: 0,
     gapCount: 0,
     claimCount: 0,
+    claimSurfaceCount: 0,
+    claimSurfaceClaims: 0,
     coveredTests: 0,
     workspaceTests: 0,
     shapeRows: 0,
@@ -1499,7 +1659,7 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
           );
           continue;
         }
-        const owner = ownership.find((record) => record.needle.includes(keyword));
+        const owner = ownership.find((record) => requirementOwnsKeyword(record, keyword));
         if (owner) {
           problems.push(
             `${PARITY_DOCUMENT}:${row.line} ${label} claims no requirement owns \`${keyword}\`, but \`${owner.file}\` claims it in its id, slug or title`,
@@ -1542,6 +1702,195 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
         problems.push(
           `${PARITY_DOCUMENT} section 3.4 row ${number} is cited nowhere, so nothing in the document rests on it; remove the row or cite it where the claim is made`,
         );
+      }
+    }
+  }
+
+  // ---- 8b. CROSS-DOCUMENT CLAIM CENSUS
+  // Section 3.4 owns this document's claims and accounts for them in both directions. The phrasing
+  // is not local to this document: it lives in five documents and twenty-six lines. The four
+  // documents section 3.4 does not own were asserting things about the requirements directory that
+  // nothing read -- and one of those assertions was false, which section 3.2 recorded for a whole
+  // round while no gate could tell whether it had been fixed or had not.
+  //
+  // Lexical refutation cannot substitute for the census, and this gate measured that rather than
+  // assuming it: widening section 3.4's keyword scope from id/slug/title to id/slug/title/Goals
+  // neither catches the claim that was wrong (`benchmark` appears in no record's id, slug, title or
+  // Goals) nor avoids false positives (`snapshot`, `cache` and `port` each match several unrelated
+  // records' Goals). So the census counts claims, and a claim that has been refuted must name the
+  // requirement carrying it and leave a probe string that must be gone.
+  const claimSurface = parseClaimSurfaceRegistry(text);
+  let claimSurfaceCount = 0;
+  let claimSurfaceClaims = 0;
+  if (!claimSurface) {
+    problems.push(`${PARITY_DOCUMENT} has no "${CLAIM_SURFACE_SECTION}" cross-document claim census`);
+  } else {
+    const claimCensus = claimSurface.census;
+    const claimCorrections = claimSurface.corrections;
+    if (!claimCensus) {
+      problems.push(
+        `${PARITY_DOCUMENT} section 3.5 has no census table; expected columns [${CLAIM_CENSUS_COLUMNS.join(", ")}]`,
+      );
+    }
+    if (!claimCorrections) {
+      problems.push(
+        `${PARITY_DOCUMENT} section 3.5 has no correction ledger; expected columns [${CLAIM_CORRECTION_COLUMNS.join(", ")}]`,
+      );
+    }
+    const registered = [];
+    if (claimCensus) {
+      for (const row of claimCensus.malformed) {
+        problems.push(
+          `${PARITY_DOCUMENT}:${row.line} claim-census row has ${row.cells.length} cell(s), expected ${CLAIM_CENSUS_COLUMNS.length}`,
+        );
+      }
+      if (claimCensus.rows.length === 0) {
+        problems.push(
+          `${PARITY_DOCUMENT} section 3.5 census lists no document, which asserts the claim is made nowhere but this document; state the documents or delete the section`,
+        );
+      }
+      let expectedCensusNumber = 1;
+      for (const row of claimCensus.rows) {
+        const number = Number(row["#"]);
+        const label = `section 3.5 census row ${Number.isInteger(number) ? number : `at line ${row.line}`}`;
+        if (!Number.isInteger(number)) {
+          problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} has a non-numeric number`);
+        } else {
+          if (number !== expectedCensusNumber) {
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} breaks the census numbering; expected ${expectedCensusNumber}`,
+            );
+            expectedCensusNumber = number;
+          }
+          expectedCensusNumber += 1;
+        }
+        claimSurfaceCount += 1;
+        const relative = stripBackticks(row["文档"]);
+        const sectionTitle = stripBackticks(row["段落"]);
+        if (relative === "" || sectionTitle === "") {
+          problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} names no document or no section`);
+          continue;
+        }
+        if (!/\.md$/u.test(relative)) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} names \`${relative}\`, which is not a markdown path`,
+          );
+          continue;
+        }
+        if (!existsSync(join(repoRoot, relative))) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} names \`${relative}\`, which the repository does not have`,
+          );
+          continue;
+        }
+        const documentText = readFileSync(join(repoRoot, relative), "utf8");
+        const span =
+          sectionTitle === WHOLE_DOCUMENT
+            ? { start: 1, end: documentText.split(/\r?\n/u).length }
+            : markdownHeadingSpans(documentText).find((heading) => heading.title === sectionTitle);
+        if (!span) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} counts a section \`${sectionTitle}\` that \`${relative}\` does not have`,
+          );
+          continue;
+        }
+        const recomputed = zeroRequirementClaimLines(documentText).filter(
+          (line) => line >= span.start && line <= span.end,
+        ).length;
+        const declaredCount = Number.parseInt(stripEmphasis(row["断言数"]), 10);
+        if (!Number.isInteger(declaredCount)) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} declares a non-numeric claim count, so nothing can be recounted`,
+          );
+        } else if (declaredCount !== recomputed) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} declares ${declaredCount} claim(s) in \`${relative}\` \`${sectionTitle}\`, which holds ${recomputed}`,
+          );
+        }
+        claimSurfaceClaims += recomputed;
+        registered.push({ file: relative, span });
+      }
+    }
+    // Completeness, in the direction that matters: a claim in a document no census row registers is a
+    // claim nobody counted. This document's own claims are section 3.4's business, so they are out of
+    // scope here -- section 3.4 already requires each of them to cite a row.
+    for (const relative of listMarkdownFiles(repoRoot, ZERO_REQUIREMENT_SCAN_ROOT)) {
+      if (relative === PARITY_DOCUMENT) continue;
+      const documentText = readFileSync(join(repoRoot, relative), "utf8");
+      for (const line of zeroRequirementClaimLines(documentText)) {
+        const covered = registered.some(
+          (entry) => entry.file === relative && line >= entry.span.start && line <= entry.span.end,
+        );
+        if (!covered) {
+          problems.push(
+            `${relative}:${line} asserts a capability is unowned, and no ${CLAIM_SURFACE_SECTION.replace("### ", "§")} census row counts it`,
+          );
+        }
+      }
+    }
+    if (claimCorrections) {
+      for (const row of claimCorrections.malformed) {
+        problems.push(
+          `${PARITY_DOCUMENT}:${row.line} correction row has ${row.cells.length} cell(s), expected ${CLAIM_CORRECTION_COLUMNS.length}`,
+        );
+      }
+      if (claimCorrections.rows.length === 0) {
+        problems.push(
+          `${PARITY_DOCUMENT} section 3.5 records no corrected claim, which asserts no document ever asserted this falsely; record the correction or delete the table`,
+        );
+      }
+      let expectedCorrectionNumber = 1;
+      for (const row of claimCorrections.rows) {
+        const number = Number(row["#"]);
+        const label = `section 3.5 correction ${Number.isInteger(number) ? number : `at line ${row.line}`}`;
+        if (!Number.isInteger(number)) {
+          problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} has a non-numeric number`);
+        } else {
+          if (number !== expectedCorrectionNumber) {
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} breaks the numbering; expected ${expectedCorrectionNumber}`,
+            );
+            expectedCorrectionNumber = number;
+          }
+          expectedCorrectionNumber += 1;
+        }
+        const relative = stripBackticks(row["文档"]);
+        if (relative === "" || !existsSync(join(repoRoot, relative))) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} names \`${relative}\`, which the repository does not have`,
+          );
+          continue;
+        }
+        const carriers = [...String(row["承载需求"]).matchAll(/REQ-\d{4}-\d{4}/gu)].map(
+          (match) => match[0],
+        );
+        if (carriers.length === 0) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} names no \`REQ-*\`, so nothing carries the corrected claim`,
+          );
+        }
+        for (const id of carriers) {
+          if (!readRequirementStatus(repoRoot, id)) {
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} blames the corrected claim on \`${id}\`, which has no record in ${REQUIREMENTS_DIRECTORY}`,
+            );
+          }
+        }
+        const probes = [...String(row["缺失探针"]).matchAll(/`([^`]+)`/gu)].map((match) => match[1]);
+        if (probes.length === 0) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} names no backticked probe, so nothing can refute the correction`,
+          );
+          continue;
+        }
+        const documentText = readFileSync(join(repoRoot, relative), "utf8");
+        for (const probe of probes) {
+          if (documentText.includes(probe)) {
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} records \`${probe}\` as corrected, but \`${relative}\` still contains it`,
+            );
+          }
+        }
       }
     }
   }
@@ -2214,6 +2563,8 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
     rowCount: rows.length,
     gapCount: gaps?.rows.length ?? 0,
     claimCount: claims?.rows.length ?? 0,
+    claimSurfaceCount,
+    claimSurfaceClaims,
     coveredTests,
     workspaceTests,
     shapeRows,
@@ -2234,6 +2585,7 @@ export function formatE2bParityMatrixReport(assessment) {
     `rows: ${assessment.rowCount}`,
     `residual gaps: ${assessment.gapCount}`,
     `zero-requirement claims: ${assessment.claimCount}`,
+    `cross-document claim census: ${assessment.claimSurfaceCount} document section(s), ${assessment.claimSurfaceClaims} claim(s)`,
     `implementation coverage: ${assessment.coveredTests} of ${assessment.workspaceTests} workspace test(s) accounted for`,
     `shape evidence: ${assessment.shapeRows} component row(s), ${assessment.shapeAnchors} line-numbered anchor(s) resolved`,
     `answer section: ${assessment.answerRows} path row(s), ${assessment.headlineChecks} restated figure(s) compared to their source`,

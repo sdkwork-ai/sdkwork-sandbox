@@ -28,7 +28,10 @@ The gate fails when a contract names a packet that does not exist, when a requir
 asked to sign its packet, when a packet still marked `pending-human-review` coexists with an `Approved`
 reviewer outcome or a `ready`/`accepted` requirement or an `accepted` decision, or when any contract sets
 `implementationAuthorized` before every packet it names reaches a signed-off status with every reviewer
-outcome `Approved`.
+outcome `Approved`. It also checks that the summary page at
+[Gate 0 Exit Readiness Package](gate-zero-exit-readiness-package.md) projects this same set rather than a
+copy of it: that page may not omit a pending packet, may not report a row status or risk that disagrees
+with the packet's own `Status:`/`Risk:` header, and may not carry a pending count that has gone stale.
 
 ## Contract-Gated Packets
 

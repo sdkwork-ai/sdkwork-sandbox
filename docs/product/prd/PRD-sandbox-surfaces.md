@@ -4,7 +4,7 @@ Status: draft
 
 Owner: SDKWork Runtime Platform
 
-Updated: 2026-09-22
+Updated: 2026-09-23
 
 Parent: [SDKWork Sandbox PRD](PRD.md)
 
@@ -189,25 +189,27 @@ Sandbox 必须支持 Workspace 内的技能声明目录，使技能可被读取�
 必须提供的指标族至少包括：
 
 ```text
-sandbox_create_latency
-sandbox_resume_latency
-sandbox_pause_latency
-sandbox_fork_latency
+sandbox_create_duration_seconds
+sandbox_resume_duration_seconds
+sandbox_pause_duration_seconds
+sandbox_fork_duration_seconds
 
-cpu_usage
-memory_usage
-disk_usage
-network_rx
-network_tx
+sandbox_cpu_used_ratio
+sandbox_memory_used_bytes
+sandbox_disk_used_bytes
+sandbox_network_received_bytes_total
+sandbox_network_transmitted_bytes_total
 
-runtime_pool_size
-runtime_pool_hit
-runtime_pool_miss
+sandbox_runtime_pool_slots
+sandbox_runtime_pool_claims_total
 
-snapshot_restore_latency
-template_cache_hit
-template_cache_miss
+sandbox_snapshot_restore_duration_seconds
+sandbox_template_cache_requests_total
 ```
+
+命名遵循 `OBSERVABILITY_SPEC.md` 的 Metric naming 条款：时长以 `_duration_seconds` 收尾、计数器以 `_total` 收尾、字节尺寸以 `_bytes` 收尾、取值一律小写 snake case。hit/miss 是同一计数的取值标签（如 `sandbox_runtime_pool_claims_total` 的 outcome 标签），不得拆成 `*_hit`/`*_miss` 两个指标。
+
+上述族名与 `apis/async/sandbox-observability-catalog.json` 的 `metrics.productFamilies` 机器映射一一对应：控制面族已 join 到该契约现有指标（如 `sandbox_create_duration_seconds` 对应 `sdkwork_sandbox_lifecycle_operation_duration_seconds` 按 `sandbox_operation` 标签取值）；运行面族（Guest 资源、Pool、Template 缓存）在该契约中尚无对应物，映射块逐族登记其承载 `REQ-*` 与"先入契约、后实现"的门禁顺序。族名、映射与计数由 `node tools/check-sandbox-requirement-traceability.mjs` 核验。
 
 要求：
 

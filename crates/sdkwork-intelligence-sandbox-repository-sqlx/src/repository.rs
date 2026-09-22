@@ -7,8 +7,8 @@ use sdkwork_database_sqlx::DatabasePool;
 use sdkwork_intelligence_sandbox_service::{
     SandboxProtectedProviderAllocationRef, SandboxProviderAllocationProtector,
     SandboxRuntimeBindingRepositorySnapshot, SandboxSession, SandboxSessionLease,
-    SandboxSessionOperationRepositorySnapshot, SandboxSessionRepository,
-    SandboxSessionRepositoryError, SandboxSessionRepositoryResult,
+    SandboxSessionOperationRepositorySnapshot, SandboxSessionReconciliationCandidate,
+    SandboxSessionRepository, SandboxSessionRepositoryError, SandboxSessionRepositoryResult,
     SandboxSessionRepositorySnapshot,
 };
 use sdkwork_sandbox_provider_spi::{
@@ -32,6 +32,11 @@ use crate::codec::{
 /// retention) authorizes a retention policy. A persisted session whose
 /// operation history exceeds this bound fails closed instead of loading an
 /// unbounded row set into process memory, keeping repository reads bounded.
+///
+/// REQ-2026-0005's Release And Review Boundary freezes the behavior behind
+/// this constant: until that requirement is authorized, no idempotency record
+/// may be deleted, truncated, or expired to stay under the bound — and this
+/// bound must not be relaxed to admit them.
 pub const MAX_SANDBOX_SESSION_OPERATIONS: usize = 10_000;
 
 /// Statement timeout applied to every sandbox repository transaction,
@@ -49,6 +54,11 @@ pub struct SqlxSandboxSessionRepository {
 }
 
 impl SqlxSandboxSessionRepository {
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::UnsupportedDatabaseEngine`
+    /// when the configured database URL is not a PostgreSQL pool.
     pub fn new(
         sandbox_database_pool: DatabasePool,
         sandbox_allocation_protector: Arc<dyn SandboxProviderAllocationProtector>,
@@ -1025,12 +1035,17 @@ impl SandboxSessionRepository for SqlxSandboxSessionRepository {
         tenant_id: &TenantId,
         after_sandbox_session_id: Option<&SandboxSessionId>,
         sandbox_page_size: u16,
-    ) -> SandboxSessionRepositoryResult<Vec<SandboxSession>> {
+    ) -> SandboxSessionRepositoryResult<Vec<SandboxSessionReconciliationCandidate>> {
         if !(1..=200).contains(&sandbox_page_size) {
             return Err(SandboxSessionRepositoryError::InvalidPageRequest);
         }
-        let sandbox_session_id_values: Vec<String> = sqlx::query_scalar(
-            "SELECT sandbox_session_id \
+        // Enumeration reads the session row's id and state only. Loading the
+        // full snapshot here (with its operation-history window) would let one
+        // unreadable session fail the whole page and freeze the tenant's
+        // reconciliation; the authoritative per-session reload happens in the
+        // reconciliation loop, where a failure degrades that item alone.
+        let sandbox_session_rows: Vec<(String, String)> = sqlx::query_as(
+            "SELECT sandbox_session_id, sandbox_session_state \
              FROM sandbox_session \
              WHERE tenant_id = $1 \
                AND sandbox_session_state IN ('starting', 'stopping', 'destroying') \
@@ -1044,39 +1059,16 @@ impl SandboxSessionRepository for SqlxSandboxSessionRepository {
         .fetch_all(self.sandbox_postgres_pool()?)
         .await
         .map_err(Self::map_sandbox_sqlx_error)?;
-        let sandbox_session_ids: Vec<SandboxSessionId> = sandbox_session_id_values
+        sandbox_session_rows
             .into_iter()
-            .map(|sandbox_session_id| {
-                SandboxSessionId::parse(sandbox_session_id)
-                    .map_err(|_| SandboxSessionRepositoryError::InvalidStoredData)
+            .map(|(sandbox_session_id, sandbox_session_state)| {
+                Ok(SandboxSessionReconciliationCandidate::new(
+                    SandboxSessionId::parse(&sandbox_session_id)
+                        .map_err(|_| SandboxSessionRepositoryError::InvalidStoredData)?,
+                    parse_sandbox_session_state(&sandbox_session_state)?,
+                ))
             })
-            .collect::<SandboxSessionRepositoryResult<_>>()?;
-        let mut sandbox_transaction = self
-            .sandbox_postgres_pool()?
-            .begin()
-            .await
-            .map_err(Self::map_sandbox_sqlx_error)?;
-        sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
-            .execute(&mut *sandbox_transaction)
-            .await
-            .map_err(Self::map_sandbox_sqlx_error)?;
-        Self::enforce_sandbox_transaction_timeouts(&mut sandbox_transaction).await?;
-        let sandbox_snapshots = Self::load_sandbox_session_snapshots(
-            &mut sandbox_transaction,
-            tenant_id,
-            &sandbox_session_ids,
-        )
-        .await?;
-        sandbox_transaction
-            .commit()
-            .await
-            .map_err(Self::map_sandbox_sqlx_error)?;
-        let mut sandbox_sessions = Vec::with_capacity(sandbox_snapshots.len());
-        for sandbox_snapshot in sandbox_snapshots {
-            sandbox_sessions
-                .push(sandbox_snapshot.restore(self.sandbox_allocation_protector.as_ref())?);
-        }
-        Ok(sandbox_sessions)
+            .collect()
     }
 }
 

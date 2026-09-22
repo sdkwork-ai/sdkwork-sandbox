@@ -8,7 +8,9 @@ import { fileURLToPath } from "node:url";
 import {
   ANSWER_COLUMNS,
   ANSWER_REQUIRED_FIGURES,
+  CLAIM_CENSUS_COLUMNS,
   CLAIM_COLUMNS,
+  CLAIM_CORRECTION_COLUMNS,
   COVERAGE_COLUMNS,
   EXCEPTION_CONTRACT_CLAUSE,
   GAP_COLUMNS,
@@ -18,15 +20,19 @@ import {
   RULE_FAMILY_SURFACES,
   SHAPE_COLUMNS,
   UNNAMED_CONTRACT_CLAUSE,
+  ZERO_REQUIREMENT_SCAN_ROOT,
   assessE2bParityMatrix,
   authorizesImplementation,
   discoverWorkspaceTests,
   formatE2bParityMatrixReport,
   listApiContracts,
+  listMarkdownFiles,
   listNamedContracts,
+  markdownHeadingSpans,
   parseAnswerSection,
   parseClaimKeywords,
   parseClaimMarkers,
+  parseClaimSurfaceRegistry,
   parseCoverageGaps,
   parseDeclaredRuleFamilies,
   parseE2bParityMatrixArgs,
@@ -44,6 +50,8 @@ import {
   readRequirementStatus,
   readRequirementStatuses,
   requirementOwnershipIndex,
+  requirementOwnsKeyword,
+  zeroRequirementClaimLines,
 } from "../../tools/check-sandbox-e2b-parity-matrix.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -113,6 +121,40 @@ const CLAIMS = [
   "| --- | --- | --- | --- |",
   "| 1 | fixture capability | `template` | unowned |",
   "| 2 | fixture second capability | `snapshot` | unowned |",
+  "",
+].join("\n");
+
+/**
+ * The fixture's section 3.5: one counted claim in another document, and one correction. The document
+ * it counts carries a claim, so the census has something real to recount rather than a count of zero
+ * that would pass whatever the scan did.
+ */
+const CLAIM_SURFACE = [
+  "### 3.5 跨文档零需求断言对账",
+  "",
+  `| ${CLAIM_CENSUS_COLUMNS.join(" | ")} |`,
+  "| --- | --- | --- | --- |",
+  "| 1 | `docs/product/prd/PRD.md` | `8. 尚未拆分的能力` | 1 |",
+  "",
+  `| ${CLAIM_CORRECTION_COLUMNS.join(" | ")} |`,
+  "| --- | --- | --- | --- | --- |",
+  "| 1 | `docs/product/prd/PRD.md` | Fixture Capability | `REQ-2026-0002` | `fixture-absent-probe` |",
+  "",
+].join("\n");
+
+/** The fixture document the census counts. Its section 8 makes exactly one claim. */
+const PRD_FIXTURE = [
+  "# Fixture PRD",
+  "",
+  "## 1. 前言",
+  "",
+  "fixture prose",
+  "",
+  "## 8. 尚未拆分的能力",
+  "",
+  "| 能力 | 缺口 |",
+  "| --- | --- |",
+  "| fixture capability | 无 `REQ-*`；仍在拆分 |",
   "",
 ].join("\n");
 
@@ -234,6 +276,7 @@ function buildDocument({
   coverage = COVERAGE,
   gaps = GAPS,
   claims = CLAIMS,
+  surface = CLAIM_SURFACE,
   shape = SHAPE,
   description = GATE_DESCRIPTION,
 } = {}) {
@@ -255,6 +298,8 @@ function buildDocument({
     description,
     "",
     claims,
+    "",
+    surface,
     "",
   ].join("\n");
 }
@@ -292,6 +337,8 @@ function createFixture({
   const techDirectory = path.join(repo, "docs", "architecture", "tech");
   const requirementsDirectory = path.join(repo, "docs", "product", "requirements");
   mkdirSync(requirementsDirectory, { recursive: true });
+  mkdirSync(path.join(repo, "docs", "product", "prd"), { recursive: true });
+  writeFileSync(path.join(repo, "docs", "product", "prd", "PRD.md"), PRD_FIXTURE);
   mkdirSync(path.join(repo, "docs", "architecture", "decisions"), { recursive: true });
   mkdirSync(path.join(repo, "docs", "architecture", "views"), { recursive: true });
   mkdirSync(techDirectory, { recursive: true });
@@ -550,11 +597,14 @@ test("the repository's own residual-gap table is typed and every claim holds", (
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  assert.equal(assessment.gapCount, 7);
+  // Three gaps were closed and moved to the closure record below the table: the PRD state machine
+  // marking (traceability gate family 5), the metric family join (family 6), and the capability
+  // matrix join (field gate family 8). Only these four remain, all genuinely open.
+  assert.equal(assessment.gapCount, 4);
 
   const gaps = parseCoverageGaps(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
   assert.deepEqual(gaps.header, [...GAP_COLUMNS]);
-  assert.equal(gaps.rows.length, 7);
+  assert.equal(gaps.rows.length, 4);
   assert.equal(gaps.malformed.length, 0);
   for (const row of gaps.rows) {
     assert.ok(GAP_KINDS.includes(row["性质"]), `gap row ${row.line} declares kind ${row["性质"]}`);
@@ -790,6 +840,201 @@ test("a registry row with no keyword cannot be refuted and is rejected", () => {
   );
 });
 
+test("a claim count that disagrees with the document it counts is rejected", () => {
+  const surface = CLAIM_SURFACE.replace(
+    "| `8. 尚未拆分的能力` | 1 |",
+    "| `8. 尚未拆分的能力` | 3 |",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ surface }) }),
+    "declares 3 claim(s) in `docs/product/prd/PRD.md` `8. 尚未拆分的能力`, which holds 1",
+  );
+});
+
+test("a census row naming a document the repository does not have is rejected", () => {
+  const surface = CLAIM_SURFACE.replace(
+    "| 1 | `docs/product/prd/PRD.md` | `8.",
+    "| 1 | `docs/product/prd/PRD-absent.md` | `8.",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ surface }) }),
+    "names `docs/product/prd/PRD-absent.md`, which the repository does not have",
+  );
+});
+
+test("a census row naming a section the document does not have is rejected", () => {
+  const surface = CLAIM_SURFACE.replace(
+    "| `8. 尚未拆分的能力` | 1 |",
+    "| `9. No Such Section` | 1 |",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ surface }) }),
+    "counts a section `9. No Such Section` that `docs/product/prd/PRD.md` does not have",
+  );
+});
+
+test("a claim no census row counts is rejected", () => {
+  // The census counts an empty section instead, so the claim in section 8 is registered nowhere.
+  const surface = CLAIM_SURFACE.replace("| `8. 尚未拆分的能力` | 1 |", "| `1. 前言` | 0 |");
+
+  expectProblem(
+    inspect({ document: buildDocument({ surface }) }),
+    "docs/product/prd/PRD.md:11 asserts a capability is unowned, and no §3.5 census row counts it",
+  );
+});
+
+test("a census that lists no document is rejected", () => {
+  const surface = CLAIM_SURFACE.replace(
+    "| 1 | `docs/product/prd/PRD.md` | `8. 尚未拆分的能力` | 1 |\n",
+    "",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ surface }) }),
+    "section 3.5 census lists no document, which asserts the claim is made nowhere but this document",
+  );
+});
+
+test("a census row that breaks the numbering is rejected", () => {
+  const surface = CLAIM_SURFACE.replace(
+    "| 1 | `docs/product/prd/PRD.md` | `8.",
+    "| 2 | `docs/product/prd/PRD.md` | `8.",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ surface }) }),
+    "breaks the census numbering; expected 1",
+  );
+});
+
+test("a census table with the wrong columns is reported rather than misread", () => {
+  const surface = CLAIM_SURFACE.replace(
+    `| ${CLAIM_CENSUS_COLUMNS.join(" | ")} |`,
+    "| # | 文档 | 断言数 |",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ surface }) }),
+    "section 3.5 has no census table; expected columns [#, 文档, 段落, 断言数]",
+  );
+});
+
+test("a missing cross-document census is reported rather than thrown", () => {
+  expectProblem(
+    inspect({ document: buildDocument({ surface: "" }) }),
+    'has no "### 3.5" cross-document claim census',
+  );
+});
+
+test("a refuted claim whose carrying requirement does not exist is rejected", () => {
+  const surface = CLAIM_SURFACE.replace(
+    "`REQ-2026-0002` | `fixture-absent-probe`",
+    "`REQ-2026-9999` | `fixture-absent-probe`",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ surface }) }),
+    "blames the corrected claim on `REQ-2026-9999`, which has no record in docs/product/requirements",
+  );
+});
+
+test("a refuted claim whose stale phrasing is still present is rejected", () => {
+  // `仍在拆分` is exactly what the fixture document still says, so the correction is unproved.
+  const surface = CLAIM_SURFACE.replace("`fixture-absent-probe`", "`仍在拆分`");
+
+  expectProblem(
+    inspect({ document: buildDocument({ surface }) }),
+    "records `仍在拆分` as corrected, but `docs/product/prd/PRD.md` still contains it",
+  );
+});
+
+test("a correction ledger with no row is rejected", () => {
+  const surface = CLAIM_SURFACE.replace(
+    "| 1 | `docs/product/prd/PRD.md` | Fixture Capability | `REQ-2026-0002` | `fixture-absent-probe` |\n",
+    "",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ surface }) }),
+    "records no corrected claim, which asserts no document ever asserted this falsely",
+  );
+});
+
+test("a correction row naming no probe cannot be refuted and is rejected", () => {
+  const surface = CLAIM_SURFACE.replace("`fixture-absent-probe`", "见散文");
+
+  expectProblem(
+    inspect({ document: buildDocument({ surface }) }),
+    "names no backticked probe, so nothing can refute the correction",
+  );
+});
+
+test("a correction row naming no carrying requirement is rejected", () => {
+  const surface = CLAIM_SURFACE.replace("`REQ-2026-0002`", "—");
+
+  expectProblem(
+    inspect({ document: buildDocument({ surface }) }),
+    "names no `REQ-*`, so nothing carries the corrected claim",
+  );
+});
+
+test("a keyword matched only inside a longer word does not refute a claim", () => {
+  // The regression this pins: `port` is a substring of `transport`, and a substring matcher reads a
+  // record about transport as owning the port-exposure capability. No record does today, so the
+  // defect was latent rather than absent -- which is why it needs a case rather than a memory.
+  const transport = { needle: "req-2026-0002 sandbox-transport-hardening 交付传输层加固" };
+
+  assert.equal(requirementOwnsKeyword(transport, "port"), false);
+  assert.equal(requirementOwnsKeyword(transport, "transport"), true);
+  assert.equal(requirementOwnsKeyword({ needle: "req-2026-0002 x port y" }, "port"), true);
+  assert.equal(requirementOwnsKeyword({ needle: "req-2026-0002 fixture" }, "fixture"), true);
+  // A keyword that is itself hyphenated still matches on its own boundaries.
+  assert.equal(
+    requirementOwnsKeyword({ needle: "req-2026-0002 runtime-pool" }, "runtime-pool"),
+    true,
+  );
+});
+
+test("the repository's own cross-document census recount matches its declarations", () => {
+  const assessment = assessE2bParityMatrix({ repoRoot });
+
+  assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
+  assert.equal(assessment.claimSurfaceCount, 4);
+  assert.equal(assessment.claimSurfaceClaims, 15);
+
+  const surface = parseClaimSurfaceRegistry(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
+  assert.deepEqual(surface.census.header, [...CLAIM_CENSUS_COLUMNS]);
+  assert.deepEqual(surface.corrections.header, [...CLAIM_CORRECTION_COLUMNS]);
+  assert.equal(surface.census.malformed.length, 0);
+  assert.equal(surface.corrections.rows.length, 1);
+
+  // The census is the whole account: every document outside this one that makes the claim is
+  // registered. This restates the gate's completeness scan from outside the gate.
+  const registered = new Set(surface.census.rows.map((row) => row["文档"]));
+  for (const relative of listMarkdownFiles(repoRoot, ZERO_REQUIREMENT_SCAN_ROOT)) {
+    if (relative === PARITY_DOC) continue;
+    const lines = zeroRequirementClaimLines(readFileSync(path.join(repoRoot, relative), "utf8"));
+    if (lines.length === 0) continue;
+    assert.ok(registered.has(`\`${relative}\``), `${relative} makes a claim no census row counts`);
+  }
+});
+
+test("the cross-document census reader is total, and heading spans do not nest", () => {
+  assert.ok(parseClaimSurfaceRegistry(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8")));
+  assert.equal(parseClaimSurfaceRegistry(buildDocument({ surface: "" })), null);
+  assert.equal(markdownHeadingSpans("").length, 0);
+
+  const spans = markdownHeadingSpans(PRD_FIXTURE);
+  const preamble = spans.find((span) => span.title === "1. 前言");
+  const later = spans.find((span) => span.title === "8. 尚未拆分的能力");
+  assert.ok(preamble && later);
+  // A shallower heading ends the deeper one, and a sibling ends its predecessor.
+  assert.equal(preamble.end, later.start - 1);
+});
+
 test("a registry keyword that cannot be matched against a record is rejected", () => {
   const claims = CLAIMS.replace("| `snapshot` |", "| `Snapshot / Fork` |");
 
@@ -862,8 +1107,8 @@ test("the repository's own coverage table accounts for every test the workspace 
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  assert.equal(assessment.workspaceTests, 68);
-  assert.equal(assessment.coveredTests, 68);
+  assert.equal(assessment.workspaceTests, 79);
+  assert.equal(assessment.coveredTests, 79);
 
   const discovered = discoverWorkspaceTests(repoRoot);
   let runnable = 0;
@@ -874,9 +1119,9 @@ test("the repository's own coverage table accounts for every test the workspace 
       else runnable += 1;
     }
   }
-  // The two readings the audit quotes have to agree with the code: 68 declared, 67 of them
+  // The two readings the audit quotes have to agree with the code: 79 declared, 78 of them
   // runnable because one declares it needs an external PostgreSQL.
-  assert.equal(runnable + ignored, 68);
+  assert.equal(runnable + ignored, 79);
   assert.equal(ignored, 1);
 });
 

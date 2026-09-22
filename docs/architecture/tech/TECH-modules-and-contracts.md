@@ -4,7 +4,7 @@ Status: draft
 
 Owner: SDKWork Runtime Platform
 
-Updated: 2026-07-30
+Updated: 2026-09-23
 
 Parent: [Technical Architecture](TECH_ARCHITECTURE.md)
 
@@ -34,6 +34,7 @@ The L0 command contract candidate is authored under [`apis/commands/`](../../../
 | `sdkwork-intelligence-sandbox-repository-memory` | L4 `backend-repository` | 非生产、单进程 `InMemorySandboxSessionRepository`。 |
 | `sdkwork-intelligence-sandbox-repository-sqlx` | L4 `backend-repository` | PostgreSQL `SandboxSessionRepository`、受保护 Provider Allocation Reference、Tenant-scoped CAS 与 Lease/Fencing 候选实现。 |
 | `sdkwork-sandbox-service-host` | L5 `runtime-service-host` | 无 Runtime Entrypoint；`REQ-2026-0009` draft 机器契约预留 typed Composition，并以跨契约 Profile/Capability Gate 关闭 Local、Cold Firecracker、Cloud Firecracker、Command/Terminal 和可选 Pool Readiness。 |
+| `sdkwork-api-sandbox-assembly` | L5 `api-assembly` | 空 Route 装配骨架：`ROUTE_CRATE_COUNT: usize = 0` + `Router::new()`；持 assembly manifest 与组件契约，无已接受 Route。 |
 | `sdkwork-sandbox-cli` | L6 `tooling` | Empty Executable；无已接受 Command。 |
 
 ## 2.1 REQ-2026-0002 候选组件契约
@@ -113,6 +114,8 @@ flowchart LR
 
 箭头表示 Build/Use Dependency 指向被消费组件。跨仓库方向固定为 `sdkwork-agents -> sdkwork-kernel -> sdkwork-sandbox`。L2 不导入 Concrete Provider；Provider Adapter 不决定 Lifecycle 或 Tenant Policy；CLI 与 Route 不直接访问 Provider 或 Repository；Sandbox 不导入 Agents 模型。
 
+**当前落地状态**（2026-09-23 核对，依据各 crate `Cargo.toml`；F-08 要求计划与现状可区分）：已落地 2 条——`SERVICE → PORTS`（`sdkwork-intelligence-sandbox-service` 依赖 `sdkwork-sandbox-provider-spi`）与 `STORES → PORTS`（`…-repository-memory`/`…-repository-sqlx` 依赖 `…-sandbox-service` 与 `…-provider-spi`）。其余边均为计划、零落地：`API → ROUTE → SERVICE`（无 route crate）、`HOST → SERVICE/PROVIDERS/STORES`（service-host 零依赖）、`ASSEMBLY → ROUTE`（assembly 仅依赖 web-bootstrap/core）、`GATEWAY → ASSEMBLY`、`CLI → HOST`（cli 零依赖）、`AGENTS → KERNEL → SERVICE`（跨仓，未接线）。
+
 ## 5. Repository Layout
 
 ```text
@@ -129,6 +132,7 @@ sdkwork-sandbox/
     sdkwork-intelligence-sandbox-repository-memory/
     sdkwork-intelligence-sandbox-repository-sqlx/
     sdkwork-sandbox-service-host/
+    sdkwork-api-sandbox-assembly/
     sdkwork-sandbox-cli/
   sdks/                         # inactive generated SDK family boundary
   database/                     # active authoritative-server PostgreSQL contract and migration assets

@@ -4,7 +4,7 @@ Status: active
 
 Owner: SDKWork Runtime Platform
 
-Updated: 2026-07-30
+Updated: 2026-09-22
 
 ## 目的
 
@@ -16,7 +16,7 @@ Updated: 2026-07-30
 
 1. Provider Delivery Gate 的 11 个 Review Packet 全部完成人工评审前，`implementationAuthorized` 保持 `false`
 2. Service Host 与 Observability/Event/Outbox 是运行时激活和商业发布的补充门禁，不能因不在 Provider Delivery Gate 的 `humanReview.reviewPackets` 数组中而跳过
-3. 当前全部 17 个相关 Review Packet 状态均为 `pending-human-review`
+3. 当前全部 **22** 个相关 Review Packet 状态均为 `pending-human-review`。该计数不手工维护：它必须等于 `node tools/check-sandbox-human-review-signoff.mjs` 输出里的 `pending human review`，并且下文表格必须逐行列全这 22 个包——两道一致性由同一门禁校验（见本节末尾）。
 4. 人工评审通过后，REQ、ADR、门禁契约、Component Contract 与实现证据必须同步更新，不能只修改 `implementationAuthorized`
 
 当前商业发布判定为 **No-Go**。完整问题、交付顺序和发布证据见 [PLAN-2026-0002](plans/PLAN-2026-0002-commercial-cloud-agent-runtime-delivery.md)。
@@ -29,19 +29,32 @@ Updated: 2026-07-30
 | 2 | REVIEW-20260729-local-provider-architecture-security | ADR-20260728-local-provider-assurance-and-host-boundaries | REQ-2026-0003 | critical | pending-human-review |
 | 3 | REVIEW-20260729-firecracker-provider-architecture-security | ADR-20260729-firecracker-provider-isolation-and-node-boundaries | REQ-2026-0008 | critical | pending-human-review |
 | 4 | REVIEW-20260729-sandbox-host-isolation-broker | ADR-20260729-sandbox-host-isolation-broker-boundary | REQ-2026-0011 | critical | pending-human-review |
-| 5 | REVIEW-20260729-sandbox-firecracker-artifact-compatibility-and-supply-chain | ADR-20260729-sandbox-firecracker-artifact-compatibility-and-supply-chain | REQ-2026-0012 | high | pending-human-review |
-| 6 | REVIEW-20260729-sandbox-workspace-block-device-attachment-and-sanitization | ADR-20260729-sandbox-workspace-block-device-attachment-and-sanitization | REQ-2026-0013 | high | pending-human-review |
+| 5 | REVIEW-20260729-sandbox-firecracker-artifact-compatibility-and-supply-chain | ADR-20260729-sandbox-firecracker-artifact-compatibility-and-supply-chain | REQ-2026-0012 | critical | pending-human-review |
+| 6 | REVIEW-20260729-sandbox-workspace-block-device-attachment-and-sanitization | ADR-20260729-sandbox-workspace-block-device-attachment-and-sanitization | REQ-2026-0013 | critical | pending-human-review |
 | 7 | REVIEW-20260729-sandbox-firecracker-network-isolation | ADR-20260729-sandbox-firecracker-network-isolation-and-egress-policy | REQ-2026-0014 | critical | pending-human-review |
-| 8 | REVIEW-20260729-sandbox-firecracker-resource-isolation | ADR-20260729-sandbox-firecracker-resource-isolation-and-usage-facts | REQ-2026-0015 | high | pending-human-review |
+| 8 | REVIEW-20260729-sandbox-firecracker-resource-isolation | ADR-20260729-sandbox-firecracker-resource-isolation-and-usage-facts | REQ-2026-0015 | critical | pending-human-review |
 | 9 | REVIEW-20260729-sandbox-multi-tenant-admission-scheduling-and-capacity | ADR-20260729-sandbox-multi-tenant-admission-scheduling-and-capacity-reservation | REQ-2026-0016 | critical | pending-human-review |
 | 10 | REVIEW-20260729-sandbox-node-trust-enrollment-attestation-and-inventory | ADR-20260729-sandbox-node-trust-enrollment-attestation-and-inventory | REQ-2026-0017 | critical | pending-human-review |
-| 11 | REVIEW-20260729-sandbox-postgresql-quota-and-capacity-persistence | ADR-20260729-sandbox-postgresql-quota-and-capacity-reservation-persistence | REQ-2026-0018 | high | pending-human-review |
+| 11 | REVIEW-20260729-sandbox-postgresql-quota-and-capacity-persistence | ADR-20260729-sandbox-postgresql-quota-and-capacity-reservation-persistence | REQ-2026-0018 | critical | pending-human-review |
 | 12 | REVIEW-20260729-sandbox-service-host-composition-and-readiness | ADR-20260729-sandbox-service-host-composition-and-readiness | REQ-2026-0009 | high | pending-human-review |
-| 13 | REVIEW-20260729-sandbox-observability-event-audit-outbox | ADR-20260729-sandbox-observability-event-audit-outbox-boundary | REQ-2026-0010 | high | pending-human-review |
+| 13 | REVIEW-20260729-sandbox-observability-event-audit-outbox | ADR-20260729-sandbox-observability-event-audit-outbox-boundary | REQ-2026-0010 | 未声明 | pending-human-review |
 | 14 | REVIEW-20260730-sandbox-runtime-pool-architecture-security | ADR-20260730-sandbox-runtime-pool-claim-and-sanitization | REQ-2026-0019 | critical | pending-human-review |
 | 15 | REVIEW-20260730-sandbox-lifecycle-history-and-idempotency-retention | ADR-20260730-sandbox-lifecycle-hot-state-and-idempotency-ledger | REQ-2026-0020 | high | pending-human-review |
 | 16 | REVIEW-20260730-sandbox-workspace-runtime-transaction-architecture-security | ADR-20260730-sandbox-workspace-runtime-transaction-and-checkpoint | REQ-2026-0021 | critical | pending-human-review |
 | 17 | REVIEW-20260730-sandbox-standalone-data-residency-and-recovery | ADR-20260730-sandbox-standalone-data-residency-and-recovery | REQ-2026-0022 | critical | pending-human-review |
+| 18 | REVIEW-20260731-sandbox-interactive-terminal-session | ADR-20260731-sandbox-interactive-terminal-session | REQ-2026-0024 | critical | pending-human-review |
+| 19 | REVIEW-20260731-sandbox-internal-control-plane | ADR-20260731-sandbox-internal-control-plane | REQ-2026-0023 | critical | pending-human-review |
+| 20 | REVIEW-20260801-sandbox-runtime-secret-projection | ADR-20260801-sandbox-runtime-secret-projection | REQ-2026-0025 | critical | pending-human-review |
+| 21 | REVIEW-20260801-sandbox-cloud-data-residency-and-recovery | ADR-20260801-sandbox-cloud-data-residency-and-recovery | REQ-2026-0026 | critical | pending-human-review |
+| 22 | REVIEW-20260801-sandbox-cross-repository-version-compatibility | ADR-20260801-sandbox-cross-repository-version-compatibility | REQ-2026-0027 | critical | pending-human-review |
+
+**这张表的来源与校验**（2026-09-22 复核）：`风险` 列不是本页判定，它是每个 Review Packet 自己 `Risk:` 头的投影；`状态` 列同理取包内 `Status:`。第 18–22 行是本轮复核新补的——此前它们已处于 `pending-human-review`，却既不在本页表中、也不被任何 `specs/` 契约具名，因此**任何只读本页的评审者都会漏掉它们**。
+
+复核同时修正了 4 行被低估的风险值（`REVIEW-20260729-sandbox-firecracker-artifact-compatibility-and-supply-chain`、`REVIEW-20260729-sandbox-workspace-block-device-attachment-and-sanitization`、`REVIEW-20260729-sandbox-firecracker-resource-isolation`、`REVIEW-20260729-sandbox-postgresql-quota-and-capacity-persistence`：本页原写 `high`，包内声明 `critical`）。本页是摘要，包内声明是记录，故以包内为准。
+
+`REVIEW-20260729-sandbox-observability-event-audit-outbox` 写 `未声明`，因为它确实没有 `Risk:` 头——它是 22 个 pending 包中唯一缺失该头的记录，需要在包内补登，而不是由本页代为判定。
+
+上述三项（计数、逐行列全、风险值一致）现在由 `node tools/check-sandbox-human-review-signoff.mjs` 校验，本页不再手工维护。
 
 ## 评审决策摘要
 
@@ -108,6 +121,22 @@ Updated: 2026-07-30
 | SDR-05..SDR-07 | Workspace/Service/Runtime/Cache/Log/Secret/Temp 分离，默认拒绝隐式传输并保留 Workspace | 清理、同步与用户数据生命周期解耦 |
 | SDR-08..SDR-10 | Export/Purge 覆盖派生副本；Backup 角色正确且经 Restore；故障关闭 | 无虚假删除、恢复或 Cloud Fallback |
 | SDR-11..SDR-12 | Telemetry 内容安全；四仓 Windows/macOS/Linux + Network/Residue Evidence | 静态合同不能冒充商业声明 |
+
+### 待决策：REQ-2026-0020（P0 最小可批范围，建议最先评审）
+
+功能走查（REVIEW-20260922 §4）与 2026-09-23 对齐评审共同指向：这是唯一被仓库自身的 Phase 表标注「立即可执行」、且范围是封闭数值的签署包（`REVIEW-20260730-sandbox-lifecycle-history-and-idempotency-retention`，`Risk: high`，受 `sandbox-lifecycle-history-and-idempotency.contract.json` 具名约束）。评审者需要给出的决策清单（数值不得由实现者猜测——REQ Goals 第 4 条）：
+
+| # | 决策点 | 现状锚点 | 批准 Owner |
+| --- | --- | --- | --- |
+| D1 | 最大 Session Operation 数 | 代码临时上界 `10_000`（`repository-sqlx` 读窗口失败关闭；写路径不设上界为已登记事实） | Reliability + Product |
+| D2 | 最大活动 Session 生命周期 | 未定义 | Product + Operations |
+| D3 | 终态幂等保留窗口 | 未定义 | Product + Security/Privacy |
+| D4 | 窗口结束后的 Late Retry Typed Outcome | 未定义；边界禁令：记录缺失不得静默当新请求执行 | API/Kernel Owner |
+| D5 | 热状态/账本物理命名 | 领域名候选 `SandboxSessionHotState` / `SandboxLifecycleIdempotencyRecord`；物理表名未定 | Database Owner |
+| D6 | `MIG-*` 迁移策略与真实证据 | 六段式 expand→backfill→verify→dual-read→cutover→retire；禁止原地重写 `0001` | Database Owner |
+| D7 | 公开 Error 与 Kernel 映射 | 未定义 | API/Kernel Owner |
+
+批准即解锁下方 Phase 0.5（bounded Hot State + point-lookup Idempotency Ledger 的 expand/backfill/verify/cutover 实施）；在此之前 `MAX_SANDBOX_SESSION_OPERATIONS` 行为被 REQ-2026-0005 边界段冻结，不得删除/截断/过期任何幂等记录。
 
 ## 评审退出后立即可执行的工作项
 

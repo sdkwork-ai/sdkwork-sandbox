@@ -7,7 +7,8 @@ use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
 use sdkwork_intelligence_sandbox_service::{
-    SandboxSession, SandboxSessionLease, SandboxSessionRepository, SandboxSessionRepositoryError,
+    validate_sandbox_session_persisted_invariants, SandboxSession, SandboxSessionLease,
+    SandboxSessionReconciliationCandidate, SandboxSessionRepository, SandboxSessionRepositoryError,
     SandboxSessionRepositoryResult, SandboxSessionState,
 };
 use sdkwork_sandbox_provider_spi::{
@@ -36,6 +37,7 @@ pub struct InMemorySandboxSessionRepository {
 }
 
 impl InMemorySandboxSessionRepository {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -74,7 +76,7 @@ impl InMemorySandboxSessionRepository {
     fn collect_sandbox_reconciliation_page<'a>(
         sandbox_sessions: impl Iterator<Item = (&'a SandboxSessionId, &'a SandboxSession)>,
         sandbox_page_size: u16,
-    ) -> Vec<SandboxSession> {
+    ) -> Vec<SandboxSessionReconciliationCandidate> {
         sandbox_sessions
             .filter(|(_, sandbox_session)| {
                 matches!(
@@ -85,7 +87,12 @@ impl InMemorySandboxSessionRepository {
                 )
             })
             .take(usize::from(sandbox_page_size))
-            .map(|(_, sandbox_session)| sandbox_session.clone())
+            .map(|(sandbox_session_id, sandbox_session)| {
+                SandboxSessionReconciliationCandidate::new(
+                    sandbox_session_id.clone(),
+                    sandbox_session.sandbox_session_state(),
+                )
+            })
             .collect()
     }
 }
@@ -128,6 +135,11 @@ impl SandboxSessionRepository for InMemorySandboxSessionRepository {
         &self,
         sandbox_session: SandboxSession,
     ) -> SandboxSessionRepositoryResult<()> {
+        // Same admission invariants as the PostgreSQL adapter's
+        // `Snapshot::capture`: an invalid ledger or state/binding matrix must
+        // be rejected on write, not only on read (REQ-2026-0005 acceptance:
+        // memory and PostgreSQL adapter semantics must agree).
+        validate_sandbox_session_persisted_invariants(&sandbox_session)?;
         let mut sandbox_state = self.sandbox_state.write().await;
         let tenant_id = sandbox_session.tenant_id().clone();
         let sandbox_session_id = sandbox_session.sandbox_session_id().clone();
@@ -183,6 +195,9 @@ impl SandboxSessionRepository for InMemorySandboxSessionRepository {
         expected_sandbox_version: u64,
         sandbox_session_lease: &SandboxSessionLease,
     ) -> SandboxSessionRepositoryResult<()> {
+        // Same admission invariants as the PostgreSQL adapter's
+        // `Snapshot::capture`; see `insert_sandbox_session`.
+        validate_sandbox_session_persisted_invariants(&sandbox_session)?;
         let mut sandbox_state = self.sandbox_state.write().await;
         let tenant_id = sandbox_session.tenant_id().clone();
         let sandbox_session_id = sandbox_session.sandbox_session_id().clone();
@@ -361,7 +376,7 @@ impl SandboxSessionRepository for InMemorySandboxSessionRepository {
         tenant_id: &TenantId,
         after_sandbox_session_id: Option<&SandboxSessionId>,
         sandbox_page_size: u16,
-    ) -> SandboxSessionRepositoryResult<Vec<SandboxSession>> {
+    ) -> SandboxSessionRepositoryResult<Vec<SandboxSessionReconciliationCandidate>> {
         if !(1..=200).contains(&sandbox_page_size) {
             return Err(SandboxSessionRepositoryError::InvalidPageRequest);
         }

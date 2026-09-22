@@ -33,18 +33,22 @@ impl SandboxProviderAllocationReencryptionPage {
         }
     }
 
+    #[must_use]
     pub fn sandbox_scanned_count(&self) -> usize {
         self.sandbox_scanned_count
     }
 
+    #[must_use]
     pub fn sandbox_reencrypted_count(&self) -> usize {
         self.sandbox_reencrypted_count
     }
 
+    #[must_use]
     pub fn sandbox_conflict_count(&self) -> usize {
         self.sandbox_conflict_count
     }
 
+    #[must_use]
     pub fn sandbox_next_runtime_binding_id(&self) -> Option<&SandboxRuntimeBindingId> {
         self.sandbox_next_runtime_binding_id.as_ref()
     }
@@ -69,6 +73,12 @@ fn ensure_sandbox_reencryption_target(
 }
 
 impl SqlxSandboxSessionRepository {
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::InvalidPageRequest` for an
+    /// invalid page request; key-source and persistence failures propagate
+    /// unchanged and never silently skip rows.
     pub async fn reencrypt_sandbox_provider_allocation_references_page(
         &self,
         tenant_id: &TenantId,

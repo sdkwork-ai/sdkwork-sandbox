@@ -21,7 +21,7 @@
  *     the sentence actually means. `check-sandbox-doc-integrity.mjs` cannot see this: it checks
  *     link *targets* and prescribed *commands*, never id semantics.
  *
- * Four rule families, all deterministic:
+ * Six rule families, all deterministic:
  *
  *   1. ID RESOLUTION. Every `REQ-####-####` and `ADR-########-<slug>` token in a live document
  *      must resolve:
@@ -71,6 +71,31 @@
  *      evidence. A capability without a requirement needs an owner decision to split one, so this
  *      gate reports the gap and never invents a requirement to close it.
  *
+ *   5. PRODUCT STATE MACHINE JOIN. The state machine in `docs/product/prd/PRD-capabilities.md`
+ *      section 3 and the `SandboxSessionState` enum in
+ *      `crates/sdkwork-intelligence-sandbox-service/src/model.rs` are two copies of one contract,
+ *      and until 2026-09-22 nothing read them together: the PRD diagram carried `Pausing`/`Paused`/
+ *      `Recovering` while the implementation enum held eight states, and the PRD did not say so.
+ *      The join is exact, in both directions: every state in the diagram either exists in the
+ *      implementation enum or is declared on a `目标态标记` line as a target state the enum does not
+ *      have yet; the declared target set must equal the diagram-minus-enum difference exactly, so a
+ *      target that reaches the implementation without the marker shrinking is as red as a diagram
+ *      state that is neither implemented nor declared; every implementation state must appear in
+ *      the diagram, so the product canon cannot silently drop one.
+ *
+ *   6. OBSERVABILITY FAMILY JOIN. The metric families in `docs/product/prd/PRD-sandbox-surfaces.md`
+ *      section 13 and the `metrics.productFamilies` mapping in
+ *      `apis/async/sandbox-observability-catalog.json` are the product promise and its machine
+ *      mapping; before this family existed the PRD declared fifteen families (several named
+ *      against the OBSERVABILITY_SPEC metric-naming rules) and nothing compared the two lists —
+ *      the namesets were fully disjoint and nobody could tell. The join is bidirectional: every
+ *      family declared in the PRD has exactly one mapping entry and vice versa; every mapping
+ *      entry names a valid plane, a `kind` whose suffix the name actually carries
+ *      (`duration` -> `_duration_seconds`, `counter` -> `_total`, gauge names carry neither), and
+ *      `catalogMetrics` ids that resolve to real `metrics.catalog` entries; an entry that maps to
+ *      nothing must say in its note which requirement or PRD row owns the gap, so a runtime-plane
+ *      family cannot silently pretend a contract exists.
+ *
  * Live documentation means every markdown/json/yaml document except the point-in-time evidence
  * records under `docs/changelogs/`, `docs/engineering/reviews/`, `docs/releases/` and
  * `docs/archive/`, which record what was true when they were written.
@@ -104,6 +129,33 @@ const DECISIONS_DIRECTORY = join("docs", "architecture", "decisions");
 const CAPABILITY_MATRIX_FILE = join("docs", "product", "prd", "PRD-capabilities.md");
 const CAPABILITY_MATRIX_HEADING = "## 11. ";
 const CAPABILITY_MATRIX_END_HEADING = "## 12. ";
+
+/**
+ * Product state machine (PRD section 3) and the implementation enum it must stay joined with. The
+ * enum file is read as text, not compiled: the gate is static and must go red on a fixture tree
+ * that carries a different enum body.
+ */
+const STATE_MACHINE_HEADING = "## 3. ";
+const IMPLEMENTATION_STATE_FILE = join(
+  "crates",
+  "sdkwork-intelligence-sandbox-service",
+  "src",
+  "model.rs",
+);
+const IMPLEMENTATION_STATE_ENUM = "SandboxSessionState";
+/** The line label the PRD uses to declare states the implementation enum does not have yet. */
+const TARGET_STATE_MARKER = "目标态标记";
+
+/**
+ * Observability surface (PRD-sandbox-surfaces section 13) and the machine contract that owns the
+ * concrete metric inventory the product families map into.
+ */
+const OBSERVABILITY_SURFACES_FILE = join("docs", "product", "prd", "PRD-sandbox-surfaces.md");
+const OBSERVABILITY_HEADING = "## 13. ";
+const OBSERVABILITY_END_HEADING = "## 14. ";
+const OBSERVABILITY_CATALOG_FILE = join("apis", "async", "sandbox-observability-catalog.json");
+const PRODUCT_FAMILY_PLANES = Object.freeze(["control-plane", "runtime-plane"]);
+const PRODUCT_FAMILY_KINDS = Object.freeze(["duration", "counter", "gauge"]);
 
 const REQUIREMENT_ID = /REQ-\d{4}-\d{4}/gu;
 const DECISION_ID = /ADR-\d{8}-[a-z0-9-]+/gu;
@@ -335,11 +387,464 @@ export function readCapabilityMatrix({ repoRoot }) {
   return { rows, failures, document: relativeFile };
 }
 
+/**
+ * The product state machine in PRD section 3: the states the mermaid diagram names, and the
+ * target states the section declares the implementation does not have yet.
+ *
+ * States are read from inside the ```mermaid fence only. The section's prose bullets also name
+ * states in backticks (`Running`, `Destroyed`), and reading prose would let a bullet mention make
+ * a missing implementation look declared — the diagram is the contract, the bullets explain it.
+ */
+export function readStateMachine({ repoRoot }) {
+  const file = join(repoRoot, CAPABILITY_MATRIX_FILE);
+  const relativeFile = toPosix(CAPABILITY_MATRIX_FILE);
+  if (!existsSync(file)) {
+    return {
+      states: [],
+      declaredTargetStates: [],
+      failures: [
+        {
+          reason: "missing-state-machine",
+          document: relativeFile,
+          line: 1,
+          message: "the state machine document must exist",
+        },
+      ],
+    };
+  }
+
+  const lines = readFileSync(file, "utf8").split(/\r?\n/u);
+  const start = lines.findIndex((line) => line.startsWith(STATE_MACHINE_HEADING));
+  if (start === -1) {
+    return {
+      states: [],
+      declaredTargetStates: [],
+      failures: [
+        {
+          reason: "missing-state-machine",
+          document: relativeFile,
+          line: 1,
+          message: `the state machine heading \`${STATE_MACHINE_HEADING}\` must exist`,
+        },
+      ],
+    };
+  }
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^##\s/u.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  const section = lines.slice(start, end);
+
+  const failures = [];
+  const states = new Set();
+  let fenceSeen = false;
+  for (const line of section) {
+    if (/^\s*```mermaid/u.test(line)) {
+      fenceSeen = true;
+      continue;
+    }
+    if (fenceSeen) {
+      if (/^\s*```/u.test(line)) {
+        fenceSeen = false;
+        continue;
+      }
+      for (const match of line.matchAll(/([A-Za-z][A-Za-z0-9_]*)\s*-->/gu)) states.add(match[1]);
+      for (const match of line.matchAll(/-->\s*(?:\[\*\]|([A-Za-z][A-Za-z0-9_]*))/gu)) {
+        if (match[1]) states.add(match[1]);
+      }
+    }
+  }
+  if (states.size === 0) {
+    failures.push({
+      reason: "missing-state-machine",
+      document: relativeFile,
+      line: start + 1,
+      message: "the state machine section must carry a ```mermaid diagram naming at least one state",
+    });
+  }
+
+  const declaredTargetStates = new Set();
+  section.forEach((line, index) => {
+    // The marker reads naturally as a list item ("- 目标态标记：…"), so a leading bullet is
+    // stripped before matching; a marker buried mid-sentence is not the declaration.
+    const content = line.trimStart().replace(/^[-*]\s+/u, "");
+    if (!content.startsWith(TARGET_STATE_MARKER)) return;
+    for (const match of line.matchAll(/`([A-Za-z][A-Za-z0-9_]*)`/gu)) {
+      declaredTargetStates.add(match[1]);
+    }
+    if (declaredTargetStates.size === 0) {
+      failures.push({
+        reason: "malformed-target-state-marker",
+        document: relativeFile,
+        line: start + index + 1,
+        message: `a \`${TARGET_STATE_MARKER}\` line must name the target states in backticks`,
+      });
+    }
+  });
+
+  return { states: [...states], declaredTargetStates: [...declaredTargetStates], failures, document: relativeFile };
+}
+
+/**
+ * The `SandboxSessionState` variants the implementation actually declares. Read as text so the
+ * rule works on any checkout and goes red, not green-with-exceptions, when the file is gone.
+ */
+export function readImplementedStates({ repoRoot }) {
+  const file = join(repoRoot, IMPLEMENTATION_STATE_FILE);
+  const relativeFile = toPosix(IMPLEMENTATION_STATE_FILE);
+  if (!existsSync(file)) {
+    return {
+      states: [],
+      failures: [
+        {
+          reason: "missing-implementation-state-file",
+          document: relativeFile,
+          line: 1,
+          message: `the implementation state file \`${relativeFile}\` must exist`,
+        },
+      ],
+    };
+  }
+  const text = readFileSync(file, "utf8");
+  const body = text.match(
+    new RegExp(`pub\\s+enum\\s+${IMPLEMENTATION_STATE_ENUM}\\s*\\{([^}]*)\\}`, "su"),
+  );
+  if (!body) {
+    return {
+      states: [],
+      failures: [
+        {
+          reason: "missing-implementation-state-enum",
+          document: relativeFile,
+          line: 1,
+          message: `\`${relativeFile}\` must declare \`pub enum ${IMPLEMENTATION_STATE_ENUM}\``,
+        },
+      ],
+    };
+  }
+  const states = [...body[1].matchAll(/([A-Za-z][A-Za-z0-9_]*)/gu)]
+    .map((match) => match[1])
+    // Attribute-less variants only: this enum is a plain state set, and if it ever grows data
+    // carriers the parser must be taught the syntax rather than silently misreading it.
+    .filter((token) => !["pub", "enum"].includes(token));
+  return { states: [...new Set(states)], failures: [], document: relativeFile };
+}
+
+/**
+ * The observability join: the metric families PRD-sandbox-surfaces section 13 declares, and the
+ * `metrics.productFamilies` mapping the catalog contract carries for them.
+ */
+export function readObservabilityJoin({ repoRoot }) {
+  const failures = [];
+  const surfacesFile = join(repoRoot, OBSERVABILITY_SURFACES_FILE);
+  const catalogFile = join(repoRoot, OBSERVABILITY_CATALOG_FILE);
+
+  let declaredFamilies = [];
+  if (!existsSync(surfacesFile)) {
+    failures.push({
+      reason: "missing-observability-families",
+      document: toPosix(OBSERVABILITY_SURFACES_FILE),
+      line: 1,
+      message: "the observability surfaces document must exist",
+    });
+  } else {
+    const lines = readFileSync(surfacesFile, "utf8").split(/\r?\n/u);
+    const start = lines.findIndex((line) => line.startsWith(OBSERVABILITY_HEADING));
+    if (start === -1) {
+      failures.push({
+        reason: "missing-observability-families",
+        document: toPosix(OBSERVABILITY_SURFACES_FILE),
+        line: 1,
+        message: `the observability heading \`${OBSERVABILITY_HEADING}\` must exist`,
+      });
+    } else {
+      let end = lines.length;
+      for (let index = start + 1; index < lines.length; index += 1) {
+        if (lines[index].startsWith(OBSERVABILITY_END_HEADING)) {
+          end = index;
+          break;
+        }
+      }
+      let fenceSeen = false;
+      for (let index = start; index < end; index += 1) {
+        const line = lines[index];
+        if (!fenceSeen && /^\s*```(?:text)?\s*$/u.test(line)) {
+          fenceSeen = true;
+          continue;
+        }
+        if (fenceSeen) {
+          if (/^\s*```/u.test(line)) {
+            fenceSeen = false;
+            continue;
+          }
+          const name = line.trim();
+          if (name !== "") declaredFamilies.push({ name, line: index + 1 });
+        }
+      }
+      if (declaredFamilies.length === 0) {
+        failures.push({
+          reason: "missing-observability-families",
+          document: toPosix(OBSERVABILITY_SURFACES_FILE),
+          line: start + 1,
+          message: "the observability section must declare at least one metric family in a fenced block",
+        });
+      }
+    }
+  }
+
+  let catalogNames = [];
+  let productFamilies = null;
+  if (!existsSync(catalogFile)) {
+    failures.push({
+      reason: "missing-observability-catalog",
+      document: toPosix(OBSERVABILITY_CATALOG_FILE),
+      line: 1,
+      message: `the observability catalog \`${toPosix(OBSERVABILITY_CATALOG_FILE)}\` must exist`,
+    });
+  } else {
+    let catalog;
+    try {
+      catalog = JSON.parse(readFileSync(catalogFile, "utf8"));
+    } catch (error) {
+      failures.push({
+        reason: "missing-observability-catalog",
+        document: toPosix(OBSERVABILITY_CATALOG_FILE),
+        line: 1,
+        message: `the observability catalog is not valid JSON: ${error.message}`,
+      });
+      catalog = null;
+    }
+    if (catalog) {
+      catalogNames = (catalog.metrics?.catalog ?? [])
+        .map((entry) => entry?.name)
+        .filter((name) => typeof name === "string");
+      productFamilies = catalog.metrics?.productFamilies ?? null;
+      if (!productFamilies || !Array.isArray(productFamilies.families)) {
+        failures.push({
+          reason: "missing-observability-catalog",
+          document: toPosix(OBSERVABILITY_CATALOG_FILE),
+          line: 1,
+          message: "the observability catalog must carry metrics.productFamilies.families",
+        });
+        productFamilies = null;
+      }
+    }
+  }
+
+  return { declaredFamilies, productFamilies, catalogNames, failures };
+}
+
+/**
+ * The two joins of families 5 and 6, as findings. Kept in one place so the failure reasons and the
+ * contract tests that redden them read side by side.
+ */
+function assessProductJoins({ repoRoot }) {
+  const failures = [];
+
+  const prd = readStateMachine({ repoRoot });
+  const impl = readImplementedStates({ repoRoot });
+  failures.push(...prd.failures, ...impl.failures);
+  if (prd.states.length > 0 && impl.states.length > 0) {
+    const prdStates = new Set(prd.states);
+    const implStates = new Set(impl.states);
+    const declared = new Set(prd.declaredTargetStates);
+    for (const state of prd.states) {
+      if (implStates.has(state)) continue;
+      if (declared.has(state)) continue;
+      failures.push({
+        reason: "unmarked-target-state",
+        document: prd.document,
+        line: 1,
+        message:
+          `state \`${state}\` is in the PRD diagram but neither implemented in ` +
+          `\`${toPosix(IMPLEMENTATION_STATE_FILE)}\` nor declared on a \`${TARGET_STATE_MARKER}\` line`,
+      });
+    }
+    for (const state of prd.declaredTargetStates) {
+      if (!prdStates.has(state)) {
+        failures.push({
+          reason: "unknown-target-state",
+          document: prd.document,
+          line: 1,
+          message: `\`${TARGET_STATE_MARKER}\` names \`${state}\`, which the diagram does not declare`,
+        });
+      } else if (implStates.has(state)) {
+        failures.push({
+          reason: "stale-target-state",
+          document: prd.document,
+          line: 1,
+          message:
+            `\`${TARGET_STATE_MARKER}\` still declares \`${state}\` as unimplemented, but the ` +
+            `implementation enum contains it; shrink the marker`,
+        });
+      }
+    }
+    for (const state of impl.states) {
+      if (!prdStates.has(state)) {
+        failures.push({
+          reason: "unlisted-implementation-state",
+          document: impl.document,
+          line: 1,
+          message: `implementation state \`${state}\` appears in no PRD diagram state`,
+        });
+      }
+    }
+  }
+
+  const observability = readObservabilityJoin({ repoRoot });
+  failures.push(...observability.failures);
+  if (observability.productFamilies && observability.declaredFamilies.length > 0) {
+    const declared = observability.declaredFamilies;
+    const declaredNames = declared.map((family) => family.name);
+    const duplicateDeclared = declaredNames.filter(
+      (name, index) => declaredNames.indexOf(name) !== index,
+    );
+    for (const name of new Set(duplicateDeclared)) {
+      failures.push({
+        reason: "observability-family-join",
+        document: toPosix(OBSERVABILITY_SURFACES_FILE),
+        line: declared.find((family) => family.name === name).line,
+        message: `metric family \`${name}\` is declared more than once in the observability section`,
+      });
+    }
+    const mapping = observability.productFamilies.families;
+    const mappingNames = mapping.map((family) => family?.name);
+    const mappedNameSet = new Set(mappingNames);
+    const duplicateMapped = mappingNames.filter(
+      (name, index) => mappingNames.indexOf(name) !== index,
+    );
+    for (const name of new Set(duplicateMapped)) {
+      failures.push({
+        reason: "observability-family-join",
+        document: toPosix(OBSERVABILITY_CATALOG_FILE),
+        line: 1,
+        message: `productFamilies maps \`${name}\` more than once`,
+      });
+    }
+    for (const name of declaredNames) {
+      if (!mappedNameSet.has(name)) {
+        failures.push({
+          reason: "observability-family-join",
+          document: toPosix(OBSERVABILITY_CATALOG_FILE),
+          line: 1,
+          message: `declared metric family \`${name}\` has no metrics.productFamilies entry`,
+        });
+      }
+    }
+    for (const name of new Set(mappingNames)) {
+      if (!declaredNames.includes(name)) {
+        failures.push({
+          reason: "observability-family-join",
+          document: toPosix(OBSERVABILITY_CATALOG_FILE),
+          line: 1,
+          message: `metrics.productFamilies maps \`${name}\`, which the observability section does not declare`,
+        });
+      }
+    }
+    const catalogNames = new Set(observability.catalogNames);
+    for (const entry of mapping) {
+      const name = entry?.name ?? "<no name>";
+      if (!PRODUCT_FAMILY_PLANES.includes(entry?.plane)) {
+        failures.push({
+          reason: "observability-family-join",
+          document: toPosix(OBSERVABILITY_CATALOG_FILE),
+          line: 1,
+          message: `productFamilies entry \`${name}\` carries unknown plane "${entry?.plane ?? ""}"`,
+        });
+      }
+      if (!PRODUCT_FAMILY_KINDS.includes(entry?.kind)) {
+        failures.push({
+          reason: "observability-family-join",
+          document: toPosix(OBSERVABILITY_CATALOG_FILE),
+          line: 1,
+          message: `productFamilies entry \`${name}\` carries unknown kind "${entry?.kind ?? ""}"`,
+        });
+      }
+      if (typeof entry?.name === "string" && !/^[a-z][a-z0-9_]*$/u.test(entry.name)) {
+        failures.push({
+          reason: "observability-family-join",
+          document: toPosix(OBSERVABILITY_CATALOG_FILE),
+          line: 1,
+          message: `productFamilies entry \`${name}\` is not lowercase snake case`,
+        });
+      }
+      if (entry?.kind === "duration" && !entry.name?.endsWith("_duration_seconds")) {
+        failures.push({
+          reason: "observability-family-join",
+          document: toPosix(OBSERVABILITY_CATALOG_FILE),
+          line: 1,
+          message: `duration family \`${name}\` must end in \`_duration_seconds\` (OBSERVABILITY_SPEC metric naming)`,
+        });
+      }
+      if (entry?.kind === "counter" && !entry.name?.endsWith("_total")) {
+        failures.push({
+          reason: "observability-family-join",
+          document: toPosix(OBSERVABILITY_CATALOG_FILE),
+          line: 1,
+          message: `counter family \`${name}\` must end in \`_total\` (OBSERVABILITY_SPEC metric naming)`,
+        });
+      }
+      if (
+        entry?.kind === "gauge" &&
+        (entry.name?.endsWith("_total") || entry.name?.endsWith("_duration_seconds"))
+      ) {
+        failures.push({
+          reason: "observability-family-join",
+          document: toPosix(OBSERVABILITY_CATALOG_FILE),
+          line: 1,
+          message: `gauge family \`${name}\` carries a counter/duration suffix`,
+        });
+      }
+      for (const metric of entry?.catalogMetrics ?? []) {
+        if (!catalogNames.has(metric)) {
+          failures.push({
+            reason: "observability-family-join",
+            document: toPosix(OBSERVABILITY_CATALOG_FILE),
+            line: 1,
+            message: `productFamilies entry \`${name}\` maps \`${metric}\`, which metrics.catalog does not define`,
+          });
+        }
+      }
+      const note = entry?.note ?? "";
+      if (
+        (entry?.catalogMetrics ?? []).length === 0 &&
+        (!(typeof note === "string") || note.trim().length < 10 || !/(?:REQ-|PRD-|第 \d+ 节)/u.test(note))
+      ) {
+        failures.push({
+          reason: "observability-family-join",
+          document: toPosix(OBSERVABILITY_CATALOG_FILE),
+          line: 1,
+          message:
+            `productFamilies entry \`${name}\` maps to no catalog metric, so its note must name the ` +
+            `requirement or PRD row that owns the gap`,
+        });
+      }
+    }
+  }
+
+  return {
+    failures,
+    prdStates: prd.states,
+    declaredTargetStates: prd.declaredTargetStates,
+    implementedStates: impl.states,
+    declaredFamilies: observability.declaredFamilies.map((family) => family.name),
+    catalogMetricCount: observability.catalogNames.length,
+    runtimePlaneFamilies: (observability.productFamilies?.families ?? [])
+      .filter((family) => family?.plane === "runtime-plane")
+      .map((family) => family?.name),
+  };
+}
+
 export function assessRequirementTraceability({ repoRoot = repositoryRoot } = {}) {
   const authority = readLocalAuthorities({ repoRoot });
   const failures = [...authority.failures];
   const matrix = readCapabilityMatrix({ repoRoot });
   failures.push(...matrix.failures);
+  const joins = assessProductJoins({ repoRoot });
+  failures.push(...joins.failures);
 
   const documents = discoverRepositoryDocuments(repoRoot);
   const liveDocuments = [];
@@ -526,6 +1031,12 @@ export function assessRequirementTraceability({ repoRoot = repositoryRoot } = {}
       line: row.line,
     })),
     capabilityMatrixDocument: matrix.document,
+    stateMachineStates: joins.prdStates.length,
+    declaredTargetStates: joins.declaredTargetStates,
+    implementedStates: joins.implementedStates,
+    observabilityFamilies: joins.declaredFamilies.length,
+    catalogMetrics: joins.catalogMetricCount,
+    runtimePlaneFamilies: joins.runtimePlaneFamilies,
     failures,
   };
 }
@@ -548,15 +1059,23 @@ export function formatRequirementTraceabilityReport(assessment) {
     `unattributed; ` +
     `${assessment.capabilityRowsCitingWithScopeCaveat} of the citing row(s) qualify the carrier ` +
     `with a scoped \`${NO_CARRIER_MARKER}\` caveat` +
-    (assessment.capabilityRowsCitingWithScopeCaveatDetail.length > 0
-      ? ` (${assessment.capabilityRowsCitingWithScopeCaveatDetail
-          .map((row) => `${row.number} \`${row.capability}\``)
-          .join(", ")})`
-      : "") +
+      (assessment.capabilityRowsCitingWithScopeCaveatDetail.length > 0
+        ? ` (${assessment.capabilityRowsCitingWithScopeCaveatDetail
+            .map((row) => `${row.number} \`${row.capability}\``)
+            .join(", ")})`
+        : "") +
     `\n`;
 
+  const joins =
+    `Product joins: the PRD state machine declares ${assessment.stateMachineStates} state(s) ` +
+    `(${assessment.declaredTargetStates.length} on the \`目标态标记\` line), the implementation ` +
+    `enum carries ${assessment.implementedStates.length}; the observability section declares ` +
+    `${assessment.observabilityFamilies} metric famil${assessment.observabilityFamilies === 1 ? "y" : "ies"} ` +
+    `(${assessment.runtimePlaneFamilies.length} runtime-plane) against ` +
+    `${assessment.catalogMetrics} catalog metric(s)\n`;
+
   if (assessment.ok) {
-    return `${chain}${census}`;
+    return `${chain}${census}${joins}`;
   }
 
   const lines = [
@@ -567,6 +1086,7 @@ export function formatRequirementTraceabilityReport(assessment) {
     lines.push(`- [${failure.reason}] ${failure.document}:${failure.line} ${failure.message}`);
   }
   lines.push(census.trimEnd());
+  lines.push(joins.trimEnd());
   return `${lines.join("\n")}\n`;
 }
 

@@ -379,3 +379,58 @@ test("the CLI exits non-zero and names the offending component", () => {
     assert.ok(output.failures.some((f) => f.reason === "false-language-declaration"));
   });
 });
+
+test("a crate directory without a component spec is rejected", () => {
+  // R7, forward direction (the F-07 shape): an authored crate that dropped
+  // out of the component-contract system -- exactly how
+  // `sdkwork-api-sandbox-assembly` went missing from the human module
+  // inventory -- must be reported, not discovered by whoever re-reads lists.
+  withFixture({ spec: healthySpec(), extraFiles: healthyExtras() }, (fixture) => {
+    mkdirSync(path.join(fixture.repoRoot, "crates", "sdkwork-fixture-orphan"), {
+      recursive: true,
+    });
+    writeFileSync(
+      path.join(fixture.repoRoot, "crates", "sdkwork-fixture-orphan", "Cargo.toml"),
+      '[package]\nname = "sdkwork-fixture-orphan"\nversion = "0.1.0"\n',
+    );
+    const assessment = assess(fixture);
+    assert.equal(assessment.ok, false);
+    const failure = assessment.failures.find((f) => f.reason === "missing-crate-component-spec");
+    assert.ok(failure, JSON.stringify(assessment.failures, null, 2));
+    assert.match(failure.message, /sdkwork-fixture-orphan/u);
+    assert.equal(assessment.cratesChecked, 2);
+  });
+});
+
+test("a component spec whose crate owns no Cargo.toml is rejected", () => {
+  // R7, reverse direction: a spec under crates/ that describes no crate is a
+  // stale contract, not a small one.
+  withFixture(
+    {
+      spec: healthySpec({
+        component: { languages: [] },
+      }),
+      extraFiles: {},
+    },
+    (fixture) => {
+      const assessment = assess(fixture);
+      assert.equal(assessment.ok, false);
+      const failure = assessment.failures.find((f) => f.reason === "crate-spec-without-crate");
+      assert.ok(failure, JSON.stringify(assessment.failures, null, 2));
+      assert.match(failure.message, /owns no Cargo\.toml/u);
+    },
+  );
+});
+
+test("a crates/ directory with neither Cargo.toml nor spec is ignored by R7", () => {
+  // Control: a bare directory (no Cargo.toml) is not a crate, so the
+  // reconciliation must not demand a component spec for it.
+  withFixture({ spec: healthySpec(), extraFiles: healthyExtras() }, (fixture) => {
+    mkdirSync(path.join(fixture.repoRoot, "crates", "sdkwork-fixture-empty"), {
+      recursive: true,
+    });
+    const assessment = assess(fixture);
+    assert.equal(assessment.ok, true, JSON.stringify(assessment.failures, null, 2));
+    assert.equal(assessment.cratesChecked, 1);
+  });
+});

@@ -9,6 +9,7 @@ import {
   parseHeaderField,
   parseReviewPacket,
   readContractHumanReview,
+  readExitPackage,
   readReviewPackets,
   readSignoffIndex,
   resolveHeaderField,
@@ -23,9 +24,12 @@ const live = () => ({
   packets: readReviewPackets(),
   demands: readContractHumanReview(),
   indexDocument: readSignoffIndex(),
+  exitPackageDocument: readExitPackage(),
 });
 
 const assess = (overrides = {}) => assessHumanReviewSignoff({ ...live(), ...overrides });
+
+const rowPattern = (reviewId) => new RegExp(`^\\|\\s*\\d+\\s*\\|\\s*${reviewId}\\s*\\|.*$`, "mu");
 
 test("the live repository human-review sign-off state is coherent", () => {
   const assessment = assess();
@@ -303,4 +307,77 @@ test("the two verification reviews that previously dropped their Decision header
     const parsed = parseReviewPacket(packet(name), { file: `${name}.md` });
     assert.equal(parsed.decision.id, decisionId);
   }
+});
+
+test("the exit-readiness package lists every pending packet and projects each packet's own risk", () => {
+  const { packets, exitPackageDocument } = live();
+  const assessment = assess();
+  assert.equal(assessment.ok, true, assessment.failures.join("\n"));
+
+  const pending = packets.filter((entry) => entry.status === "pending-human-review");
+  assert.ok(pending.length > 0, "the projection is vacuous when nothing is pending");
+  for (const entry of pending) {
+    const reviewId = entry.file.replace(/\.md$/u, "");
+    assert.ok(
+      rowPattern(reviewId).test(exitPackageDocument),
+      `the exit-readiness package must carry a row for the pending packet ${reviewId}`,
+    );
+  }
+});
+
+test("the exit-readiness package omitting a pending packet fails", () => {
+  const { packets, exitPackageDocument } = live();
+  const victim = packets.find((entry) => entry.status === "pending-human-review").file.replace(
+    /\.md$/u,
+    "",
+  );
+
+  const assessment = assess({
+    exitPackageDocument: exitPackageDocument.replace(rowPattern(victim), ""),
+  });
+
+  assert.equal(assessment.ok, false);
+  assert.ok(
+    assessment.failures.some((line) => line.includes("omits") && line.includes(victim)),
+    assessment.failures.join("\n"),
+  );
+});
+
+test("the exit-readiness package under-reporting a packet's own risk fails", () => {
+  const { packets, exitPackageDocument } = live();
+  const victim = packets.find(
+    (entry) => entry.status === "pending-human-review" && entry.risk === "critical",
+  );
+  assert.ok(victim, "a packet declaring critical risk must exist for this test to mean anything");
+  const reviewId = victim.file.replace(/\.md$/u, "");
+
+  const assessment = assess({
+    exitPackageDocument: exitPackageDocument.replace(
+      rowPattern(reviewId),
+      (line) => line.replace(/\|\s*critical\s*\|/u, "| high |"),
+    ),
+  });
+
+  assert.equal(assessment.ok, false);
+  assert.ok(
+    assessment.failures.some((line) => line.includes(reviewId) && line.includes("risk")),
+    assessment.failures.join("\n"),
+  );
+});
+
+test("the exit-readiness package declaring a stale pending count fails", () => {
+  const { exitPackageDocument } = live();
+  const stale = exitPackageDocument.replace(
+    /当前全部\s*\*{0,2}\d+\*{0,2}\s*个相关\s*Review Packet/u,
+    "当前全部 **17** 个相关 Review Packet",
+  );
+  assert.notEqual(stale, exitPackageDocument, "the count sentence must exist for this test to bite");
+
+  const assessment = assess({ exitPackageDocument: stale });
+
+  assert.equal(assessment.ok, false);
+  assert.ok(
+    assessment.failures.some((line) => line.includes("declares 17 pending review packet")),
+    assessment.failures.join("\n"),
+  );
 });

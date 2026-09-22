@@ -9,6 +9,7 @@ import {
   BASELINE_INCOMPLETE_MARKER,
   BASELINE_PATH,
   EXPECTED_KIND,
+  GATE_FILE_NAME,
   PARITY_DOCUMENT,
   RULE_FAMILIES,
   RULE_FAMILY_SURFACES,
@@ -19,8 +20,10 @@ import {
   formatE2bFieldParityReport,
   parseDeclaredCensus,
   parseDeclaredRuleFamilies,
+  parseCapabilityMatrix,
   parseDocumentRows,
   parseE2bFieldParityArgs,
+  readGateReadmeSection,
 } from "../../tools/check-sandbox-e2b-field-parity.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -31,9 +34,14 @@ const REAL_ROWS = 78;
 const REAL_CAPTURED_AT = "2026-09-22T09:36:31Z";
 const REAL_DOCUMENTED_OPERATIONS = 71;
 const REAL_CONTRACT_FILES = 40;
-const REAL_CONTRACT_TESTS = 592;
-const REAL_RUST_WORKSPACE = { command: "cargo test --workspace", passed: 67, failed: 0, ignored: 1 };
-const REAL_RULE_FAMILIES = 10;
+const REAL_CONTRACT_TESTS = 619;
+const REAL_RUST_WORKSPACE = { command: "cargo test --workspace", passed: 78, failed: 0, ignored: 1 };
+const REAL_RULE_FAMILIES = 11;
+/** The product matrix join: PRD section 11 rows vs the baseline rows that map onto them. */
+const REAL_MATRIX_ROWS = 34;
+const REAL_MATRIX_MAPPED_ROWS = 57;
+const REAL_MATRIX_UNMAPPED_ROWS = 21;
+const REAL_MATRIX_ROWS_WITHOUT_BASELINE_ROW = 9;
 /** The only E2B OpenAPI operation no matrix row judges. Recorded, not hidden. */
 const REAL_UNJUDGED_OPERATIONS = ["getHealth"];
 /** Rows that gained field-level operation evidence when the 18 mis-accounted operations were attached. */
@@ -92,6 +100,13 @@ function baselineFixture() {
     kind: EXPECTED_KIND,
     capturedAt: "2026-09-22T09:36:31Z",
     ratchet: { maxIndexOnlyRows: 0, indexOnlyRows: [], note: "fixture" },
+    capabilityMatrixAlignment: {
+      document: "docs/product/prd/PRD-capabilities.md",
+      declaredRowCount: 4,
+      rowsWithoutMatrixRow: {},
+      matrixRowsWithoutBaselineRow: {},
+      note: "fixture",
+    },
     testInventory: {
       suiteGlob: "tests/contract/*.test.mjs",
       files: 2,
@@ -123,10 +138,10 @@ function baselineFixture() {
       { id: "network", documentHeading: "Network", rowCount: 1, rows: [4] },
     ],
     rows: [
-      { row: 1, category: "lifecycle", sourceIds: ["e2b-lifecycle"], e2bFields: ["POST /sandboxes [postSandboxes]"] },
-      { row: 2, category: "lifecycle", sourceIds: ["e2b-openapi"], e2bFields: ["GET /sandboxes [listSandboxes]"] },
-      { row: 3, category: "lifecycle", sourceIds: ["e2b-lifecycle"], e2bClis: ["e2b sandbox list"] },
-      { row: 4, category: "network", sourceIds: ["e2b-openapi"], e2bFacts: ["egress allowlist"] },
+      { row: 1, category: "lifecycle", sourceIds: ["e2b-lifecycle"], e2bFields: ["POST /sandboxes [postSandboxes]"], capabilityMatrixRows: [1] },
+      { row: 2, category: "lifecycle", sourceIds: ["e2b-openapi"], e2bFields: ["GET /sandboxes [listSandboxes]"], capabilityMatrixRows: [2] },
+      { row: 3, category: "lifecycle", sourceIds: ["e2b-lifecycle"], e2bClis: ["e2b sandbox list"], capabilityMatrixRows: [3] },
+      { row: 4, category: "network", sourceIds: ["e2b-openapi"], e2bFacts: ["egress allowlist"], capabilityMatrixRows: [4] },
     ],
   };
 }
@@ -136,6 +151,8 @@ function documentFixture() {
     "# E2B 能力对齐审计",
     "",
     "基准：`specs/sandbox-e2b-capability-baseline.json`",
+    "",
+    "产品级 4 行概览见 [PRD-capabilities.md](../../product/prd/PRD-capabilities.md) 第 11 节；本分片是它的**字段级展开**（4 行）。",
     "",
     "### 1.3 分类计数",
     "",
@@ -170,15 +187,51 @@ function documentFixture() {
   ].join("\n");
 }
 
+/** The bounded section 11 of the product matrix document, four rows so every fixture row maps. */
+const capabilityMatrixFixture = [
+  "# SDKWork Sandbox 能力与生命周期需求",
+  "",
+  "## 11. 能力对齐矩阵 (Capability Alignment Matrix)",
+  "",
+  "| # | 能力 | 承载与状态 |",
+  "| --- | --- | --- |",
+  "| 1 | Alpha | `REQ-2026-0001` |",
+  "| 2 | Beta | **无** |",
+  "| 3 | Gamma | 同上 |",
+  "| 4 | Delta | **无** |",
+  "",
+  "## 12. 运行模式与隔离等级映射",
+  "",
+  "其余正文。",
+  "",
+].join("\n");
+
 function readmeFixture() {
   return `# Repository Contracts\n\n\`sandbox-e2b-capability-baseline.json\` is the captured baseline authority.\n`;
 }
 
+/**
+ * A section shaped like the one `tools/README.md` carries for this gate. The heading and the gate
+ * file name give the section its scope, and the "Current reading:" paragraph restates the two
+ * readings the gate checks. `contracts`/`rust` override those restatements so a contract test can
+ * prove the rule reddens on a stale one, and `readings: false` drops the paragraph entirely.
+ */
+function gateReadmeFixture(ruleFamilyWord = "eleven", { contracts = 5, rust = 2, readings = true } = {}) {
+  const counts = `${ruleFamilyWord[0].toUpperCase()}${ruleFamilyWord.slice(1)} rule families.`;
+  const header = `# Fixture Tools\n\n## E2B Field Parity Gate\n\n\`${GATE_FILE_NAME}\` holds ${counts}\n`;
+  if (!readings) return header;
+  return (
+    `${header}\nCurrent reading: the audit document's quoted suite readings ` +
+    `(${contracts} contract tests recomputed from \`tests/contract/*.test.mjs\`, ` +
+    `${rust} Rust tests measured by \`cargo test --workspace\`) are checked.\n`
+  );
+}
+
 /** The prose that describes the gate itself, in the two languages it is written in. */
-function gateSurfacesFixture(ruleFamilyWord = "ten", chineseWord = "十") {
+function gateSurfacesFixture(ruleFamilyWord = "eleven", chineseWord = "十一") {
   return {
     rootReadme: `# Fixture Repository\n\nThe gate holds ${ruleFamilyWord} rule families.\n`,
-    toolsReadme: `${ruleFamilyWord[0].toUpperCase()}${ruleFamilyWord.slice(1)} rule families:\n`,
+    toolsReadme: gateReadmeFixture(ruleFamilyWord),
     gateZeroView: `# Gate 0\n\n${chineseWord}条规则：基准形状、逐来源 provenance。\n`,
   };
 }
@@ -206,6 +259,7 @@ function createFixture({
   readme = readmeFixture(),
   surfaces = gateSurfacesFixture(),
   testSuite = testSuiteFixture(),
+  capabilityMatrix = capabilityMatrixFixture,
   mutate,
 } = {}) {
   const base = mkdtempSync(join(tmpdir(), "sdkwork-e2b-field-parity-"));
@@ -213,6 +267,7 @@ function createFixture({
   mkdirSync(join(repo, "specs"), { recursive: true });
   mkdirSync(join(repo, "docs", "architecture", "tech"), { recursive: true });
   mkdirSync(join(repo, "docs", "architecture", "views"), { recursive: true });
+  mkdirSync(join(repo, "docs", "product", "prd"), { recursive: true });
   mkdirSync(join(repo, "tools"), { recursive: true });
   const paths = {
     baseline: join(repo, "specs", "sandbox-e2b-capability-baseline.json"),
@@ -221,6 +276,7 @@ function createFixture({
     rootReadme: join(repo, "README.md"),
     toolsReadme: join(repo, "tools", "README.md"),
     gateZeroView: join(repo, "docs", "architecture", "views", "gate-zero-current-state.md"),
+    capabilityMatrix: join(repo, "docs", "product", "prd", "PRD-capabilities.md"),
     tests: join(repo, "tests", "contract"),
   };
   writeFileSync(paths.baseline, `${JSON.stringify(baseline, null, 2)}\n`);
@@ -229,6 +285,7 @@ function createFixture({
   writeFileSync(paths.rootReadme, surfaces.rootReadme);
   writeFileSync(paths.toolsReadme, surfaces.toolsReadme);
   writeFileSync(paths.gateZeroView, surfaces.gateZeroView);
+  writeFileSync(paths.capabilityMatrix, capabilityMatrix);
   writeTestSuite(paths.tests, testSuite);
   if (mutate) mutate({ repo, paths });
   return { base, repo, paths };
@@ -276,11 +333,63 @@ test("the repository's own E2B baseline is fully evidenced and agrees with its a
     ceiling: 0,
     documentedOperations: REAL_DOCUMENTED_OPERATIONS,
     unjudgedOperations: REAL_UNJUDGED_OPERATIONS.length,
+    matrixRows: REAL_MATRIX_ROWS,
+    matrixMappedRows: REAL_MATRIX_MAPPED_ROWS,
+    matrixUnmappedRows: REAL_MATRIX_UNMAPPED_ROWS,
+    matrixRowsWithoutBaselineRow: REAL_MATRIX_ROWS_WITHOUT_BASELINE_ROW,
     contractTests: REAL_CONTRACT_TESTS,
     rustTests: REAL_RUST_WORKSPACE.passed,
     ruleFamilies: REAL_RULE_FAMILIES,
     capturedAt: REAL_CAPTURED_AT,
   });
+});
+
+test("the capability matrix join is bidirectional at the recorded readings", () => {
+  const baseline = realBaseline();
+  const alignment = baseline.capabilityMatrixAlignment;
+  const matrixText = readFileSync(join(repoRoot, "docs", "product", "prd", "PRD-capabilities.md"), "utf8");
+  const matrix = parseCapabilityMatrix(matrixText);
+
+  assert.equal(matrix.rows.length, REAL_MATRIX_ROWS);
+  assert.deepEqual(
+    matrix.rows.map((row) => row.number),
+    Array.from({ length: REAL_MATRIX_ROWS }, (_, index) => index + 1),
+    "product rows must be numbered 1..34 contiguously",
+  );
+  assert.equal(alignment.document, "docs/product/prd/PRD-capabilities.md");
+  assert.equal(alignment.declaredRowCount, REAL_MATRIX_ROWS);
+
+  const mapped = new Set();
+  let mappedRowCount = 0;
+  for (const row of baseline.rows) {
+    const targets = row.capabilityMatrixRows ?? [];
+    if (targets.length > 0) mappedRowCount += 1;
+    for (const number of targets) {
+      assert.ok(number >= 1 && number <= REAL_MATRIX_ROWS, `row ${row.row} maps outside the matrix: ${number}`);
+      mapped.add(number);
+    }
+  }
+  const registeredUnmapped = new Set(Object.keys(alignment.rowsWithoutMatrixRow).map(Number));
+  const registeredUncovered = new Set(Object.keys(alignment.matrixRowsWithoutBaselineRow).map(Number));
+  assert.equal(mappedRowCount, REAL_MATRIX_MAPPED_ROWS);
+  assert.equal(registeredUnmapped.size, REAL_MATRIX_UNMAPPED_ROWS);
+  assert.equal(registeredUncovered.size, REAL_MATRIX_ROWS_WITHOUT_BASELINE_ROW);
+  for (const row of baseline.rows) {
+    assert.ok(
+      ((row.capabilityMatrixRows ?? []).length > 0) !== registeredUnmapped.has(row.row),
+      `row ${row.row} must map or register, never both and never neither`,
+    );
+  }
+  for (const number of registeredUncovered) {
+    assert.ok(!mapped.has(number), `product row ${number} is registered uncovered but a baseline row maps to it`);
+  }
+  const accounted = new Set([...mapped, ...registeredUncovered]);
+  assert.equal(accounted.size, REAL_MATRIX_ROWS, "every product row must be accounted for exactly once");
+  const accountedRows = new Set([
+    ...baseline.rows.filter((row) => (row.capabilityMatrixRows ?? []).length > 0).map((row) => row.row),
+    ...registeredUnmapped,
+  ]);
+  assert.equal(accountedRows.size, REAL_ROWS, "every baseline row must be accounted for exactly once");
 });
 
 test("the gate's report names the coverage it verified", () => {
@@ -291,8 +400,9 @@ test("the gate's report names the coverage it verified", () => {
   assert.match(report, /101 captured source\(s\)/);
   assert.match(report, /0 row\(s\) rest on the documentation index \(ceiling 0\)/);
   assert.match(report, /71 operation\(s\), 70 judged by a row, 1 recorded unjudged/);
-  assert.match(report, /592 contract test\(s\) recomputed from tests\/contract, 67 Rust test\(s\) recorded/);
-  assert.match(report, /10 rule families declared consistently in 4 surface\(s\)/);
+  assert.match(report, /34 product row\(s\), 57 baseline row\(s\) mapped, 21 registered unmapped, 9 product row\(s\) registered without a baseline row/);
+  assert.match(report, /619 contract test\(s\) recomputed from tests\/contract, 78 Rust test\(s\) recorded/);
+  assert.match(report, /11 rule families declared consistently in 4 surface\(s\)/);
 });
 
 test("every E2B OpenAPI operation is accounted for, judged or recorded unjudged", () => {
@@ -517,6 +627,21 @@ test("the audit document's declared test readings match the suite and the record
   assert.ok(rust, "the coverage section must quote the Rust reading");
   assert.equal(Number(rust[1]), REAL_RUST_WORKSPACE.passed);
   assert.equal(Number(rust[2]), REAL_RUST_WORKSPACE.ignored);
+
+  // The tool README restates both readings in the section that describes this gate, and that
+  // restatement was the one surface that escaped the rule by describing it: it sat at 592 while the
+  // suite held 612. The scope must be the section, not the file, so a neighbouring gate's section
+  // cannot supply the number.
+  const toolsReadme = readFileSync(join(repoRoot, "tools", "README.md"), "utf8");
+  const section = readGateReadmeSection(repoRoot, GATE_FILE_NAME);
+  assert.ok(section, `tools/README.md must carry a section naming ${GATE_FILE_NAME}`);
+  assert.ok(section.length < toolsReadme.length, "the scope must be the gate's section, not the whole file");
+  const restatedSuite = /(\d+) contract tests? recomputed/.exec(section);
+  const restatedRust = /(\d+) Rust tests? measured/.exec(section);
+  assert.ok(restatedSuite, "the tool README section must restate the contract-suite size");
+  assert.equal(Number(restatedSuite[1]), REAL_CONTRACT_TESTS);
+  assert.ok(restatedRust, "the tool README section must restate the Rust reading");
+  assert.equal(Number(restatedRust[1]), REAL_RUST_WORKSPACE.passed);
 });
 
 test("every surface describing this gate declares the rule families it implements", () => {
@@ -615,9 +740,13 @@ test("a consistent fixture passes", () => {
     ceiling: 0,
     documentedOperations: 3,
     unjudgedOperations: 1,
+    matrixRows: 4,
+    matrixMappedRows: 4,
+    matrixUnmappedRows: 0,
+    matrixRowsWithoutBaselineRow: 0,
     contractTests: 5,
     rustTests: 2,
-    ruleFamilies: 10,
+    ruleFamilies: 11,
     capturedAt: "2026-09-22T09:36:31Z",
   });
 });
@@ -858,7 +987,93 @@ test("every rule family reddens on its own mutation while the unmutated control 
         return next;
       },
     },
-    // 8. registration
+    // 8. capability-matrix-join
+    {
+      rule: "capability-matrix-join",
+      baseline: () => {
+        const next = baselineFixture();
+        next.rows[0].capabilityMatrixRows = [9];
+        return next;
+      },
+    },
+    {
+      rule: "capability-matrix-join",
+      baseline: () => {
+        const next = baselineFixture();
+        next.rows[0].capabilityMatrixRows = [];
+        return next;
+      },
+    },
+    {
+      rule: "capability-matrix-join",
+      baseline: () => {
+        const next = baselineFixture();
+        next.rows[0].capabilityMatrixRows = [];
+        next.capabilityMatrixAlignment.rowsWithoutMatrixRow = { 1: "unmapped on purpose but registered." };
+        // The registered path is only honest when the covered product row is also registered.
+        return next;
+      },
+    },
+    {
+      rule: "capability-matrix-join",
+      baseline: () => {
+        const next = baselineFixture();
+        next.capabilityMatrixAlignment.rowsWithoutMatrixRow = { 9: "naming a row the baseline does not define." };
+        return next;
+      },
+    },
+    {
+      rule: "capability-matrix-join",
+      baseline: () => {
+        const next = baselineFixture();
+        next.capabilityMatrixAlignment.rowsWithoutMatrixRow = { 2: "short" };
+        next.rows[1].capabilityMatrixRows = [];
+        next.capabilityMatrixAlignment.matrixRowsWithoutBaselineRow = { 2: "registered uncovered with a usable reason." };
+        return next;
+      },
+    },
+    {
+      rule: "capability-matrix-join",
+      baseline: () => {
+        const next = baselineFixture();
+        // Mapped and registered at the same time: the two accounting states are exclusive.
+        next.capabilityMatrixAlignment.rowsWithoutMatrixRow = { 1: "registered although row 1 maps to product row 1." };
+        next.capabilityMatrixAlignment.matrixRowsWithoutBaselineRow = { 1: "and the product row it maps to is registered uncovered too." };
+        next.rows[0].capabilityMatrixRows = [];
+        next.rows[1].capabilityMatrixRows = [1, 2];
+        return next;
+      },
+    },
+    {
+      rule: "capability-matrix-join",
+      baseline: () => {
+        const next = baselineFixture();
+        next.capabilityMatrixAlignment.declaredRowCount = 5;
+        return next;
+      },
+    },
+    {
+      rule: "capability-matrix-join",
+      mutate: ({ paths }) => {
+        // A product row disappears from the matrix: the mapping pointing at it now dangles and the
+        // declared row count no longer matches the parsed section.
+        writeFileSync(
+          paths.capabilityMatrix,
+          capabilityMatrixFixture.replace("| 4 | Delta | **无** |\n", ""),
+        );
+      },
+    },
+    { rule: "capability-matrix-join", document: () => documentFixture().replace("产品级 4 行概览", "产品级 5 行概览") },
+    { rule: "capability-matrix-join", document: () => documentFixture().replace("字段级展开**（4 行）", "字段级展开**（5 行）") },
+    {
+      rule: "capability-matrix-join",
+      baseline: () => {
+        const next = baselineFixture();
+        delete next.capabilityMatrixAlignment;
+        return next;
+      },
+    },
+    // 9. registration
     { rule: "registration", readme: () => "# Repository Contracts\n\nnothing links the baseline here.\n" },
     { rule: "registration", document: () => documentFixture().replace("`specs/sandbox-e2b-capability-baseline.json`", "`specs/other.json`") },
     // 9. test-inventory
@@ -913,6 +1128,26 @@ test("every rule family reddens on its own mutation while the unmutated control 
     { rule: "test-inventory", document: () => documentFixture().replace("`5 pass / 0 fail`", "no reading at all") },
     { rule: "test-inventory", document: () => documentFixture().replace("`2 passed / 1 ignored`", "`3 passed / 1 ignored`") },
     { rule: "test-inventory", document: () => documentFixture().replace("`2 passed / 1 ignored`", "`2 passed / 2 ignored`") },
+    // The tool README's own restatement of the two readings is a claim too, and it is scoped to the
+    // section naming this gate so a neighbouring gate's section cannot supply the number.
+    {
+      rule: "test-inventory",
+      surfaces: { ...gateSurfacesFixture(), toolsReadme: gateReadmeFixture("ten", { contracts: 9 }) },
+    },
+    {
+      rule: "test-inventory",
+      surfaces: { ...gateSurfacesFixture(), toolsReadme: gateReadmeFixture("ten", { rust: 3 }) },
+    },
+    {
+      rule: "test-inventory",
+      surfaces: { ...gateSurfacesFixture(), toolsReadme: gateReadmeFixture("ten", { readings: false }) },
+    },
+    // A tool README that carries no section naming the gate restates nothing, which is a finding
+    // rather than a silence.
+    {
+      rule: "test-inventory",
+      surfaces: { ...gateSurfacesFixture(), toolsReadme: "# Fixture Tools\n\nTen rule families:\n" },
+    },
     // 10. self-description
     { rule: "self-description", surfaces: gateSurfacesFixture("nine") },
     { rule: "self-description", surfaces: gateSurfacesFixture("ten", "八") },
@@ -960,8 +1195,18 @@ test("targeted rule messages are stable", () => {
   staleCount.testInventory.tests = 9;
   expectRule({ baseline: staleCount }, "test-inventory", "the suite declares 5 test(s)");
 
-  expectRule({ surfaces: gateSurfacesFixture("nine") }, "self-description", "this gate implements 10");
+  expectRule({ surfaces: gateSurfacesFixture("nine") }, "self-description", "this gate implements 11");
   expectRule({ document: (() => documentFixture().replace("`5 pass / 0 fail`", "no reading"))() }, "test-inventory", "declares no");
+  expectRule(
+    { surfaces: { ...gateSurfacesFixture(), toolsReadme: gateReadmeFixture("ten", { contracts: 9 }) } },
+    "test-inventory",
+    "the suite declares 5",
+  );
+  expectRule(
+    { surfaces: { ...gateSurfacesFixture(), toolsReadme: gateReadmeFixture("ten", { readings: false }) } },
+    "test-inventory",
+    "restates no contract-suite size",
+  );
 });
 
 // ---------------------------------------------------------------------------

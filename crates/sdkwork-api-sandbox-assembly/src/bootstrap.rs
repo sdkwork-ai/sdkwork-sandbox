@@ -12,6 +12,13 @@ pub struct ApiAssemblyContext {
     pub readiness_check: Arc<dyn ReadinessCheck>,
 }
 
+/// Assembles the sandbox API contribution from its (currently empty) route
+/// manifest and caller-supplied readiness check.
+///
+/// # Errors
+///
+/// Returns the manifest error string when the web framework rejects the
+/// assembly contribution (manifest identity or route manifest validation).
 pub async fn assemble_api_router(context: ApiAssemblyContext) -> Result<ApiAssembly, String> {
     ApiAssemblyContribution::from_manifest(
         "sdkwork-sandbox",
@@ -25,6 +32,10 @@ pub async fn assemble_api_router(context: ApiAssemblyContext) -> Result<ApiAssem
 
 /// Installs this application as a Web Module with caller-supplied assembly
 /// context (API_ASSEMBLY_SPEC §4.1.1).
+///
+/// # Errors
+///
+/// Returns the error string propagated from [].
 pub async fn web_module_with_context(context: ApiAssemblyContext) -> Result<WebModule, String> {
     Ok(WebModule::from_contribution(
         assemble_api_router(context).await?,
@@ -34,6 +45,10 @@ pub async fn web_module_with_context(context: ApiAssemblyContext) -> Result<WebM
 /// Canonical Web Module definition for this application
 /// (API_ASSEMBLY_SPEC §4.1.1): the complete HTTP surface — every route,
 /// manifest, and OpenAPI document of this owner — as one installable module.
+///
+/// # Errors
+///
+/// Returns the error string propagated from [].
 pub async fn web_module() -> Result<WebModule, String> {
     web_module_with_context(ApiAssemblyContext {
         domain_context_injectors: Vec::new(),

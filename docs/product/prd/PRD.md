@@ -285,7 +285,7 @@ SDKWork 共享类型 `TenantId`、`OperationId`、`RuntimeCapability` 与 `Isola
 
 ### 尚未拆分的能力
 
-下列能力已在本 PRD 中定义产品要求，但**尚无任何 `REQ-*` 承载**，因此处于未授权状态。它们必须在实施前各自拆分为独立、可评审的需求记录，且不得在实现中默认开启。
+下列能力的**需求拆分尚未闭合**，因此处于未授权状态。缺口列逐行写明仍缺什么：凡该列仍标注**尚无任何 `REQ-*` 承载**的能力，必须在实施前各自拆分为独立、可评审的需求记录，且不得在实现中默认开启。
 
 本表按**产品需求分组**列举，与 [PRD-capabilities.md](PRD-capabilities.md) 第 11 节的**逐能力**矩阵不是同一粒度，也不是彼此的完整换算：第 11 节还标出本表未列出的能力（Restart、Auto Pause、Auto Resume、Template Cache、Object Storage、Local Cache、Edge Router），本表则包含第 11 节没有对应行的产品要求（运行模式分层、网络 `shared` 模式、SDK 家族、Node Drain 与迁移、Benchmark 套件与容量基线）。两份清单互补，判断某个能力是否已有承载必须以第 11 节逐行状态为准，而不是以本表是否列出为准；`node tools/check-sandbox-requirement-traceability.mjs` 每次运行都会打印第 11 节矩阵的逐行分类普查，可作为该判断的机器读数。
 
@@ -303,7 +303,7 @@ SDKWork 共享类型 `TenantId`、`OperationId`、`RuntimeCapability` 与 `Isola
 | Skills | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 11 节 | 无 `REQ-*`；目录命名与供应链 Owner 未定 |
 | SDK 家族 | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 12 节 | 无 `REQ-*`；无 `apis/` 权威契约 |
 | Node Drain 与迁移 | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 9 节 | `REQ-2026-0017` 仅覆盖 Drain 的信任侧，迁移无 `REQ-*` |
-| Benchmark 套件与容量基线 | [PRD-roadmap.md](PRD-roadmap.md) 验收标准 | 无 `REQ-*`；无参考硬件定义 |
+| Benchmark 套件与容量基线 | [PRD-roadmap.md](PRD-roadmap.md) 验收标准 | 已有承载：`REQ-2026-0019` 的 Goals 与 Performance 行要求记录固定硬件、工作负载与统计方法并出具 p50/p95/p99，`tools/bench-sandbox-lifecycle.mjs` 与 `docs/architecture/tech/TECH-performance-baseline.md`（两平台实测）也已在树中，但该基线自述发布门禁资格不合格。仍缺：可写入发布门禁的参考硬件与容量基线定义 |
 
 ## 9. 待决问题 (Open Questions)
 

@@ -31,6 +31,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const specsDirectory = resolve(repositoryRoot, "specs");
 const reviewsDirectory = resolve(repositoryRoot, "docs/engineering/reviews");
 const signoffIndexPath = resolve(repositoryRoot, "docs/engineering/human-review-signoff-backlog.md");
+const exitPackagePath = resolve(repositoryRoot, "docs/engineering/gate-zero-exit-readiness-package.md");
 const requirementsDirectory = resolve(repositoryRoot, "docs/product/requirements");
 const decisionsDirectory = resolve(repositoryRoot, "docs/architecture/decisions");
 
@@ -117,9 +118,14 @@ export function parseReviewPacket(markdown, { file = null } = {}) {
     }
   }
 
+  const riskMatch = String(markdown).match(/^Risk:\s*([A-Za-z-]+)/mu);
+
   return {
     file,
     status: statusLine.replace(/^Status:\s*/u, "").trim(),
+    // A packet may legitimately leave the Risk header out; `null` records "not declared" instead of
+    // guessing a level, because the exit-package risk column is defined as this header's projection.
+    risk: riskMatch ? riskMatch[1].toLowerCase() : null,
     requirement: parseHeaderField(requirementLine, REQUIREMENT_ID),
     decision: parseHeaderField(decisionLine, DECISION_ID),
     hasReviewerTable: headerIndex >= 0,
@@ -228,10 +234,45 @@ export function readSignoffIndex({ file = signoffIndexPath } = {}) {
   return readFileSync(file, "utf8");
 }
 
+/**
+ * The exit-readiness package is a hand-maintained view of the same pending set. It drifted for two
+ * months without any check: it declared 17 pending packets while 22 were live, five of them were in
+ * no table at all, and four rows reported a lower risk than the packet's own `Risk:` header. A
+ * reviewer working from that page alone would miss five packets and under-rank four.
+ *
+ * So the page is parsed rather than trusted: its packet list, per-row status, per-row risk and its
+ * prose count are all compared against the packets. The risk column is defined as the projection of
+ * each packet's own header, which is why `RISK_NOT_DECLARED` is a value the page may write.
+ */
+export const RISK_NOT_DECLARED = "未声明";
+
+export function parseExitPackage(markdown) {
+  const rows = [];
+  for (const line of String(markdown).split("\n")) {
+    const cells = line
+      .split("|")
+      .slice(1, -1)
+      .map((cell) => cell.trim());
+    // The packet overview table has 6 columns (index, review, decision, requirement, risk, status).
+    // The separate completed-reviews table has 2 and is deliberately not part of this projection.
+    if (cells.length < 6 || !REVIEW_ID.test(cells[1])) {
+      continue;
+    }
+    rows.push({ reviewId: cells[1], risk: cells[4], status: cells[5] });
+  }
+  const declared = String(markdown).match(/当前全部\s*\*{0,2}(\d+)\*{0,2}\s*个相关\s*Review Packet/u);
+  return { rows, declaredPending: declared ? Number(declared[1]) : null };
+}
+
+export function readExitPackage({ file = exitPackagePath } = {}) {
+  return readFileSync(file, "utf8");
+}
+
 export function assessHumanReviewSignoff({
   packets,
   demands,
   indexDocument = null,
+  exitPackageDocument = null,
   reviewsDirectoryPath = reviewsDirectory,
 } = {}) {
   if (!Array.isArray(packets) || packets.length === 0) {
@@ -375,6 +416,46 @@ export function assessHumanReviewSignoff({
     }
   }
 
+  if (exitPackageDocument !== null) {
+    const exitPackage = parseExitPackage(exitPackageDocument);
+    const pendingIds = packets
+      .filter((packet) => packet.status === "pending-human-review")
+      .map((packet) => packet.file.replace(/\.md$/u, ""))
+      .sort();
+    const listed = new Map(exitPackage.rows.map((row) => [row.reviewId, row]));
+
+    for (const reviewId of pendingIds) {
+      if (!listed.has(reviewId)) {
+        failures.push(`exit-readiness package omits ${reviewId}, which is pending human review`);
+      }
+    }
+    for (const row of exitPackage.rows) {
+      const packet = byId.get(row.reviewId);
+      if (!packet) {
+        failures.push(
+          `exit-readiness package lists ${row.reviewId}, which has no review packet file`,
+        );
+        continue;
+      }
+      if (row.status !== packet.status) {
+        failures.push(
+          `exit-readiness package reports ${row.reviewId} as '${row.status}' while its packet status is '${packet.status}'`,
+        );
+      }
+      const expectedRisk = packet.risk ?? RISK_NOT_DECLARED;
+      if (row.risk !== expectedRisk) {
+        failures.push(
+          `exit-readiness package reports ${row.reviewId} risk '${row.risk}' while its packet declares '${expectedRisk}'`,
+        );
+      }
+    }
+    if (exitPackage.declaredPending !== null && exitPackage.declaredPending !== pendingIds.length) {
+      failures.push(
+        `exit-readiness package declares ${exitPackage.declaredPending} pending review packet(s) while ${pendingIds.length} are pending`,
+      );
+    }
+  }
+
   const backlog = packets
     .filter((packet) => packet.status === "pending-human-review")
     .map((packet) => {
@@ -445,6 +526,7 @@ if (isMainModule()) {
       packets: readReviewPackets(),
       demands: readContractHumanReview(),
       indexDocument: existsSync(signoffIndexPath) ? readSignoffIndex() : null,
+      exitPackageDocument: existsSync(exitPackagePath) ? readExitPackage() : null,
     });
     process.stdout.write(
       options.json

@@ -12,7 +12,7 @@
  * rests on a page title. `specs/sandbox-e2b-capability-baseline.json` replaces the recollection
  * with a captured inventory carrying per-source provenance, and this gate keeps the two in step.
  *
- * Ten deterministic rule families:
+ * Eleven deterministic rule families:
  *
  *   1. BASELINE SHAPE. The artifact declares the expected `kind`, a supported `schemaVersion`,
  *      and non-empty `sources`, `categories`, and `rows` arrays.
@@ -46,16 +46,31 @@
  *      `GET /health` genuinely has no home: a control-plane liveness probe is not a sandbox
  *      capability, so it stays recorded with that reason. Accounting for the surface is what
  *      turns an absent judgement into a fact on file and a mis-attributed one into a citation.
- *   8. REGISTRATION. The baseline must be linked from the audit document and from `specs/README.md`,
+ *   8. CAPABILITY MATRIX JOIN. The audit document's 78 rows claim to be the field-level expansion
+ *      of the 34-row product matrix in `docs/product/prd/PRD-capabilities.md` section 11, and
+ *      until this family existed that claim lived only in prose: nothing said which E2B row
+ *      expands which product capability, so the two lists could drift apart silently. The
+ *      baseline now carries the mapping as data: every row either names its `capabilityMatrixRows`
+ *      or is registered in `capabilityMatrixAlignment.rowsWithoutMatrixRow` with the reason the
+ *      product matrix has no row for it, and every product matrix row is either covered by at
+ *      least one baseline row or registered in `matrixRowsWithoutBaselineRow`. Both directions are
+ *      exclusive -- mapped-and-registered is as red as neither -- and the document's own headline
+ *      ("产品级 34 行概览 … 字段级展开（78 行）") is parsed and compared to both truths.
+ *   9. REGISTRATION. The baseline must be linked from the audit document and from `specs/README.md`,
  *      so a reader arrives at the evidence instead of a claim.
- *   9. TEST INVENTORY. The counts the audit document states about the test suite must be true. Two
+ *  10. TEST INVENTORY. The counts the audit document states about the test suite must be true. Two
  *      are checked: the contract suite, recomputed from `tests/contract/*.test.mjs` itself, and the
  *      Rust workspace reading, which cannot be derived statically and so is compared against the
  *      measurement the baseline records alongside the command that produced it. The document said
  *      `406 pass / 0 fail` while the suite held 481, and `63 passed / 1 ignored` while
  *      `cargo test --workspace` reported 67: a coverage section that overstates or understates the
- *      suite is a falsehood about the only part of this audit that executes.
- *  10. SELF-DESCRIPTION. Every surface that describes this gate must declare the same number of
+ *      suite is a falsehood about the only part of this audit that executes. This gate's own section
+ *      of `tools/README.md` restates both readings in its "Current reading:" paragraph, and a
+ *      restatement is a claim like any other: that sentence said 592 while the suite held 612,
+ *      because it described these checks without being subject to them. The scope is the `## `
+ *      section naming this gate, so a neighbouring gate's section cannot supply the number, and a
+ *      section that stops restating it is a finding rather than a silence.
+ *  11. SELF-DESCRIPTION. Every surface that describes this gate must declare the same number of
  *      rule families that the gate implements. The root README said "seven" for as long as
  *      operation coverage had existed, because the paragraph was never revisited when the family
  *      was added. A gate that understates its own coverage is making exactly the claim this gate
@@ -74,6 +89,9 @@ import { fileURLToPath } from "node:url";
 export const BASELINE_PATH = "specs/sandbox-e2b-capability-baseline.json";
 export const PARITY_DOCUMENT = "docs/architecture/tech/TECH-e2b-capability-parity.md";
 export const SPECS_README = "specs/README.md";
+export const CAPABILITY_MATRIX_PATH = "docs/product/prd/PRD-capabilities.md";
+export const CAPABILITY_MATRIX_HEADING = "## 11. ";
+export const CAPABILITY_MATRIX_END_HEADING = "## 12. ";
 export const EXPECTED_KIND = "sdkwork.sandbox.e2b-capability-baseline";
 export const SUPPORTED_SCHEMA_VERSIONS = Object.freeze([1]);
 export const SOURCE_KINDS = Object.freeze(["openapi", "index", "doc-page"]);
@@ -94,6 +112,7 @@ export const RULE_FAMILIES = Object.freeze([
   "document-join",
   "ratchet",
   "operation-coverage",
+  "capability-matrix-join",
   "registration",
   "test-inventory",
   "self-description",
@@ -225,6 +244,28 @@ function safeReadText(absolutePath) {
   }
 }
 
+/**
+ * The `## ` section of `tools/README.md` whose body names a gate file, or null when no section
+ * does. The file describes one gate per section and each section ends with a "Current reading:"
+ * paragraph that *restates* the readings that gate checks. Reading a restatement anywhere in the
+ * file would let another gate's section supply this gate's number, so the section that owns the
+ * gate file is the only scope in which its restatement counts.
+ */
+export function readGateReadmeSection(repoRoot, gateFileName) {
+  const text = safeReadText(join(repoRoot, "tools", "README.md"));
+  if (text === null) return null;
+  const lines = text.split(/\r?\n/u);
+  const starts = [];
+  for (const [index, line] of lines.entries()) {
+    if (/^##\s+/u.test(line)) starts.push(index);
+  }
+  for (const [position, start] of starts.entries()) {
+    const body = lines.slice(start, starts[position + 1] ?? lines.length).join("\n");
+    if (body.includes(gateFileName)) return body;
+  }
+  return null;
+}
+
 function parseJson(repoRoot, relativePath) {
   return JSON.parse(readText(repoRoot, relativePath));
 }
@@ -285,6 +326,31 @@ export function parseDeclaredCensus(documentText) {
     }
   }
   return { perCategory: found, total };
+}
+
+/**
+ * Capability rows of the product matrix (`PRD-capabilities.md` section 11): the 34-row list the
+ * E2B baseline claims to be the field-level expansion of. Same bounded-section shape as
+ * `parseDocumentRows`, so a stray numbered table elsewhere in the PRD cannot join itself.
+ */
+export function parseCapabilityMatrix(documentText) {
+  const lines = documentText.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.startsWith(CAPABILITY_MATRIX_HEADING));
+  if (start === -1) return { rows: [], missingHeading: true };
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (lines[index].startsWith(CAPABILITY_MATRIX_END_HEADING)) {
+      end = index;
+      break;
+    }
+  }
+  const rows = [];
+  for (let index = start + 1; index < end; index += 1) {
+    const match = lines[index].match(/^\|\s*(\d+)\s*\|([^|]*)\|/);
+    if (!match) continue;
+    rows.push({ number: Number(match[1]), capability: match[2].trim(), line: index + 1 });
+  }
+  return { rows, missingHeading: false };
 }
 
 export function assessE2bFieldParity({ repoRoot = "." } = {}) {
@@ -546,7 +612,130 @@ export function assessE2bFieldParity({ repoRoot = "." } = {}) {
     }
   }
 
-  // ---- 8. REGISTRATION
+  // ---- 8. CAPABILITY MATRIX JOIN
+  const alignment = baseline.capabilityMatrixAlignment;
+  if (!alignment || typeof alignment !== "object" || Array.isArray(alignment)) {
+    add("capability-matrix-join", "baseline.capabilityMatrixAlignment must be an object");
+  } else {
+    let matrixText = null;
+    try {
+      matrixText = readText(root, CAPABILITY_MATRIX_PATH);
+    } catch {
+      add("capability-matrix-join", `cannot read ${CAPABILITY_MATRIX_PATH}`);
+    }
+    if (matrixText !== null) {
+      const matrix = parseCapabilityMatrix(matrixText);
+      if (matrix.missingHeading) {
+        add("capability-matrix-join", `${CAPABILITY_MATRIX_PATH} has no \`${CAPABILITY_MATRIX_HEADING}\` section`);
+      } else if (matrix.rows.length === 0) {
+        add("capability-matrix-join", `${CAPABILITY_MATRIX_PATH} declares no capability row`);
+      } else {
+        const matrixCount = matrix.rows.length;
+        const expected = matrix.rows.map((_row, index) => index + 1);
+        if (matrix.rows.map((row) => row.number).join(",") !== expected.join(",")) {
+          add("capability-matrix-join", `${CAPABILITY_MATRIX_PATH} capability rows must be numbered contiguously from 1`);
+        }
+        if (alignment.declaredRowCount !== matrixCount) {
+          add(
+            "capability-matrix-join",
+            `capabilityMatrixAlignment.declaredRowCount declares ${alignment.declaredRowCount}, ${CAPABILITY_MATRIX_PATH} has ${matrixCount}`,
+          );
+        }
+        const unmappedRegistrations = alignment.rowsWithoutMatrixRow ?? {};
+        const uncoveredRegistrations = alignment.matrixRowsWithoutBaselineRow ?? {};
+        const usableReason = (reason) => typeof reason === "string" && reason.trim().length >= 10;
+        const coveredMatrixRows = new Set();
+        for (const row of baseline.rows) {
+          const label = `row ${row.row ?? "<no number>"}`;
+          const mapped = row.capabilityMatrixRows ?? [];
+          const registered = Object.hasOwn(unmappedRegistrations, String(row.row));
+          if (mapped.length === 0 && !registered) {
+            add(
+              "capability-matrix-join",
+              `${label} maps to no ${CAPABILITY_MATRIX_PATH} capability row and is not registered in rowsWithoutMatrixRow`,
+            );
+          }
+          if (mapped.length > 0 && registered) {
+            add(
+              "capability-matrix-join",
+              `${label} maps to capability row(s) [${mapped.join(", ")}] and is also registered in rowsWithoutMatrixRow`,
+            );
+          }
+          for (const number of mapped) {
+            if (!Number.isInteger(number) || number < 1 || number > matrixCount) {
+              add(
+                "capability-matrix-join",
+                `${label} maps to capability row ${number}, outside the matrix's 1..${matrixCount}`,
+              );
+              continue;
+            }
+            coveredMatrixRows.add(number);
+          }
+          if (new Set(mapped).size !== mapped.length) {
+            add("capability-matrix-join", `${label} maps to a duplicate capability row`);
+          }
+        }
+        for (const [key, reason] of Object.entries(unmappedRegistrations)) {
+          if (!baselineRows.has(Number(key))) {
+            add("capability-matrix-join", `rowsWithoutMatrixRow names row ${key}, which the baseline does not define`);
+          }
+          if (!usableReason(reason)) {
+            add("capability-matrix-join", `row ${key} is registered unmapped without a usable reason`);
+          }
+        }
+        for (let number = 1; number <= matrixCount; number += 1) {
+          const registered = Object.hasOwn(uncoveredRegistrations, String(number));
+          if (!coveredMatrixRows.has(number) && !registered) {
+            add(
+              "capability-matrix-join",
+              `capability row ${number} is judged by no baseline row and is not registered in matrixRowsWithoutBaselineRow`,
+            );
+          }
+          if (coveredMatrixRows.has(number) && registered) {
+            add(
+              "capability-matrix-join",
+              `capability row ${number} is judged by a baseline row and also registered in matrixRowsWithoutBaselineRow`,
+            );
+          }
+        }
+        for (const [key, reason] of Object.entries(uncoveredRegistrations)) {
+          if (!Number.isInteger(Number(key)) || Number(key) < 1 || Number(key) > matrixCount) {
+            add("capability-matrix-join", `matrixRowsWithoutBaselineRow names row ${key}, outside the matrix's 1..${matrixCount}`);
+          }
+          if (!usableReason(reason)) {
+            add("capability-matrix-join", `capability row ${key} is registered uncovered without a usable reason`);
+          }
+        }
+        // The document's headline states both numbers; markdown emphasis is stripped first so a
+        // bolded "字段级展开" cannot hide the count from its own comparison. The headline lives in
+        // the audit document (section 0), not in the PRD.
+        const plain = documentText.replace(/\*\*/gu, "");
+        const declaredProduct = /产品级\s*(\d+)\s*行概览/.exec(plain);
+        const declaredExpansion = /字段级展开（(\d+)\s*行）/.exec(plain);
+        if (!declaredProduct || !declaredExpansion) {
+          add(
+            "capability-matrix-join",
+            "the audit document states no `产品级 N 行概览 … 字段级展开（N 行）` headline to compare against",
+          );
+        } else {
+          if (Number(declaredProduct[1]) !== matrixCount) {
+            add(
+              "capability-matrix-join",
+              `the audit document headline declares ${declaredProduct[1]} product row(s), ${CAPABILITY_MATRIX_PATH} has ${matrixCount}`,
+            );
+          }
+          if (Number(declaredExpansion[1]) !== expectedCount) {
+            add(
+              "capability-matrix-join",
+              `the audit document headline declares a ${declaredExpansion[1]}-row field-level expansion, the baseline has ${expectedCount}`,
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // ---- 9. REGISTRATION
   for (const [relativePath, label] of [
     [PARITY_DOCUMENT, "the audit document"],
     [SPECS_README, "specs/README.md"],
@@ -563,7 +752,7 @@ export function assessE2bFieldParity({ repoRoot = "." } = {}) {
     }
   }
 
-  // ---- 9. TEST INVENTORY
+  // ---- 10. TEST INVENTORY
   const inventory = baseline.testInventory;
   if (!inventory || typeof inventory !== "object" || Array.isArray(inventory)) {
     add("test-inventory", "baseline.testInventory must be an object");
@@ -624,6 +813,39 @@ export function assessE2bFieldParity({ repoRoot = "." } = {}) {
       }
     }
 
+    // The gate's own section in `tools/README.md` restates these two readings in its "Current
+    // reading:" paragraph ("592 contract tests recomputed from ...", "67 Rust tests measured by
+    // ..."). A restatement is a claim like any other, and this one escaped every check above by
+    // describing them instead of being subject to them: it said 592 while the suite held 612. A
+    // section that restates nothing is a finding too, so deleting the sentence cannot silence it.
+    const toolsSection = readGateReadmeSection(root, GATE_FILE_NAME);
+    if (toolsSection === null) {
+      add("test-inventory", "tools/README.md carries no section naming this gate, so it restates no reading");
+    } else {
+      const restatedSuite = /(\d+)\s+contract tests?\s+recomputed/.exec(toolsSection);
+      if (!restatedSuite) {
+        add("test-inventory", "the tools/README.md section for this gate restates no contract-suite size");
+      } else if (Number(restatedSuite[1]) !== inventory.tests) {
+        add(
+          "test-inventory",
+          `tools/README.md restates ${restatedSuite[1]} contract test(s) recomputed from tests/contract, ` +
+            `the suite declares ${inventory.tests}`,
+        );
+      }
+      if (typeof inventory.rustWorkspace?.passed === "number") {
+        const restatedRust = /(\d+)\s+Rust tests?\s+measured/.exec(toolsSection);
+        if (!restatedRust) {
+          add("test-inventory", "the tools/README.md section for this gate restates no Rust test reading");
+        } else if (Number(restatedRust[1]) !== inventory.rustWorkspace.passed) {
+          add(
+            "test-inventory",
+            `tools/README.md restates ${restatedRust[1]} passing Rust test(s), ` +
+              `the baseline records ${inventory.rustWorkspace.passed}`,
+          );
+        }
+      }
+    }
+
     // The Rust reading cannot be derived from the tree -- it needs a build and a test run -- so the
     // baseline records the measurement next to the command that produced it, and the document must
     // agree with that recording. Same honesty model as the source hashes: a statement captured at a
@@ -659,7 +881,7 @@ export function assessE2bFieldParity({ repoRoot = "." } = {}) {
     }
   }
 
-  // ---- 10. SELF-DESCRIPTION
+  // ---- 11. SELF-DESCRIPTION
   // Every surface that describes this gate states how many rule families it implements. That count
   // is derived from RULE_FAMILIES, so a family added without a description -- or a description left
   // behind by a family that moved -- is a finding rather than an overstatement nobody reads twice.
@@ -702,6 +924,12 @@ export function assessE2bFieldParity({ repoRoot = "." } = {}) {
     ceiling: ratchet.maxIndexOnlyRows ?? null,
     documentedOperations: baseline.operationCoverage?.operations?.length ?? null,
     unjudgedOperations: Object.keys(baseline.operationCoverage?.unjudged ?? {}).length,
+    matrixRows: baseline.capabilityMatrixAlignment?.declaredRowCount ?? null,
+    matrixMappedRows: baseline.rows.filter((row) => (row.capabilityMatrixRows ?? []).length > 0).length,
+    matrixUnmappedRows: Object.keys(baseline.capabilityMatrixAlignment?.rowsWithoutMatrixRow ?? {}).length,
+    matrixRowsWithoutBaselineRow: Object.keys(
+      baseline.capabilityMatrixAlignment?.matrixRowsWithoutBaselineRow ?? {},
+    ).length,
     contractTests: baseline.testInventory?.tests ?? null,
     rustTests: baseline.testInventory?.rustWorkspace?.passed ?? null,
     ruleFamilies: RULE_FAMILIES.length,
@@ -719,6 +947,9 @@ export function formatE2bFieldParityReport(assessment) {
     );
     lines.push(
       `  E2B OpenAPI surface: ${s.documentedOperations} operation(s), ${s.documentedOperations - s.unjudgedOperations} judged by a row, ${s.unjudgedOperations} recorded unjudged`,
+    );
+    lines.push(
+      `  Capability matrix join: ${s.matrixRows} product row(s), ${s.matrixMappedRows} baseline row(s) mapped, ${s.matrixUnmappedRows} registered unmapped, ${s.matrixRowsWithoutBaselineRow} product row(s) registered without a baseline row`,
     );
     lines.push(
       `  Declared suite size: ${s.contractTests} contract test(s) recomputed from tests/contract, ${s.rustTests} Rust test(s) recorded from \`cargo test --workspace\`; ${s.ruleFamilies} rule families declared consistently in 4 surface(s)`,

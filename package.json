@@ -19,6 +19,7 @@
     "gate0:readiness:check": "node tools/check-sandbox-commercial-readiness.mjs",
     "gate0:evidence:check": "node tools/check-sandbox-evidence-traceability.mjs",
     "gate0:signoff:check": "node tools/check-sandbox-human-review-signoff.mjs",
+    "gate0:postgres:evidence": "node tools/testing/sandbox-postgres-evidence.mjs",
     "rust:fmt:check": "cargo fmt --check",
     "db:plan": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . plan",
     "db:init": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . init",

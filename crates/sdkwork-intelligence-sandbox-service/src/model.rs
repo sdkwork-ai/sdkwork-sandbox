@@ -63,14 +63,17 @@ impl SandboxSessionOperation {
         }
     }
 
+    #[must_use]
     pub fn sandbox_operation_id(&self) -> &OperationId {
         &self.sandbox_operation_id
     }
 
+    #[must_use]
     pub fn sandbox_operation_kind(&self) -> SandboxSessionOperationKind {
         self.sandbox_operation_kind
     }
 
+    #[must_use]
     pub fn sandbox_operation_outcome(&self) -> SandboxOperationOutcome {
         self.sandbox_operation_outcome
     }
@@ -112,14 +115,17 @@ impl SandboxRuntimeBinding {
         }
     }
 
+    #[must_use]
     pub fn sandbox_id(&self) -> &SandboxId {
         &self.sandbox_id
     }
 
+    #[must_use]
     pub fn sandbox_runtime_binding_id(&self) -> &SandboxRuntimeBindingId {
         &self.sandbox_runtime_binding_id
     }
 
+    #[must_use]
     pub fn sandbox_provider_id(&self) -> &SandboxProviderId {
         &self.sandbox_provider_id
     }
@@ -204,42 +210,52 @@ impl SandboxSession {
         }
     }
 
+    #[must_use]
     pub fn tenant_id(&self) -> &TenantId {
         &self.tenant_id
     }
 
+    #[must_use]
     pub fn sandbox_workspace_id(&self) -> &SandboxWorkspaceId {
         &self.sandbox_workspace_id
     }
 
+    #[must_use]
     pub fn sandbox_session_id(&self) -> &SandboxSessionId {
         &self.sandbox_session_id
     }
 
+    #[must_use]
     pub fn sandbox_session_state(&self) -> SandboxSessionState {
         self.sandbox_session_state
     }
 
+    #[must_use]
     pub fn sandbox_required_capabilities(&self) -> &BTreeSet<RuntimeCapability> {
         &self.sandbox_required_capabilities
     }
 
+    #[must_use]
     pub fn sandbox_minimum_assurance(&self) -> IsolationAssurance {
         self.sandbox_minimum_assurance
     }
 
+    #[must_use]
     pub fn sandbox_runtime_binding(&self) -> Option<&SandboxRuntimeBinding> {
         self.sandbox_runtime_binding.as_ref()
     }
 
+    #[must_use]
     pub fn sandbox_last_failure(&self) -> Option<SandboxSessionFailure> {
         self.sandbox_last_failure
     }
 
+    #[must_use]
     pub fn sandbox_operations(&self) -> &[SandboxSessionOperation] {
         &self.sandbox_operations
     }
 
+    #[must_use]
     pub fn sandbox_version(&self) -> u64 {
         self.sandbox_version
     }

@@ -575,6 +575,21 @@ entries:
     layer: evidence
     audience: [engineering, database, operations, security]
     status: candidate
+  - id: REVIEW-20260922-FUNCTIONAL-MODULE-WALK
+    path: docs/engineering/reviews/REVIEW-20260922-sandbox-functional-module-walk.md
+    layer: work
+    audience: [architecture, engineering, reliability, operations, review]
+    status: active
+  - id: REVIEW-20260922-CROSS-PLATFORM-RUN-AND-DEPLOY
+    path: docs/engineering/reviews/REVIEW-20260922-sandbox-cross-platform-run-and-deploy.md
+    layer: work
+    audience: [architecture, engineering, reliability, operations, review]
+    status: active
+  - id: REVIEW-20260923-IMPLEMENTATION-PROMPT-ALIGNMENT
+    path: docs/engineering/reviews/REVIEW-20260923-sandbox-implementation-prompt-alignment.md
+    layer: work
+    audience: [architecture, engineering, review, operations]
+    status: active
 domains:
   - name: intelligence
     path: docs/product/prd/

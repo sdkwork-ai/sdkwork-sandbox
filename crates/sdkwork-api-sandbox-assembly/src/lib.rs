@@ -8,6 +8,7 @@ pub use bootstrap::{
     assemble_api_router, web_module, web_module_with_context, ApiAssembly, ApiAssemblyContext,
 };
 
+#[must_use]
 pub fn assembly_route_count() -> usize {
     generated::ROUTE_CRATE_COUNT
 }

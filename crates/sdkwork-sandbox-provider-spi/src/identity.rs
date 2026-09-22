@@ -43,6 +43,15 @@ macro_rules! opaque_id {
         pub struct $name(String);
 
         impl $name {
+            /// Parses an opaque identifier from its wire representation.
+            ///
+            /// # Errors
+            ///
+            /// Returns [`SandboxIdentifierError::InvalidOpaqueId`] when the
+            /// value is empty, exceeds the 128-byte `MAX_OPAQUE_ID_LENGTH`
+            /// bound, or contains any byte outside the ASCII alphanumeric,
+            /// `-`, `_`, `.` and `:` whitelist (which also rejects path-like
+            /// values).
             pub fn parse(value: impl Into<String>) -> Result<Self, SandboxIdentifierError> {
                 let value = value.into();
                 validate_opaque_id(&value, $field)?;
@@ -88,13 +97,21 @@ generated_opaque_id!(SandboxLeaseOwnerId, "sandboxLeaseOwnerId");
 pub struct SandboxFencingToken(u64);
 
 impl SandboxFencingToken {
+    /// Wraps a monotonically increasing fencing token value.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SandboxIdentifierError::InvalidFencingToken`] when the value
+    /// is zero or exceeds the signed 64-bit maximum: zero would make the
+    /// token indistinguishable from an unset lease, and the signed maximum
+    /// keeps the token representable in signed persistence columns.
     pub fn new(value: u64) -> Result<Self, SandboxIdentifierError> {
         if value == 0 || value > i64::MAX as u64 {
             return Err(SandboxIdentifierError::InvalidFencingToken);
         }
         Ok(Self(value))
     }
-
+    #[must_use]
     pub fn value(self) -> u64 {
         self.0
     }
@@ -110,6 +127,14 @@ impl fmt::Display for SandboxFencingToken {
 pub struct SandboxProviderAllocationRef(String);
 
 impl SandboxProviderAllocationRef {
+    /// Wraps a provider-private allocation reference.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SandboxIdentifierError::InvalidProviderAllocationReference`]
+    /// when the value is empty, exceeds the private-reference length bound,
+    /// or contains control characters; the rejected input is zeroized before
+    /// the error is returned.
     pub fn new(value: impl Into<String>) -> Result<Self, SandboxIdentifierError> {
         let mut value = value.into();
         let valid = !value.is_empty()
@@ -124,6 +149,7 @@ impl SandboxProviderAllocationRef {
     }
 
     /// Returns provider-private data for the owning adapter only.
+    #[must_use]
     pub fn expose_to_provider(&self) -> &str {
         &self.0
     }
@@ -181,5 +207,29 @@ mod tests {
             .unwrap_or_else(|error| panic!("signed maximum fencing token must be valid: {error}"));
         assert_eq!(sandbox_maximum_token.value(), i64::MAX as u64);
         assert_eq!(sandbox_maximum_token.to_string(), i64::MAX.to_string());
+    }
+}
+
+#[cfg(test)]
+mod boundary_tests {
+    use super::*;
+
+    /// M02 lock-in: the 128-byte opaque-id bound and the empty-string
+    /// rejection are validated by the same `validate_opaque_id` helper as the
+    /// path-like rejection above, but neither boundary had a direct assertion.
+    #[test]
+    fn rejects_empty_and_over_bound_opaque_identifiers() {
+        assert!(TenantId::parse("").is_err());
+        assert!(SandboxSessionId::parse("").is_err());
+        let at_bound = "a".repeat(MAX_OPAQUE_ID_LENGTH);
+        let over_bound = "a".repeat(MAX_OPAQUE_ID_LENGTH + 1);
+        assert!(
+            TenantId::parse(at_bound.clone()).is_ok(),
+            "an identifier at the {MAX_OPAQUE_ID_LENGTH}-byte bound must be accepted"
+        );
+        assert!(
+            TenantId::parse(over_bound).is_err(),
+            "an identifier above the bound must be rejected"
+        );
     }
 }

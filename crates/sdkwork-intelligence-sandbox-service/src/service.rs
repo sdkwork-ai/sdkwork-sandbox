@@ -32,6 +32,12 @@ pub struct SandboxLifecycleService {
 }
 
 impl SandboxLifecycleService {
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxLifecycleError::DuplicateProvider` for a duplicate
+    /// registry id and `InvariantViolation` when the default lease and
+    /// timeout policy is inconsistent.
     pub fn new(
         sandbox_session_repository: Arc<dyn SandboxSessionRepository>,
         sandbox_providers: Vec<Arc<dyn SandboxProvider>>,
@@ -45,6 +51,12 @@ impl SandboxLifecycleService {
         )
     }
 
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxLifecycleError::DuplicateProvider` for a duplicate
+    /// registry id and `InvariantViolation` when the lease duration or
+    /// provider operation timeout violates the policy bounds.
     pub fn new_with_sandbox_operation_policy(
         sandbox_session_repository: Arc<dyn SandboxSessionRepository>,
         mut sandbox_providers: Vec<Arc<dyn SandboxProvider>>,
@@ -183,6 +195,13 @@ impl SandboxLifecycleService {
         }
     }
 
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxLifecycleError::IdempotencyConflict` when the
+    /// operation id was used for a different request,
+    /// `SandboxSessionIdConflict` when the session id is reused, and
+    /// `Repository` for duplicate operations or persistence failures.
     pub async fn create_sandbox_session(
         &self,
         command: CreateSandboxSessionCommand,
@@ -272,6 +291,12 @@ impl SandboxLifecycleService {
         }
     }
 
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxLifecycleError::SandboxSessionNotFound` when the
+    /// session does not exist and `Repository` when persistence fails or
+    /// the persisted data is unreadable.
     pub async fn get_sandbox_session(
         &self,
         tenant_id: &TenantId,
@@ -286,6 +311,13 @@ impl SandboxLifecycleService {
             })
     }
 
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxLifecycleError::InvalidPageRequest` for an
+    /// out-of-range page size and `Repository` for infrastructure failures;
+    /// item-local data and provider failures are reported on the page
+    /// instead of aborting it.
     pub async fn reconcile_sandbox_sessions(
         &self,
         tenant_id: &TenantId,
@@ -326,7 +358,7 @@ impl SandboxLifecycleService {
         let mut sandbox_items = Vec::with_capacity(sandbox_sessions.len());
         for sandbox_session in sandbox_sessions {
             let sandbox_session_id = sandbox_session.sandbox_session_id().clone();
-            let sandbox_session_lease = self
+            let sandbox_session_lease = match self
                 .sandbox_session_repository
                 .acquire_sandbox_session_lease(
                     tenant_id,
@@ -334,14 +366,32 @@ impl SandboxLifecycleService {
                     &self.sandbox_lease_owner_id,
                     self.sandbox_lease_duration,
                 )
-                .await?;
-            let Some(sandbox_session_lease) = sandbox_session_lease else {
-                sandbox_items.push(SandboxSessionReconciliationItem::new(
-                    sandbox_session_id,
-                    sandbox_session.sandbox_session_state(),
-                    SandboxSessionReconciliationOutcome::LeaseUnavailable,
-                ));
-                continue;
+                .await
+            {
+                Ok(Some(sandbox_session_lease)) => sandbox_session_lease,
+                // The session vanished between listing and lease acquisition:
+                // its row — and the lease row with it — is gone. Report the
+                // item as `Vanished` and keep the page converging instead of
+                // letting one concurrent destroy abort every other session.
+                Err(SandboxSessionRepositoryError::NotFound) => {
+                    sandbox_items.push(SandboxSessionReconciliationItem::new(
+                        sandbox_session_id,
+                        sandbox_session.sandbox_session_state(),
+                        SandboxSessionReconciliationOutcome::Vanished,
+                    ));
+                    continue;
+                }
+                Err(sandbox_repository_error) => {
+                    return Err(sandbox_repository_error.into());
+                }
+                Ok(None) => {
+                    sandbox_items.push(SandboxSessionReconciliationItem::new(
+                        sandbox_session_id,
+                        sandbox_session.sandbox_session_state(),
+                        SandboxSessionReconciliationOutcome::LeaseUnavailable,
+                    ));
+                    continue;
+                }
             };
             let sandbox_reconciliation_result = match self
                 .get_sandbox_session(tenant_id, &sandbox_session_id)
@@ -365,7 +415,10 @@ impl SandboxLifecycleService {
                 Err(SandboxLifecycleError::SandboxSessionNotFound { .. }) => {
                     // The sandbox session disappeared between listing and
                     // lease acquisition; release the lease best-effort and
-                    // skip the item instead of aborting the whole page.
+                    // skip the item instead of aborting the whole page. A
+                    // vanished session is a different operational ticket from
+                    // a foreign-held lease, so it reports `Vanished`, not
+                    // `LeaseUnavailable` (F-06).
                     let _ = self
                         .sandbox_session_repository
                         .release_sandbox_session_lease(&sandbox_session_lease)
@@ -373,7 +426,27 @@ impl SandboxLifecycleService {
                     sandbox_items.push(SandboxSessionReconciliationItem::new(
                         sandbox_session_id,
                         sandbox_session.sandbox_session_state(),
-                        SandboxSessionReconciliationOutcome::LeaseUnavailable,
+                        SandboxSessionReconciliationOutcome::Vanished,
+                    ));
+                    continue;
+                }
+                Err(SandboxLifecycleError::Repository(
+                    SandboxSessionRepositoryError::InvalidStoredData,
+                )) => {
+                    // The session's persisted data is unreadable (for example
+                    // an operation history above the retention bound).
+                    // Reporting it and moving on keeps one bad session from
+                    // freezing the whole tenant's reconciliation; the session
+                    // itself is untouched and its retention policy is owned
+                    // by REQ-2026-0020.
+                    let _ = self
+                        .sandbox_session_repository
+                        .release_sandbox_session_lease(&sandbox_session_lease)
+                        .await;
+                    sandbox_items.push(SandboxSessionReconciliationItem::new(
+                        sandbox_session_id,
+                        sandbox_session.sandbox_session_state(),
+                        SandboxSessionReconciliationOutcome::Unreadable,
                     ));
                     continue;
                 }
@@ -395,8 +468,18 @@ impl SandboxLifecycleService {
                 }
                 Err(
                     SandboxLifecycleError::Provider(_)
-                    | SandboxLifecycleError::ProviderReadinessRejected { .. },
+                    | SandboxLifecycleError::ProviderReadinessRejected { .. }
+                    | SandboxLifecycleError::InvariantViolation(_)
+                    | SandboxLifecycleError::Repository(
+                        SandboxSessionRepositoryError::InvalidStoredData,
+                    ),
                 ) => {
+                    // Provider failures, item-local invariant violations (for
+                    // example a runtime binding that references a provider no
+                    // longer in the registry), and write-side rejections of
+                    // invalid persisted data belong to this session alone:
+                    // report the item and keep the page converging instead of
+                    // letting one stale reference abort every other session.
                     match self
                         .get_sandbox_session(tenant_id, &sandbox_session_id)
                         .await
@@ -411,11 +494,13 @@ impl SandboxLifecycleService {
                         Err(SandboxLifecycleError::SandboxSessionNotFound { .. }) => {
                             // The sandbox session disappeared while the failed
                             // provider reconciliation was in flight; skip the
-                            // item instead of aborting the whole page.
+                            // item instead of aborting the whole page — and
+                            // report `Vanished`: data that is gone is a
+                            // different ticket from a foreign-held lease.
                             sandbox_items.push(SandboxSessionReconciliationItem::new(
                                 sandbox_session_id,
                                 sandbox_session.sandbox_session_state(),
-                                SandboxSessionReconciliationOutcome::LeaseUnavailable,
+                                SandboxSessionReconciliationOutcome::Vanished,
                             ));
                         }
                         Err(sandbox_lifecycle_error) => {
@@ -720,6 +805,14 @@ impl SandboxLifecycleService {
             ))
     }
 
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxLifecycleError::IdempotencyConflict`,
+    /// `InvalidTransition`, `OperationInProgress`, `OperationPreviouslyFailed`,
+    /// `LeaseUnavailable`, `LeaseLost`, `NoEligibleProvider`,
+    /// `NoHealthyProvider`, `ProviderReadinessRejected`, `Provider`, or
+    /// `Repository`, depending on where the fenced start flow fails.
     pub async fn start_sandbox_session(
         &self,
         command: SandboxSessionLifecycleCommand,
@@ -770,7 +863,10 @@ impl SandboxLifecycleService {
             {
                 self.sandbox_provider_by_id(previous_sandbox_runtime_binding.sandbox_provider_id())?
             }
-            _ => self.select_sandbox_provider(&sandbox_session).await?,
+            _ => {
+                self.select_sandbox_provider(&sandbox_session, sandbox_session_lease)
+                    .await?
+            }
         };
         if let Some(previous_sandbox_runtime_binding) = previous_sandbox_runtime_binding.as_ref() {
             if previous_sandbox_runtime_binding
@@ -1014,6 +1110,13 @@ impl SandboxLifecycleService {
             .await
     }
 
+    ///
+    /// # Errors
+    ///
+    /// Returns the same fenced-command error family as start
+    /// (`IdempotencyConflict`, `InvalidTransition`, `OperationInProgress`,
+    /// `OperationPreviouslyFailed`, `LeaseUnavailable`, `LeaseLost`,
+    /// `Provider`, `Repository`) for the stop flow.
     pub async fn stop_sandbox_session(
         &self,
         command: SandboxSessionLifecycleCommand,
@@ -1101,6 +1204,12 @@ impl SandboxLifecycleService {
             .await
     }
 
+    ///
+    /// # Errors
+    ///
+    /// Returns the same fenced-command error family as stop, plus
+    /// cleanup-failure classification (`SandboxSessionFailure::Cleanup`)
+    /// when the compensating destroy fails.
     pub async fn destroy_sandbox_session(
         &self,
         command: SandboxSessionLifecycleCommand,
@@ -1229,6 +1338,7 @@ impl SandboxLifecycleService {
     async fn select_sandbox_provider(
         &self,
         sandbox_session: &SandboxSession,
+        sandbox_session_lease: &SandboxSessionLease,
     ) -> SandboxLifecycleResult<Arc<dyn SandboxProvider>> {
         let mut found_eligible_sandbox_provider = false;
         for sandbox_provider in &self.sandbox_providers {
@@ -1242,16 +1352,30 @@ impl SandboxLifecycleService {
                 continue;
             }
             found_eligible_sandbox_provider = true;
-            if matches!(
-                tokio::time::timeout(
-                    self.sandbox_provider_operation_timeout,
+            // Health probing is the only provider call that repeats inside one
+            // command, so it goes through the same lease-renewing wrapper as
+            // every other call: with the policy's maximum provider timeout, a
+            // handful of unhealthy providers would otherwise consume the whole
+            // lease window and surface as LeaseLost on the allocate that
+            // follows. A provider that times out or errors here is unhealthy
+            // for this request, not a lifecycle failure; the next eligible
+            // provider still gets probed.
+            let sandbox_provider_health = match self
+                .execute_sandbox_provider_call(
+                    sandbox_provider,
+                    SandboxProviderOperation::Health,
+                    sandbox_session_lease,
                     sandbox_provider.sandbox_provider_health(),
                 )
-                .await,
-                Ok(Ok(sandbox_provider_health))
-                    if sandbox_provider_health.sandbox_provider_health_status
-                        == SandboxProviderHealthStatus::Ready
-            ) {
+                .await
+            {
+                Ok(Ok(sandbox_provider_health)) => sandbox_provider_health,
+                Ok(Err(_)) => continue,
+                Err(sandbox_lifecycle_error) => return Err(sandbox_lifecycle_error),
+            };
+            if sandbox_provider_health.sandbox_provider_health_status
+                == SandboxProviderHealthStatus::Ready
+            {
                 return Ok(Arc::clone(sandbox_provider));
             }
         }

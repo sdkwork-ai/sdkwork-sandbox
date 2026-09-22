@@ -4,7 +4,7 @@ Status: draft
 
 Owner: SDKWork Runtime Platform
 
-Updated: 2026-09-22
+Updated: 2026-09-23
 
 Parent: [SDKWork Sandbox PRD](PRD.md)
 
@@ -76,6 +76,8 @@ stateDiagram-v2
 ```
 
 - 状态变化必须由 Command 驱动、校验、可观测，并在适用时具备幂等性。
+- 目标态标记：`Pausing`、`Paused`、`Recovering`。
+- 这三个状态是本图的规范目标态：实现枚举 `SandboxSessionState`（当前 8 态，见 `crates/sdkwork-intelligence-sandbox-service/src/model.rs`）尚未包含它们；任一目标态进入实现前必须先扩展该枚举并同步本图，本标记随实现落地收缩，由 `node tools/check-sandbox-requirement-traceability.mjs` 双向核验。
 - 只有 Provider Ready、Policy 生效、Workspace 挂载全部成功后才能进入 `Running`。
 - `Destroyed` 禁止后续执行，但不表示删除 Workspace。
 - Provider 丢失后进入 `Recovering` 或 `Failed`，不能为同一 Binding 产生两个活动所有者。

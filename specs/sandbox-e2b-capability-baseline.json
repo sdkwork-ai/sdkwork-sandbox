@@ -1162,6 +1162,9 @@
         "Sandbox metadata",
         "Setting environment variables",
         "Shutdown sandbox"
+      ],
+      "capabilityMatrixRows": [
+        1
       ]
     },
     {
@@ -1187,6 +1190,9 @@
         "1. Get the sandbox ID",
         "2. Connect to the sandbox",
         "Connect to running sandbox"
+      ],
+      "capabilityMatrixRows": [
+        4
       ]
     },
     {
@@ -1250,7 +1256,10 @@
       "e2bFields": [
         "DELETE /sandboxes/{sandboxID} [deleteSandbox]"
       ],
-      "previouslyIndexOnly": false
+      "previouslyIndexOnly": false,
+      "capabilityMatrixRows": [
+        2
+      ]
     },
     {
       "row": 6,
@@ -1306,6 +1315,9 @@
       "e2bFacts": [
         "Monitor sandbox lifecycle events",
         "Retention"
+      ],
+      "capabilityMatrixRows": [
+        19
       ]
     },
     {
@@ -1373,6 +1385,9 @@
         "SDK example: pause, then read a file",
         "Timeout after auto-resume",
         "What counts as activity"
+      ],
+      "capabilityMatrixRows": [
+        24
       ]
     },
     {
@@ -1394,6 +1409,9 @@
         "How it works",
         "Quickstart",
         "SSH access"
+      ],
+      "capabilityMatrixRows": [
+        13
       ]
     },
     {
@@ -1466,6 +1484,9 @@
         "Sandbox's timeout",
         "State descriptions",
         "When a pause is refused"
+      ],
+      "capabilityMatrixRows": [
+        3
       ]
     },
     {
@@ -1498,6 +1519,9 @@
         "Related",
         "Type safety and validation",
         "What changes on resume"
+      ],
+      "capabilityMatrixRows": [
+        3
       ]
     },
     {
@@ -1552,6 +1576,9 @@
         "Sandbox's timeout",
         "State descriptions",
         "When a pause is refused"
+      ],
+      "capabilityMatrixRows": [
+        4
       ]
     },
     {
@@ -1581,6 +1608,9 @@
         "Self-hosted deployments",
         "What you get on disk",
         "When to reboot instead of restoring"
+      ],
+      "capabilityMatrixRows": [
+        4
       ]
     },
     {
@@ -1637,6 +1667,9 @@
         "State descriptions",
         "What happens when the timeout expires",
         "When a pause is refused"
+      ],
+      "capabilityMatrixRows": [
+        3
       ]
     },
     {
@@ -1663,6 +1696,9 @@
         "Retrieve sandbox information",
         "Sandbox lifecycle",
         "Shutdown sandbox"
+      ],
+      "capabilityMatrixRows": [
+        23
       ]
     },
     {
@@ -1710,6 +1746,9 @@
         "Sandbox's timeout",
         "State descriptions",
         "When a pause is refused"
+      ],
+      "capabilityMatrixRows": [
+        3
       ]
     },
     {
@@ -1757,6 +1796,10 @@
         "Sandbox's timeout",
         "State descriptions",
         "When a pause is refused"
+      ],
+      "capabilityMatrixRows": [
+        3,
+        4
       ]
     },
     {
@@ -1793,6 +1836,9 @@
         "Snapshots vs. Pause/Resume",
         "Snapshots vs. Templates",
         "Use cases"
+      ],
+      "capabilityMatrixRows": [
+        7
       ]
     },
     {
@@ -1829,6 +1875,9 @@
         "Snapshots vs. Pause/Resume",
         "Snapshots vs. Templates",
         "Use cases"
+      ],
+      "capabilityMatrixRows": [
+        25
       ]
     },
     {
@@ -1865,6 +1914,9 @@
         "Snapshots vs. Pause/Resume",
         "Snapshots vs. Templates",
         "Use cases"
+      ],
+      "capabilityMatrixRows": [
+        7
       ]
     },
     {
@@ -1897,6 +1949,9 @@
         "Forking vs. Snapshots",
         "Handle failed forks",
         "Sandbox forking"
+      ],
+      "capabilityMatrixRows": [
+        6
       ]
     },
     {
@@ -1945,6 +2000,10 @@
         "Snapshots vs. Pause/Resume",
         "Snapshots vs. Templates",
         "Use cases"
+      ],
+      "capabilityMatrixRows": [
+        6,
+        7
       ]
     },
     {
@@ -1988,6 +2047,9 @@
         "Method chaining",
         "Running commands",
         "User and workdir"
+      ],
+      "capabilityMatrixRows": [
+        8
       ]
     },
     {
@@ -2042,6 +2104,9 @@
         "e2b template migrate",
         "e2b template publish",
         "e2b template unpublish"
+      ],
+      "capabilityMatrixRows": [
+        8
       ]
     },
     {
@@ -2072,6 +2137,9 @@
         "Start command",
         "setReadyCmd / set_ready_cmd",
         "setStartCmd / set_start_cmd"
+      ],
+      "capabilityMatrixRows": [
+        8
       ]
     },
     {
@@ -2096,6 +2164,9 @@
         "Partial",
         "Use case for caching",
         "Whole template"
+      ],
+      "capabilityMatrixRows": [
+        28
       ]
     },
     {
@@ -2148,6 +2219,9 @@
         "The default tag",
         "Use cases",
         "What is a template name?"
+      ],
+      "capabilityMatrixRows": [
+        8
       ]
     },
     {
@@ -2192,6 +2266,9 @@
         "Parsing existing Dockerfiles",
         "Predefined base images",
         "Private registries"
+      ],
+      "capabilityMatrixRows": [
+        8
       ]
     },
     {
@@ -2230,6 +2307,9 @@
         "What each failure looks like",
         "What is not limited",
         "What limits apply to my template builds?"
+      ],
+      "capabilityMatrixRows": [
+        17
       ]
     },
     {
@@ -2273,6 +2353,9 @@
         "Method chaining",
         "Running commands",
         "User and workdir"
+      ],
+      "capabilityMatrixRows": [
+        8
       ]
     },
     {
@@ -2299,6 +2382,9 @@
         "Docker Compose",
         "Run",
         "Template"
+      ],
+      "capabilityMatrixRows": [
+        8
       ]
     },
     {
@@ -2324,6 +2410,9 @@
         "Reading files",
         "Writing multiple files",
         "Writing single files"
+      ],
+      "capabilityMatrixRows": [
+        10
       ]
     },
     {
@@ -2349,6 +2438,9 @@
         "Reading files",
         "Writing multiple files",
         "Writing single files"
+      ],
+      "capabilityMatrixRows": [
+        10
       ]
     },
     {
@@ -2374,6 +2466,9 @@
         "Get information about a file or directory",
         "Getting information about a directory",
         "Getting information about a file"
+      ],
+      "capabilityMatrixRows": [
+        10
       ]
     },
     {
@@ -2413,6 +2508,9 @@
         "Upload with pre-signed URL",
         "Writing a file with metadata",
         "Writing multiple files with metadata"
+      ],
+      "capabilityMatrixRows": [
+        10
       ]
     },
     {
@@ -2443,6 +2541,9 @@
         "Recursive watching",
         "Watch sandbox directory for changes",
         "Watching network filesystem mounts"
+      ],
+      "capabilityMatrixRows": [
+        10
       ]
     },
     {
@@ -2483,6 +2584,9 @@
         "Upload multiple files",
         "Upload single file",
         "Upload with pre-signed URL"
+      ],
+      "capabilityMatrixRows": [
+        10
       ]
     },
     {
@@ -2498,7 +2602,10 @@
         "POST /filesystem.Filesystem/Move [filesystem.Filesystem.Move]",
         "POST /filesystem.Filesystem/Remove [filesystem.Filesystem.Remove]"
       ],
-      "previouslyIndexOnly": true
+      "previouslyIndexOnly": true,
+      "capabilityMatrixRows": [
+        10
+      ]
     },
     {
       "row": 41,
@@ -2535,6 +2642,9 @@
         "List volumes",
         "Managing volumes",
         "Overview"
+      ],
+      "capabilityMatrixRows": [
+        9
       ]
     },
     {
@@ -2556,6 +2666,9 @@
       ],
       "e2bFacts": [
         "Mounting volumes"
+      ],
+      "capabilityMatrixRows": [
+        9
       ]
     },
     {
@@ -2599,6 +2712,9 @@
         "Upload directory / multiple files",
         "Upload single file",
         "Writing files"
+      ],
+      "capabilityMatrixRows": [
+        9
       ]
     },
     {
@@ -2626,6 +2742,9 @@
         "Prerequisites",
         "The script",
         "Usage"
+      ],
+      "capabilityMatrixRows": [
+        9
       ]
     },
     {
@@ -2647,6 +2766,10 @@
       ],
       "e2bFacts": [
         "Running commands in sandbox"
+      ],
+      "capabilityMatrixRows": [
+        11,
+        12
       ]
     },
     {
@@ -2670,6 +2793,10 @@
       ],
       "e2bFacts": [
         "Streaming command output"
+      ],
+      "capabilityMatrixRows": [
+        11,
+        12
       ]
     },
     {
@@ -2699,6 +2826,9 @@
       "e2bFacts": [
         "Reconnect to a background command",
         "Running commands in background"
+      ],
+      "capabilityMatrixRows": [
+        12
       ]
     },
     {
@@ -2713,7 +2843,10 @@
         "POST /process.Process/SendInput [process.Process.SendInput]",
         "POST /process.Process/StreamInput [process.Process.StreamInput]"
       ],
-      "previouslyIndexOnly": true
+      "previouslyIndexOnly": true,
+      "capabilityMatrixRows": [
+        12
+      ]
     },
     {
       "row": 49,
@@ -2726,7 +2859,10 @@
         "POST /process.Process/SendSignal [process.Process.SendSignal]",
         "POST /process.Process/Update [process.Process.Update]"
       ],
-      "previouslyIndexOnly": true
+      "previouslyIndexOnly": true,
+      "capabilityMatrixRows": [
+        12
+      ]
     },
     {
       "row": 50,
@@ -2755,6 +2891,9 @@
         "Send input to PTY",
         "Timeout",
         "Wait for PTY to exit"
+      ],
+      "capabilityMatrixRows": [
+        13
       ]
     },
     {
@@ -2896,6 +3035,10 @@
         "Per-host request transforms",
         "Priority rules",
         "Updating network settings on a running sandbox"
+      ],
+      "capabilityMatrixRows": [
+        15,
+        16
       ]
     },
     {
@@ -2941,6 +3084,9 @@
         "Per-host request transforms",
         "Priority rules",
         "Updating network settings on a running sandbox"
+      ],
+      "capabilityMatrixRows": [
+        16
       ]
     },
     {
@@ -2990,6 +3136,9 @@
         "Priority rules",
         "Resolution failures are silent for traffic",
         "Updating network settings on a running sandbox"
+      ],
+      "capabilityMatrixRows": [
+        16
       ]
     },
     {
@@ -3002,7 +3151,11 @@
       "e2bFields": [
         "PUT /sandboxes/{sandboxID}/network [putSandboxNetwork]"
       ],
-      "previouslyIndexOnly": false
+      "previouslyIndexOnly": false,
+      "capabilityMatrixRows": [
+        15,
+        16
+      ]
     },
     {
       "row": 58,
@@ -3029,6 +3182,10 @@
         "Connecting to a server running inside the sandbox",
         "Masking request host headers",
         "Sandbox public URL"
+      ],
+      "capabilityMatrixRows": [
+        14,
+        31
       ]
     },
     {
@@ -3056,6 +3213,10 @@
         "Restricting public access",
         "Restricting public access to sandbox URLs",
         "Running a firewall inside the sandbox"
+      ],
+      "capabilityMatrixRows": [
+        14,
+        31
       ]
     },
     {
@@ -3074,6 +3235,9 @@
         "Prerequisites",
         "Server setup",
         "Testing the setup"
+      ],
+      "capabilityMatrixRows": [
+        31
       ]
     },
     {
@@ -3120,6 +3284,9 @@
         "Shadowsocks server setup (VM)",
         "Updating a running sandbox",
         "Using the proxies"
+      ],
+      "capabilityMatrixRows": [
+        16
       ]
     },
     {
@@ -3247,6 +3414,9 @@
         "Getting sandbox metrics using the CLI",
         "Getting sandbox metrics using the SDKs",
         "Sandbox metrics"
+      ],
+      "capabilityMatrixRows": [
+        18
       ]
     },
     {
@@ -3290,6 +3460,9 @@
         "Metrics",
         "OTel telemetry export",
         "Setup"
+      ],
+      "capabilityMatrixRows": [
+        18
       ]
     },
     {
@@ -3990,6 +4163,9 @@
         "ast-grep",
         "glif.app",
         "omi-mcp"
+      ],
+      "capabilityMatrixRows": [
+        32
       ]
     },
     {
@@ -4062,6 +4238,10 @@
         "What each failure looks like",
         "What is not limited",
         "What limits apply to my template builds?"
+      ],
+      "capabilityMatrixRows": [
+        17,
+        22
       ]
     },
     {
@@ -4122,25 +4302,66 @@
   "testInventory": {
     "suiteGlob": "tests/contract/*.test.mjs",
     "files": 40,
-    "tests": 592,
+    "tests": 619,
     "auditSuites": [
       {
         "file": "tests/contract/e2b-parity-matrix-tool.contract.test.mjs",
-        "tests": 127
+        "tests": 143
       },
       {
         "file": "tests/contract/sandbox-e2b-field-parity-tool.contract.test.mjs",
-        "tests": 29
+        "tests": 30
       }
     ],
     "rustWorkspace": {
       "command": "cargo test --workspace",
-      "passed": 67,
+      "passed": 78,
       "failed": 0,
       "ignored": 1,
-      "measuredAt": "2026-09-22T10:01:21Z",
+      "measuredAt": "2026-09-23T00:00:00Z",
       "note": "The Rust side cannot be recomputed from source the way the contract suite can: the number only exists after a build and a run, so this is a measurement recorded next to the command that produced it, in the same sense as the source sha256 values. `cargo test --workspace` was run twice while writing this record and reported 67 passed / 0 failed / 1 ignored both times; the ignored test is the one that declares it needs an external PostgreSQL."
     },
     "note": "The contract suite's declared size, recomputed from the files. The audit document quotes these numbers in its test-coverage section, so a stale reading there is a documentation falsehood: this record fails the gate when either side moves without the other. `rustWorkspace` is a measurement, not a recomputation, and is compared against the document rather than the source."
+  },
+  "capabilityMatrixAlignment": {
+    "document": "docs/product/prd/PRD-capabilities.md",
+    "sectionHeading": "## 11. ",
+    "endHeading": "## 12. ",
+    "declaredRowCount": 34,
+    "note": "双向记账：每条 E2B 基线行要么以 capabilityMatrixRows 指向 PRD 第 11 节能力行，要么在 rowsWithoutMatrixRow 登记原因；PRD 第 11 节每行要么被至少一条基线行指向，要么在 matrixRowsWithoutBaselineRow 登记原因。由 tools/check-sandbox-e2b-field-parity.mjs 的 capability-matrix-join 规则族核验。",
+    "rowsWithoutMatrixRow": {
+      "3": "无运行中 TTL 能力行：本仓对应语义是 Sandbox Lease 过期与 REQ-2026-0020 的有界保留窗口，矩阵行 3 已写明二者不可混同。",
+      "4": "无沙箱信息查询能力行：getInfo 的 templateId/metadata/startedAt 读取面未定义。",
+      "6": "无列表查询能力行：PRD-capabilities.md 第 10 节只约束列表必须分页，未承诺 Sandbox 列表查询面。",
+      "8": "无 webhook 能力行：事件消费形态未定义，REQ-2026-0010 仅契约。",
+      "11": "无访问令牌门控能力行：本仓 SandboxFencingToken 的对象是控制权竞争而非访问面，矩阵行 11 已写明形态不同。",
+      "51": "Code Interpreter 无产品能力行：代码执行经第 11 节行 12（Process）能力面组合，编排归 sdkwork-kernel。",
+      "52": "同 Code Interpreter（行 51）：多语言执行面无独立产品能力行。",
+      "53": "同 Code Interpreter（行 51）：图表与预置库无独立产品能力行。",
+      "62": "Secret 管理无第 11 节能力行：由 REQ-2026-0025（draft）承载，尚未列入矩阵。",
+      "63": "同 Secret 管理（行 62）：出网代理注入 Secret 无能力行。",
+      "64": "Workload identity 无能力行：身份权威在 IAM，本仓不拥有。",
+      "66": "团队级指标聚合无能力行：归属与 Commerce/Metering 所有权待决（PRD.md 第 9 节）。",
+      "68": "CLI 无第 11 节能力行：仓库仅有空 CLI crate（fn main() {}），产品未承诺命令面。",
+      "69": "SDK 消费面由 PRD-sandbox-surfaces.md 第 12 节承诺，未列入第 11 节矩阵。",
+      "70": "同 SDK（行 69）：Code Interpreter / Desktop SDK 亦无能力行。",
+      "71": "同 SDK（行 69）：分页器与错误类型族属 SDK 细分面。",
+      "72": "同 SDK（行 69）：多语言同语义生成链已在 PRD 目标列出，未列入矩阵。",
+      "74": "BYOC 无能力行：多区域 SaaS 不在第一阶段范围（PRD.md 非目标）。",
+      "75": "多区域无能力行：REQ-2026-0026 region tuple 仅为 draft 契约。",
+      "77": "平台合规证据本仓不拥有：REQ-2026-0006 仅承载分配元数据加密（矩阵行 77 的 🟡 依据）。",
+      "78": "刻意不做：PRD.md 非目标原文排除第三方框架适配与 Kernel 编排替代（矩阵行 78 ⛔ 的 Canon 原话）。"
+    },
+    "matrixRowsWithoutBaselineRow": {
+      "5": "E2B 公开 78 行基线无 Restart 对应行；本仓候选路径见 PRD-capabilities.md 第 3 节 Stopped -> Starting。",
+      "20": "E2B 公开面不承诺 Runtime Pool；本仓由 REQ-2026-0019（draft）承载的自建容量能力。",
+      "21": "E2B 公开面无 Placement 行；本仓由 REQ-2026-0016（draft）承载。",
+      "26": "COW 在 E2B 是实现细节，公开 78 行基线无独立行；本仓无承载（PRD-runtime-execution-model.md 第 7.2 节）。",
+      "27": "Lazy Memory 同 COW（行 26）：E2B 公开基线无独立行，本仓无承载。",
+      "29": "对象存储在 E2B 公开面无独立行（为其内部实现）；本仓权威归属未定。",
+      "30": "本地缓存同对象存储（行 29）：E2B 公开基线无独立行。",
+      "33": "E2B 公开 78 行基线无独立 Skills 行；本仓无 REQ（PRD-sandbox-surfaces.md 第 11 节）。",
+      "34": "E2B 无等价公开能力（VM 内组件为实现细节）；本仓 Agent Runtime 未授权（PRD-sandbox-surfaces.md 第 9 节）。"
+    }
   }
 }
