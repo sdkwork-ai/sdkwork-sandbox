@@ -6,16 +6,25 @@ import { join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+  ANSWER_COLUMNS,
+  ANSWER_REQUIRED_FIGURES,
   CLAIM_COLUMNS,
   COVERAGE_COLUMNS,
+  EXCEPTION_CONTRACT_CLAUSE,
   GAP_COLUMNS,
   GAP_KINDS,
+  HEADLINE_PATTERNS,
   RULE_FAMILIES,
   RULE_FAMILY_SURFACES,
   SHAPE_COLUMNS,
+  UNNAMED_CONTRACT_CLAUSE,
   assessE2bParityMatrix,
+  authorizesImplementation,
   discoverWorkspaceTests,
   formatE2bParityMatrixReport,
+  listApiContracts,
+  listNamedContracts,
+  parseAnswerSection,
   parseClaimKeywords,
   parseClaimMarkers,
   parseCoverageGaps,
@@ -29,7 +38,11 @@ import {
   parseMatrixCategories,
   parseRequirementClaimRegistry,
   parseStatusVocabulary,
+  readDecisionStatuses,
+  readEvidenceCounts,
+  readJsonFile,
   readRequirementStatus,
+  readRequirementStatuses,
   requirementOwnershipIndex,
 } from "../../tools/check-sandbox-e2b-parity-matrix.mjs";
 
@@ -146,18 +159,66 @@ const SHAPE = [
 ].join("\n");
 
 /**
+ * The section 1.1 answer table and its three restated figures -- the fixture's counterpart to the
+ * repository's own. Every figure is derived from this fixture rather than typed into it: the census
+ * figure from the three matrix rows, the requirement and decision figures from the records the
+ * fixture writes, the contract figures from the two contracts it writes, the evidence figures from
+ * the registry's `acknowledged` block. A fixture that hardcoded a number the gate recomputes would
+ * prove the gate compares two copies of one typo.
+ */
+const ANSWER = [
+  "### 1.1 直接回答",
+  "",
+  "**Not aligned.** Neither core path works.",
+  "",
+  `| ${ANSWER_COLUMNS.join(" | ")} |`,
+  "| --- | --- | --- |",
+  "| fast create | `Sandbox.create()` | no entrypoint; only `crates/fixture` is candidate-shaped |",
+  "| fast deploy | `Template.build()` | `Template` has nothing behind it; no `REQ-*`〔§3.4/1〕 |",
+  "",
+  "Three figures:",
+  "",
+  "- E2B 的能力集合共 **3 项**，本仓 ✅ **0**、🟡 **1**、❌ **1**、⛔ **1**。",
+  '- 2 份 `REQ-*` 中 1 份 `ready`（0 `accepted` / 1 `draft`）；1 份 `ADR` 全部 `proposed`；机器契约里**没有任何一份**授权实现：2 份 `*.contract.json` 中 1 份显式声明 `implementationAuthorized: false`，第 2 份 `specs/fixture-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`；另有一份不以 `.contract.json` 命名的机器契约（`apis/commands/fixture-command-contract.json`）同为 `false`。',
+  "- 1 份契约声明的 **3 个证据 id** 中，只有 **1 个**有 host-precondition 半产出，**2 个**仍被真实 runner 或人工评审完全阻塞。",
+  "",
+].join("\n");
+
+/** The two `*.contract.json` files the fixture writes, and which of them declares the field. */
+const NAMED_CONTRACTS = Object.freeze({
+  declaring: "specs/fixture-alpha.contract.json",
+  excepted: "specs/fixture-readiness.contract.json",
+});
+
+/** The one machine contract the fixture writes that is not named `*.contract.json`. */
+const API_CONTRACT = "apis/commands/fixture-command-contract.json";
+
+/** The registry whose `acknowledged` block the answer section's evidence figures restate. */
+const EVIDENCE_COUNTS = Object.freeze({
+  sandbox_contracts_with_requirements: 1,
+  sandbox_total_distinct_evidence_ids: 3,
+  sandbox_host_precondition_partial: 1,
+  sandbox_fully_gated: 2,
+});
+
+/**
  * The line that states how many rule families this gate implements, inside the audit document. The
  * document is a self-description surface that cannot be scoped by blocks -- it names this gate and the
  * field gate in adjacent table rows -- so it is read line by line, and the counter lives on a line of
  * its own. The field gate's own line is here to prove the reader does not credit this gate with it.
+ *
+ * The two evidence lines are the phrasings the answer section does *not* use: they carry the same
+ * figures in the other two wordings the document uses, so the fixture exercises all three.
  */
 const GATE_DESCRIPTION = [
   `The matrix gate (\`tools/check-sandbox-e2b-parity-matrix.mjs\`) holds ${RULE_FAMILIES.length} 条规则族.`,
   "The field gate (`tools/check-sandbox-e2b-field-parity.mjs`) holds 10 条规则族.",
+  `Evidence accounting: 1 份契约声明的 3 个证据 id 中 2 个无产出者.`,
+  `The registry: 3 个证据 id 的机器可读注册表 is \`specs/sandbox-real-evidence-registry.json\`.`,
 ].join("\n");
 
 /** The prose that describes this gate itself, in the two languages it is written in. */
-function gateSurfacesFixture(ruleFamilyWord = "eleven", chineseWord = "十一") {
+function gateSurfacesFixture(ruleFamilyWord = "twelve", chineseWord = "十二") {
   return {
     rootReadme: `# Fixture Repository\n\nThe gate holds ${ruleFamilyWord} rule families.\n`,
     toolsReadme: `${ruleFamilyWord[0].toUpperCase()}${ruleFamilyWord.slice(1)} rule families:\n`,
@@ -167,6 +228,7 @@ function gateSurfacesFixture(ruleFamilyWord = "eleven", chineseWord = "十一") 
 
 function buildDocument({
   vocabulary = VOCABULARY,
+  answer = ANSWER,
   census = CENSUS,
   matrix = MATRIX,
   coverage = COVERAGE,
@@ -181,6 +243,7 @@ function buildDocument({
     "## 0. 基准快照与状态口径",
     "",
     vocabulary,
+    answer,
     shape,
     census,
     matrix,
@@ -220,6 +283,9 @@ function createFixture({
   rustSource = rustTestSource(),
   registerInIndex = true,
   registerInEntry = true,
+  decisionStatus = "proposed",
+  contractValues = {},
+  registryCounts = EVIDENCE_COUNTS,
 } = {}) {
   const base = mkdtempSync(path.join(tmpdir(), "sdkwork-e2b-parity-"));
   const repo = path.join(base, "sdkwork-fixture");
@@ -249,8 +315,38 @@ function createFixture({
   );
   writeFileSync(
     path.join(repo, "docs", "architecture", "decisions", "ADR-20260728-fixture-decision.md"),
-    "# fixture\n",
+    `# fixture\n\nStatus: ${decisionStatus}\n`,
   );
+  // The machine contracts and the evidence registry the answer section's figures restate. They are
+  // written as real JSON rather than stubbed readers, so the fixture exercises the same discovery the
+  // gate runs against the repository.
+  const contractDefaults = {
+    [NAMED_CONTRACTS.declaring]: {
+      schemaVersion: 1,
+      kind: "sdkwork.sandbox.fixture-contract",
+      implementationAuthorized: false,
+    },
+    [NAMED_CONTRACTS.excepted]: {
+      schemaVersion: 1,
+      kind: "sdkwork.sandbox.fixture-release-decision",
+      releaseDecision: { status: "no-go", runtimeImplementationAuthorizationGranted: false },
+    },
+    [API_CONTRACT]: {
+      schemaVersion: 1,
+      kind: "sdkwork.sandbox.fixture-api-contract",
+      implementationAuthorized: false,
+    },
+    ["specs/sandbox-real-evidence-registry.json"]: {
+      schemaVersion: 1,
+      kind: "sdkwork.sandbox.real-evidence-producer-registry",
+      acknowledged: registryCounts,
+    },
+  };
+  for (const [relative, value] of Object.entries({ ...contractDefaults, ...contractValues })) {
+    const absolute = path.join(repo, relative);
+    mkdirSync(path.dirname(absolute), { recursive: true });
+    writeFileSync(absolute, `${JSON.stringify(value, null, 2)}\n`);
+  }
   writeFileSync(path.join(techDirectory, "TECH-fixture-surface.md"), "# fixture surface\n");
   writeFileSync(path.join(techDirectory, "TECH-e2b-capability-parity.md"), document);
   writeFileSync(
@@ -283,6 +379,17 @@ function expectProblem(assessment, fragment) {
     assessment.problems.some((problem) => problem.includes(fragment)),
     `expected a problem mentioning "${fragment}", got:\n${formatE2bParityMatrixReport(assessment)}`,
   );
+}
+
+/**
+ * The answer section with one figure edited. The anchor is asserted to be present first: a negative
+ * case whose anchor has drifted silently edits nothing, and a test that mutates nothing and then
+ * expects a finding fails for the wrong reason -- or, worse, passes because some unrelated finding
+ * happened to be present.
+ */
+function answerWith(from, to) {
+  assert.ok(ANSWER.includes(from), `the answer fixture no longer contains: ${from}`);
+  return ANSWER.replace(from, to);
 }
 
 test("the repository's own parity document is consistent", () => {
@@ -443,11 +550,11 @@ test("the repository's own residual-gap table is typed and every claim holds", (
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  assert.equal(assessment.gapCount, 6);
+  assert.equal(assessment.gapCount, 7);
 
   const gaps = parseCoverageGaps(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
   assert.deepEqual(gaps.header, [...GAP_COLUMNS]);
-  assert.equal(gaps.rows.length, 6);
+  assert.equal(gaps.rows.length, 7);
   assert.equal(gaps.malformed.length, 0);
   for (const row of gaps.rows) {
     assert.ok(GAP_KINDS.includes(row["性质"]), `gap row ${row.line} declares kind ${row["性质"]}`);
@@ -879,7 +986,7 @@ test("an ignored test is recorded as ignored rather than dropped", () => {
 // ---- rule 10: SELF-DESCRIPTION
 
 test("every surface describing this gate declares the rule families it implements", () => {
-  assert.equal(RULE_FAMILIES.length, 11);
+  assert.equal(RULE_FAMILIES.length, 12);
   assert.equal(new Set(RULE_FAMILIES).size, RULE_FAMILIES.length, "family keys must be unique");
 
   for (const surface of RULE_FAMILY_SURFACES) {
@@ -1235,4 +1342,427 @@ test("arguments are parsed strictly", () => {
   assert.equal(parseE2bParityMatrixArgs(["--root", "."]).root, resolve(process.cwd()));
   assert.throws(() => parseE2bParityMatrixArgs(["--root"]), /--root requires a directory/u);
   assert.throws(() => parseE2bParityMatrixArgs(["--nope"]), /unsupported argument/u);
+});
+
+// ---- rule family 12: headline numbers (section 1.1)
+
+test("the answer-section reader is total", () => {
+  assert.equal(parseAnswerSection("# nothing that looks like the answer section\n"), null);
+  const parsed = parseAnswerSection(ANSWER);
+  assert.deepEqual(parsed.header, [...ANSWER_COLUMNS]);
+  assert.equal(parsed.rows.length, 2);
+  assert.equal(parsed.malformed.length, 0);
+});
+
+test("the restated-figure patterns are a closed set covering every figure section 1.1 must state", () => {
+  const ids = HEADLINE_PATTERNS.map((entry) => entry.id);
+  assert.equal(new Set(ids).size, ids.length, "pattern ids must be unique");
+  for (const id of ANSWER_REQUIRED_FIGURES) {
+    assert.ok(ids.includes(id), `section 1.1's required figure ${id} has no pattern behind it`);
+  }
+  for (const { id, pattern } of HEADLINE_PATTERNS) {
+    assert.ok(pattern.global, `${id} must be global, or the scan only ever reads the first occurrence`);
+  }
+});
+
+test("the contract-clause readers match only their own phrasings", () => {
+  assert.equal(UNNAMED_CONTRACT_CLAUSE.exec("另有 4 份不以 `.contract.json` 命名的机器契约")[1], "4");
+  assert.equal(UNNAMED_CONTRACT_CLAUSE.exec("另有一份不以 `.contract.json` 命名的机器契约")[1], "一");
+  assert.equal(UNNAMED_CONTRACT_CLAUSE.exec("另有 37 个契约"), null);
+  const exception = EXCEPTION_CONTRACT_CLAUSE.exec("第 23 份 `specs/a.contract.json` 是发布决定记录");
+  assert.deepEqual([exception[1], exception[2]], ["23", "specs/a.contract.json"]);
+  // `条` is a rule family, `份` is a file: an ordinal reference must not read as an exception.
+  assert.equal(EXCEPTION_CONTRACT_CLAUSE.exec("第 11 条规则族"), null);
+});
+
+test("authorization is recognized on either recognized field and on neither false one", () => {
+  assert.equal(authorizesImplementation({ implementationAuthorized: true }), true);
+  assert.equal(
+    authorizesImplementation({ releaseDecision: { runtimeImplementationAuthorizationGranted: true } }),
+    true,
+  );
+  assert.equal(authorizesImplementation({ implementationAuthorized: false }), false);
+  assert.equal(
+    authorizesImplementation({
+      releaseDecision: { runtimeImplementationAuthorizationGranted: false, status: "no-go" },
+    }),
+    false,
+  );
+  assert.equal(authorizesImplementation(null), false);
+  assert.equal(authorizesImplementation("true"), false);
+});
+
+test("an unreadable json file reads as absent rather than throwing", () => {
+  assert.equal(readJsonFile(join(repoRoot, "specs", "definitely-absent-contract.json")), null);
+  const base = mkdtempSync(path.join(tmpdir(), "sdkwork-e2b-parity-json-"));
+  try {
+    const broken = join(base, "broken.json");
+    writeFileSync(broken, "{ this is not json");
+    assert.equal(readJsonFile(broken), null);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test("the readers discover the fixture's contracts, records and evidence counts", () => {
+  const fixture = createFixture();
+  try {
+    assert.deepEqual(
+      listNamedContracts(fixture.repo),
+      [NAMED_CONTRACTS.declaring, NAMED_CONTRACTS.excepted].sort(),
+    );
+    assert.deepEqual(listApiContracts(fixture.repo), [API_CONTRACT]);
+    assert.deepEqual(readEvidenceCounts(fixture.repo), {
+      contracts: EVIDENCE_COUNTS.sandbox_contracts_with_requirements,
+      ids: EVIDENCE_COUNTS.sandbox_total_distinct_evidence_ids,
+      partial: EVIDENCE_COUNTS.sandbox_host_precondition_partial,
+      gated: EVIDENCE_COUNTS.sandbox_fully_gated,
+    });
+    assert.deepEqual(readRequirementStatuses(fixture.repo).map((record) => record.status), [
+      "draft",
+      "ready",
+    ]);
+    assert.deepEqual(readDecisionStatuses(fixture.repo).map((record) => record.status), [
+      "proposed",
+    ]);
+  } finally {
+    rmSync(fixture.base, { recursive: true, force: true });
+  }
+});
+
+test("the repository holds exactly the machine contracts, records and evidence counts section 1.1 states", () => {
+  const named = listNamedContracts(repoRoot);
+  assert.equal(named.length, 23);
+  const api = listApiContracts(repoRoot);
+  assert.equal(api.length, 2);
+  assert.deepEqual(readEvidenceCounts(repoRoot), {
+    contracts: 8,
+    ids: 127,
+    partial: 2,
+    gated: 125,
+  });
+  for (const relative of [...named, ...api]) {
+    assert.equal(
+      authorizesImplementation(readJsonFile(join(repoRoot, relative))),
+      false,
+      `${relative} authorizes implementation`,
+    );
+  }
+  const requirements = readRequirementStatuses(repoRoot);
+  assert.equal(requirements.length, 27);
+  assert.equal(requirements.filter((record) => record.status === "ready").length, 0);
+  assert.equal(requirements.filter((record) => record.status === "accepted").length, 5);
+  assert.equal(requirements.filter((record) => record.status === "draft").length, 22);
+  const decisions = readDecisionStatuses(repoRoot);
+  assert.equal(decisions.length, 27);
+  assert.equal(decisions.filter((record) => record.status === "proposed").length, 27);
+});
+
+test("the repository's own answer section compares every restated figure", () => {
+  const assessment = assessE2bParityMatrix({ repoRoot });
+
+  assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
+  assert.equal(assessment.answerRows, 2);
+  // Pinned on purpose: a pattern narrowed until it stops matching lowers this count, and a section
+  // that quietly loses a claim is exactly what the family exists to catch.
+  assert.equal(assessment.headlineChecks, 14);
+});
+
+test("a missing answer section is rejected", () => {
+  expectProblem(
+    inspect({ document: buildDocument({ answer: "### 1.9 other section" }) }),
+    'has no "### 1.1" answer section',
+  );
+});
+
+test("an answer table with the wrong columns is rejected at the header", () => {
+  const answer = ANSWER.replace(`| ${ANSWER_COLUMNS.join(" | ")} |`, "| 路径 | 本仓现状 |");
+
+  expectProblem(
+    inspect({ document: buildDocument({ answer }) }),
+    "section 1.1 path table header is [路径, 本仓现状]; expected [路径, E2B 的形态, 本仓现状]",
+  );
+});
+
+test("an answer table that stops listing E2B's two core paths is rejected", () => {
+  const answer = answerWith(
+    "| fast deploy | `Template.build()` | `Template` has nothing behind it; no `REQ-*`〔§3.4/1〕 |",
+    "| fast deploy | `Template.build()` | only `crates/fixture` is cited |\n| third path | `x` | cited `crates/fixture` |",
+  );
+
+  expectProblem(inspect({ document: buildDocument({ answer }) }), "lists 3 path(s)");
+});
+
+test("an answer row that repeats a path is rejected", () => {
+  const answer = answerWith("| fast deploy |", "| fast create |");
+
+  expectProblem(inspect({ document: buildDocument({ answer }) }), 'repeats the path "fast create"');
+});
+
+test("an answer row stating this repository's position without evidence is rejected", () => {
+  const answer = answerWith(
+    "| no entrypoint; only `crates/fixture` is candidate-shaped |",
+    "| there is simply no entrypoint |",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ answer }) }),
+    "states this repository's position without citing a single backtick",
+  );
+});
+
+test("an answer row citing a path that does not exist is rejected", () => {
+  const answer = answerWith(
+    "`crates/fixture` is candidate-shaped",
+    "`crates/absent-crate` is candidate-shaped",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ answer }) }),
+    "cites `crates/absent-crate`, which does not exist",
+  );
+});
+
+test("a headline line citing a gate that does not exist is rejected", () => {
+  const answer = answerWith("- 2 份 `REQ-*` 中", "- See `check-sandbox-absent-gate.mjs`. 2 份 `REQ-*` 中");
+
+  expectProblem(
+    inspect({ document: buildDocument({ answer }) }),
+    "cites `check-sandbox-absent-gate.mjs`, which does not exist",
+  );
+});
+
+test("an answer row with the wrong number of cells is rejected", () => {
+  const answer = answerWith(
+    "| fast create | `Sandbox.create()` | no entrypoint; only `crates/fixture` is candidate-shaped |",
+    "| fast create | `Sandbox.create()` | no entrypoint | and a fourth cell |",
+  );
+
+  expectProblem(inspect({ document: buildDocument({ answer }) }), "row has 4 cell(s), expected 3");
+});
+
+test("a census figure that disagrees with the matrix is rejected", () => {
+  const answer = answerWith("- E2B 的能力集合共 **3 项**", "- E2B 的能力集合共 **4 项**");
+
+  expectProblem(
+    inspect({ document: buildDocument({ answer }) }),
+    "states census as [4, 0, 1, 1, 1], but the repository yields [3, 0, 1, 1, 1]",
+  );
+});
+
+test("a census figure is compared to the matrix, not to the census table above it", () => {
+  // Both copies say four. Comparing copy to copy would only prove they agree; the matrix holds three
+  // rows, so the round trip through the census table must not launder the number.
+  const census = CENSUS.replace("| **合计** | **3** |", "| **合计** | **4** |");
+  const answer = answerWith("- E2B 的能力集合共 **3 项**", "- E2B 的能力集合共 **4 项**");
+  const assessment = inspect({ document: buildDocument({ answer, census }) });
+
+  assert.ok(
+    assessment.problems.some((problem) =>
+      problem.includes("states census as [4, 0, 1, 1, 1], but the repository yields [3, 0, 1, 1, 1]"),
+    ),
+    formatE2bParityMatrixReport(assessment),
+  );
+});
+
+test("a requirement figure that disagrees with the records is rejected", () => {
+  const answer = answerWith(
+    "2 份 `REQ-*` 中 1 份 `ready`（0 `accepted` / 1 `draft`）",
+    "3 份 `REQ-*` 中 1 份 `ready`（0 `accepted` / 2 `draft`）",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ answer }) }),
+    "states requirements as [3, 1, 0, 2], but the repository yields [2, 1, 0, 1]",
+  );
+});
+
+test("a decision count that disagrees with the records is rejected", () => {
+  const answer = answerWith("1 份 `ADR` 全部 `proposed`", "2 份 `ADR` 全部 `proposed`");
+
+  expectProblem(
+    inspect({ document: buildDocument({ answer }) }),
+    "states decisions as [2], but the repository yields [1]",
+  );
+});
+
+test("a decision promoted out of proposed refutes the adjective the count cannot carry", () => {
+  expectProblem(
+    inspect({ decisionStatus: "accepted" }),
+    "states every one of the 1 `ADR` record(s) is `proposed`, but 1 no longer is",
+  );
+});
+
+test("a contract count that disagrees with the tree is rejected", () => {
+  const answer = answerWith("2 份 `*.contract.json` 中 1 份", "3 份 `*.contract.json` 中 1 份");
+
+  expectProblem(
+    inspect({ document: buildDocument({ answer }) }),
+    "states contracts as [3, 1], but the repository yields [2, 1]",
+  );
+});
+
+test("a declared-false count that disagrees with the tree is rejected", () => {
+  const answer = answerWith(
+    "2 份 `*.contract.json` 中 1 份显式声明",
+    "2 份 `*.contract.json` 中 2 份显式声明",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ answer }) }),
+    "states contracts as [2, 2], but the repository yields [2, 1]",
+  );
+});
+
+test("a contract that authorizes implementation refutes the claim that none does", () => {
+  expectProblem(
+    inspect({
+      contractValues: { [NAMED_CONTRACTS.declaring]: { implementationAuthorized: true } },
+    }),
+    "states that no machine contract authorizes implementation, but `specs/fixture-alpha.contract.json` does",
+  );
+});
+
+test("a contract that would rather not be named is a finding, not an omission", () => {
+  expectProblem(
+    inspect({
+      contractValues: { [NAMED_CONTRACTS.declaring]: { implementationAuthorized: true } },
+    }),
+    "but never names `specs/fixture-alpha.contract.json`, the one that does not",
+  );
+});
+
+test("an evidence figure that disagrees with the registry is rejected", () => {
+  const answer = answerWith(
+    "1 份契约声明的 **3 个证据 id** 中，只有 **1 个**有 host-precondition 半产出，**2 个**仍被",
+    "1 份契约声明的 **4 个证据 id** 中，只有 **1 个**有 host-precondition 半产出，**3 个**仍被",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ answer }) }),
+    "states evidence-partial as [1, 4, 1, 3], but the repository yields [1, 3, 1, 2]",
+  );
+});
+
+test("editing the registry without editing the document is rejected", () => {
+  expectProblem(
+    inspect({
+      registryCounts: {
+        ...EVIDENCE_COUNTS,
+        sandbox_total_distinct_evidence_ids: 4,
+        sandbox_fully_gated: 3,
+      },
+    }),
+    "states evidence-partial as [1, 3, 1, 2], but the repository yields [1, 4, 1, 3]",
+  );
+});
+
+test("a figure that appears only outside section 1.1 is rejected as missing from the answer", () => {
+  const answer = ANSWER.split("\n")
+    .filter((line) => !line.includes("能力集合共"))
+    .join("\n");
+
+  expectProblem(
+    inspect({ document: buildDocument({ answer }) }),
+    "section 1.1 states no census figure",
+  );
+});
+
+test("removing the named exception is rejected rather than read as a shorter sentence", () => {
+  const answer = ANSWER.replace(
+    "，第 2 份 `specs/fixture-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: \"no-go\"`",
+    "",
+  );
+  assert.ok(answer !== ANSWER, "the exception sentence must actually be removed");
+
+  expectProblem(
+    inspect({ document: buildDocument({ answer }) }),
+    "but never names `specs/fixture-readiness.contract.json`, the one that does not",
+  );
+});
+
+test("an exception that does declare the field is rejected", () => {
+  expectProblem(
+    inspect({
+      contractValues: {
+        [NAMED_CONTRACTS.excepted]: {
+          releaseDecision: { status: "no-go", runtimeImplementationAuthorizationGranted: false },
+          implementationAuthorized: false,
+        },
+      },
+    }),
+    "states `specs/fixture-readiness.contract.json` has no `implementationAuthorized` field, but it declares one",
+  );
+});
+
+test("an exception whose release decision is not a no-go is rejected", () => {
+  expectProblem(
+    inspect({
+      contractValues: {
+        [NAMED_CONTRACTS.excepted]: {
+          releaseDecision: { status: "go", runtimeImplementationAuthorizationGranted: false },
+        },
+      },
+    }),
+    'states `specs/fixture-readiness.contract.json` declares `releaseDecision.status: "no-go"`, but it does not',
+  );
+});
+
+test("an exception whose ordinal disagrees with the count is rejected", () => {
+  const answer = answerWith(
+    "第 2 份 `specs/fixture-readiness.contract.json`",
+    "第 3 份 `specs/fixture-readiness.contract.json`",
+  );
+
+  expectProblem(inspect({ document: buildDocument({ answer }) }), "calls its exception contract #3");
+});
+
+test("a figure quoted inside the gate-description section is a quotation, not a claim", () => {
+  // Section 3.3 explains the gates and quotes the sentences they check. Without the exemption this
+  // line would be read as a claim that the repository holds ninety-nine decision records.
+  const description = [
+    "### 3.3 the gates and their cases",
+    "",
+    GATE_DESCRIPTION,
+    "",
+    "This family checks the sentence that reads 99 份 `ADR` 全部 `proposed`.",
+    "",
+  ].join("\n");
+  const assessment = inspect({ document: buildDocument({ description }) });
+
+  assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
+});
+
+test("a figure whose source cannot be read is reported rather than passed", () => {
+  // No `acknowledged` block: the registry exists but yields nothing, so the figures cannot be
+  // refuted. Reporting that is the difference between a check and a decoration.
+  expectProblem(
+    inspect({
+      contractValues: {
+        ["specs/sandbox-real-evidence-registry.json"]: { schemaVersion: 1, kind: "fixture" },
+      },
+    }),
+    "states a evidence-partial figure, but the artifact it restates could not be read",
+  );
+});
+
+test("an unnamed-contract count that disagrees with the tree is rejected", () => {
+  const answer = answerWith("另有一份不以", "另有两份不以");
+
+  expectProblem(
+    inspect({ document: buildDocument({ answer }) }),
+    "states 2 unnamed machine contract(s), but 1 exist under apis/",
+  );
+});
+
+test("an unnamed-contract list that does not match the tree is rejected", () => {
+  const answer = answerWith(
+    "`apis/commands/fixture-command-contract.json`）同为",
+    "`apis/commands/fixture-other-contract.json`）同为",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ answer }) }),
+    "names unnamed machine contracts [apis/commands/fixture-other-contract.json], but the repository holds [apis/commands/fixture-command-contract.json]",
+  );
 });

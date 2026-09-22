@@ -313,7 +313,7 @@ cargo test --workspace
 node --test tests/contract/*.test.mjs
 ```
 
-`556 pass / 0 fail`（其中 E2B 矩阵门禁 91 个、E2B 基准门禁 29 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
+`592 pass / 0 fail`（其中 E2B 矩阵门禁 127 个、E2B 基准门禁 29 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
 
 ### 3.2 覆盖空档
 
@@ -324,9 +324,10 @@ node --test tests/contract/*.test.mjs
 | 1 | **已实现面没有任何消费点测试** | 治理阻塞 | `REQ-2026-0003` `REQ-2026-0008` | 5 个 SPI 测试全部落在谓词与构造器上，`allocate`/`start`/`stop`/`destroy` 的**真实 Provider 调用序列**没有任何实现可测——因为 Provider 不存在。两条能授权它的需求（安全本地 Provider、Firecracker Provider）都还是 `draft`，`AGENTS.md` 未放行，所以这不是"没写用例"而是"没有可写用例的实现"。本仓最深的空档 |
 | 2 | **PRD 状态机 ⊋ 实现状态机** | 缺门禁 | `docs/product/prd/PRD-capabilities.md` `crates/sdkwork-intelligence-sandbox-service/src/model.rs` | PRD 第 3 节的规范状态机含 `Pausing`/`Paused`/`Recovering`，实现枚举只有 8 态且无这三个，而 PRD 该处没有任何"未实现/目标态"标记。两份产物都在树里，只是**没有任何门禁把它们放在一起读**；补标记或补门禁都行，缺的是"有人读"这件事本身 |
 | 3 | **指标契约与指标族名不相交** | 缺门禁 | `apis/async/sandbox-observability-catalog.json` `docs/product/prd/PRD-sandbox-surfaces.md` | 前者的 32 个指标与后者第 13 节的 15 个指标族名字集完全不相交，9 个族无任何对应；且 PRD 的 `*_latency` 命名违反 `OBSERVABILITY_SPEC.md` 第 57 节"Duration 指标名必须含单位，通常 `_duration_seconds`"。两份清单都在树里，**无门禁比对** |
-| 4 | **`PRD-capabilities.md` 第 11 节与 E2B 基准之间仍无门禁** | 缺门禁 | `docs/product/prd/PRD-capabilities.md` `specs/sandbox-e2b-capability-baseline.json` | 本分片的 78 行已由 `tools/check-sandbox-e2b-parity-matrix.mjs` 自我校验（词表、编号与形状、状态、分类对应、普查算术、引用解析与登记、空档与取证、零需求断言登记、实现面覆盖、自描述计数、形状取证，共 11 条规则族），但第 11 节那 34 行到 E2B 的映射仍只存在于散文，会随基准演进而静默腐化 |
+| 4 | **`PRD-capabilities.md` 第 11 节与 E2B 基准之间仍无门禁** | 缺门禁 | `docs/product/prd/PRD-capabilities.md` `specs/sandbox-e2b-capability-baseline.json` | 本分片的 78 行已由 `tools/check-sandbox-e2b-parity-matrix.mjs` 自我校验（词表、编号与形状、状态、分类对应、普查算术、引用解析与登记、空档与取证、零需求断言登记、实现面覆盖、自描述计数、形状取证、结论数字一致性，共 12 条规则族），但第 11 节那 34 行到 E2B 的映射仍只存在于散文，会随基准演进而静默腐化 |
 | 5 | **PRD 第 8 节把"Benchmark 套件与容量基线"标为无需求承载，该结论已被推翻** | 缺门禁 | `docs/product/prd/PRD.md` `docs/product/requirements/REQ-2026-0019-sandbox-runtime-pool-and-fast-allocation.md` | PRD 第 8 节仍写着该行"无需求承载；无参考硬件定义"，而 `REQ-2026-0019`（runtime pool 与 fast allocation）已经存在，其 Goals 第 4 条正是"在公开参考环境和固定工作负载中证明 Pool Claim 到 Sandbox Running Ready 的 p50/p95/p99；产品目标为 p95 小于 500 ms"。散文里的"无需求"是一句会过期的断言，**没有门禁把 PRD 第 8 节的 `REQ-*` 断言与需求目录对账** |
 | 6 | **500 ms 热分配目标没有测量者，三份性能文档互不 join** | 治理阻塞 | `REQ-2026-0019` | 目标（`PRD.md` 第 6 节）说的是"公开参考环境中 Pool 到 Workspace 绑定 p95 小于 500 ms"；基线（`docs/architecture/tech/TECH-performance-baseline.md`）自述**发布门禁资格：不合格**，且其第 0.2 条明确"分子（编排）已测、分母（真实沙箱启动）不存在"，测的是编排地板；容量分片（`docs/architecture/tech/TECH-performance-and-capacity.md`）声明"全部数值都是工程目标"。三份文件各说各话、无人同时读它们。而 500 ms 对应的 Pool 路径由 `REQ-2026-0019` 承载且仍是 `draft`，所以**这里连可测的实现都还没有**，只能先作为阻塞登记 |
+| 7 | **§5「我们比 E2B 强的地方」的 9 行优势断言没有门禁** | 缺门禁 | `docs/architecture/tech/TECH-e2b-capability-parity.md` | 这 9 行的判词是"本仓**已有**"，取证是 crate 行锚：`crates/sdkwork-sandbox-provider-spi/src/identity.rs:88`、`crates/sdkwork-intelligence-sandbox-service/src/model.rs:24`、`crates/sdkwork-intelligence-sandbox-repository-sqlx/src/encryption.rs`，以及两个**裸文件名**（`provider.rs:50`、`capability.rs:2`）和一个表名。其中 `REQ-*`/`ADR-*` 已被第 6 条规则族解析并登记，但**行锚与"已有"这句判词没有任何东西核过**，裸文件名更是连所属 crate 都没写——crate 改名、行号整体下移、或某个"已有"的能力被移除，这张表会继续断言旧形状。它和 §1.2 是同一类句子（"可点证据"），只是 §1.2 已被第 11 条规则族接管 |
 
 **本表此前有一行是假的，这正是新增门禁的由来。** 原第 5 行写作「"快速创建/快速部署"的性能断言全为零测试」，性质一栏写着"既无参考硬件也无 Benchmark 套件，且该目标没有任何需求承载"——**这句有一半不成立**：`REQ-2026-0019` 承载的正是这个目标，`tools/bench-sandbox-lifecycle.mjs` 与两平台原始样本也都在树里（样本落在 gitignore 的 `target/` 下，是证据不是缓存）。一张"缺什么"的清单如果不可被目录列举推翻，它就会越写越旧。所以本节改成带性质的表，并由门禁按性质**反向核验**：`缺产物` 点名的路径必须**不存在**、`缺门禁` 点名的路径必须**存在**、`治理阻塞` 必须点名一份**记录在案且尚未 `ready`** 的需求——三者问的都是"这句话能不能被证伪"，不是措辞问题。
 
@@ -338,8 +339,8 @@ node --test tests/contract/*.test.mjs
 
 | 新增物 | 内容 | 用例数 | 变异自证 |
 | --- | --- | --- | --- |
-| `tools/check-sandbox-e2b-parity-matrix.mjs` | 11 条规则族：词表 / 编号与形状 / 状态 / 分类对应 / 普查算术 / 引用解析与登记 / 空档与取证 / 零需求断言登记 / 实现面覆盖 / 自描述计数 / 形状取证 | — | 见下 |
-| `tests/contract/e2b-parity-matrix-tool.contract.test.mjs` | 91 个用例，每个规则族都至少有一条能变红的反面用例 | 91 | 91/91 pass、逐族置空 11/11 转红 |
+| `tools/check-sandbox-e2b-parity-matrix.mjs` | 12 条规则族：词表 / 编号与形状 / 状态 / 分类对应 / 普查算术 / 引用解析与登记 / 空档与取证 / 零需求断言登记 / 实现面覆盖 / 自描述计数 / 形状取证 / 结论数字一致性 | — | 见下 |
+| `tests/contract/e2b-parity-matrix-tool.contract.test.mjs` | 127 个用例，每个规则族声明的每一条反面用例都经变异验证会转红 | 127 | 127/127 pass、逐族置空 12/12、82/82 条声明用例转红 |
 | `tools/check-sandbox-e2b-field-parity.mjs` | 10 条规则族：基准形状 / 逐来源 provenance / 逐行证据 / 分类对齐 / 与文档逐行 join / `基准仅索引` 棘轮 / operation 覆盖记账 / 登记 / 测试清单 / 自描述计数 | — | 见下 |
 | `tests/contract/sandbox-e2b-field-parity-tool.contract.test.mjs` | 29 个用例，10 条规则族各有一条能变红的反面用例，另加对照组与解析器回归 | 29 | 29/29 pass |
 
@@ -353,7 +354,9 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 **门禁自身踩到并修掉的静默漏洞**：合计行写作 `| **合计** | **78** | … |`，初版解析器用 `^\d+$` 判行，星号使其不被识别为合计行 ⇒ 全部合计断言被跳过，门禁把**重算值**当作**已核对值**打印。这正是本仓最在意的那类缺陷（"看着通过、实际什么都没查"），已改为先剥离 Markdown 强调再解析，并加"没有合计行即失败"与"计数非数字即报告而非静默丢弃"两条规则锁住。
 
-**矩阵门禁的逐族耦合自证**：契约套件里"每个规则族有一条反面用例"只证明用例存在，不证明**是这条规则**在报。于是再逐族把该族自己的判据做最小置空（`if (x) {` → `if (false) {`，或删掉 push 点），要求"转红的恰好是本族的反面用例"。11 / 11 全部成立：本族各翻 1–9 条、**异族 0 条**、套件总数全程 90 不变、跑完 `Buffer.compare` 逐字节还原。变异报告落盘在 `target/matrix-mutation-proof.json`（`target/` 被 gitignore，是证据不是缓存）。
+**矩阵门禁的逐族耦合自证**：契约套件里"每个规则族有一条反面用例"只证明用例存在，不证明**是这条规则**在报。于是再逐族把该族自己的判据做最小置空（`if (x) {` → `if (false) {`，或删掉 push 点），要求"转红的恰好是本族的反面用例"。12 / 12 全部成立：**82 条**声明为本族的用例**全部**转红、**异族 0 条**、套件总数全程 127 不变、跑完 `Buffer.compare` 逐字节还原。
+
+**自证机制自己也被查出 10 条假覆盖**：此前的收敛判据只要求"每族至少转红 1 条"（`ownFlipped.length > 0`），于是 6 个族里共 **10 条**"声明为本族"的用例**从未被任何族的置空触发过**。分两种成因。一种是把规则写成了**行循环之外的守卫**因而锚点从未被列入编辑集：`RESIDUAL GAPS` 的"格子数不对"（走 `gaps.malformed`）与"声明无空档"（走 `rows.length === 0`）两条都在行循环之外；`SHAPE EVIDENCE` 的头表校验、缺节、无组件、锚点可见性四条同理；`CENSUS ARITHMETIC` 的"计数非数字"与"无合计行"两条也是。另一种是**直接调用解析器**的单元用例：SELF-DESCRIPTION 的两条按内联字符串断言 `parseLineScopedRuleFamilies` 的返回值，任何对判据的置空都不可能让它们转红。前者把锚点补进对应族，后者从"反面用例"改列为"编辑前即为绿"的对照用例——**一条永远不会转红的用例不是覆盖证据，把它记成覆盖正是本次要拒绝的那类断言**。另有一例既不是错标也不是漏锚点，而是**同族锚点互相掩盖**：`HEADLINE NUMBERS` 里"§3.3 引文不算断言"这条的 finding 与同族"数字与来源不符"那条落在同一行，聚合置空时两者一起消失，于是该用例改为单跑一个锚点来证明。收敛判据随之收紧为 `everyDeclaredCaseProved`——每族**每一条**声明都必须转红，某条声明过期即 `exit 3`，因为"声明了一份没人核对的清单"与"清单里有一条是假的"是同一个缺陷。变异报告落盘在 `target/matrix-mutation-proof.json`（`target/` 被 gitignore，是证据不是缓存）。
 
 **这次置空顺手抓到一个真缺陷**：把"矩阵小节数与 census 分类数必须一一对应"这条判据置空后，越界读取 `census.categories[index]` 让门禁**抛 TypeError** 而不是报告——静态门禁在畸形输入上崩溃时，读起来像工具坏了而不是文档坏了。已补一层"取不到就跳过"的兜底，再复跑，转红集合重新变成"恰好本族"。
 
@@ -382,6 +385,16 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 - **点名的否定要能被反证**：加粗否定短语（`**无 …**` / `**零…**`）里凡是点名了标识符的，那些标识符必须在**该行所锚的那个文件**里不存在。范围取"所锚文件"而不是全仓，是因为这句话说的就是"那个文件里的那个构造没有"——第 2 行断言状态枚举没有 `Pausing`/`Paused`/`Recovering`，而这一行正是 §3.2 第 1 条治理阻塞的实现侧：门禁打开前写不了它，门禁打开后它会被静默改掉，所以这条否定的真假必须每次重算。没点名标识符的否定（`零命令` / `零路由` / `零生产实现`）不靠短语自证，而由行号锚承担——`main.rs:3` 上真的只有 `fn main() {}`，才是"零命令"可被核对的原因。
 
 同一轮还顺手把 3 行判词改精确了：Command Executor 那行原写"全仓无 `SandboxCommandExecutor`"，实际上它**被一份契约声明为 `sandbox_required_bindings` 的一项**——`crates/**/*.rs` 里确实没有实现（这一点现在被门禁核验），但"全仓无"是错的，准确的形状是"已声明、未绑定"；Template / Snapshot / Fork / Pool 那行原写"全仓无对应实现"，没有点名任何可反证的东西，现在点名 `crates/` 下四个不得出现的同名 crate。
+
+**第十二条规则族：结论数字（§1.1 的每一个数字都变成可比对的断言）。** §1.1 标题是「直接回答」，是整份审计里**被评审引用得最多**的一段——它说的就是"能力集到底对齐没有"。这一段里的每个数字都是**别处某个数字的副本**：下一节的普查表、需求记录、决策记录、每份机器契约上的授权字段、证据注册表。此前没有任何东西把副本与原值放在一起，而这一段还会**自我重复**：那段"23 份 `*.contract.json` 中 22 份未授权"的话在 §1.1 与 §3.2 各出现一次，一处过期就会被引用两次。现在读的是**全文档的每一处**出现（不只是第一处），且 §1.1 赖以成立的五个数字必须出现在本节——数字悄悄消失留下的是一段"读起来仍像答案、其实什么都没断言"的文字。
+
+- **普查数字比对的是矩阵行本身**，不是 §1.3 的普查表：两个副本一起写错同一个数照样转红，拿副本比副本只能证明两个副本彼此一致。契约测试里就有这条：把 §1.3 合计行与 §1.1 同时改成 4，门禁仍报"矩阵里是 3"。
+- **需求与决策数字重算自记录**：`docs/product/requirements/` 与 `docs/architecture/decisions/` 逐份读 `status`。那句"27 份 `ADR` **全部** `proposed`"里的**形容词**也核——一份记录被推进 `accepted` 不改变数量，却会让这句话从"治理阻塞"变成一句不成立的话。
+- **契约面既核数量也核身份**："23 份里 22 份声明未授权"只有在**第 23 份被点名**时才有意义，所以凡是不声明该字段的契约必须被文档点名；两份不以 `.contract.json` 命名的 `apis/` 机器契约按名单逐个对上（顺序无关，按集合比）；"没有任何一份授权实现"则对**两个**被本仓门禁承认的授权字段（`implementationAuthorized`、`releaseDecision.runtimeImplementationAuthorizationGranted`，分别由 `check-sandbox-human-review-signoff.mjs` 与 `check-sandbox-commercial-readiness.mjs` 读）逐份核，而不是从计数反推。
+- **证据数字比对注册表的 `acknowledged` 块**（该块由 `check-sandbox-evidence-traceability.mjs` 保证等于活契约），**不在这里重算**——再写一份"什么算作被要求的证据 id"的抽取规则，正是证据门禁存在的意义所要防止的那种漂移。
+- **来源读不到就报红**：注册表存在但没有 `acknowledged` 块时，门禁报"该数字无法被反驳"，而不是当作通过。这是"查过了"与"什么都没查"的分界。
+
+首跑即暴露一个真缺陷，而且是**新规则自己的**：`apis/` 名单初版按排序后的字面串比对，而文档按散文顺序列出（`commands/` 在前、`async/` 在后），于是两处都报假红——是规则脆，不是文档错。已改成排序集合比对，并把这条写进契约测试，正是这条"先对抽取规则做正反例自检再报数"的老教训。
 
 ### 3.4 零需求断言
 

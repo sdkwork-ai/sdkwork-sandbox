@@ -31,7 +31,7 @@ const REAL_ROWS = 78;
 const REAL_CAPTURED_AT = "2026-09-22T09:36:31Z";
 const REAL_DOCUMENTED_OPERATIONS = 71;
 const REAL_CONTRACT_FILES = 40;
-const REAL_CONTRACT_TESTS = 556;
+const REAL_CONTRACT_TESTS = 592;
 const REAL_RUST_WORKSPACE = { command: "cargo test --workspace", passed: 67, failed: 0, ignored: 1 };
 const REAL_RULE_FAMILIES = 10;
 /** The only E2B OpenAPI operation no matrix row judges. Recorded, not hidden. */
@@ -291,7 +291,7 @@ test("the gate's report names the coverage it verified", () => {
   assert.match(report, /101 captured source\(s\)/);
   assert.match(report, /0 row\(s\) rest on the documentation index \(ceiling 0\)/);
   assert.match(report, /71 operation\(s\), 70 judged by a row, 1 recorded unjudged/);
-  assert.match(report, /556 contract test\(s\) recomputed from tests\/contract, 67 Rust test\(s\) recorded/);
+  assert.match(report, /592 contract test\(s\) recomputed from tests\/contract, 67 Rust test\(s\) recorded/);
   assert.match(report, /10 rule families declared consistently in 4 surface\(s\)/);
 });
 

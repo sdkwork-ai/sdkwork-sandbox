@@ -12,7 +12,7 @@
  * 34-row `PRD-capabilities.md` census). A census that does not add up is worse than no census,
  * because the number gets quoted in review.
  *
- * Eleven deterministic rule families:
+ * Twelve deterministic rule families:
  *
  *   1. VOCABULARY. The document must declare exactly the four status markers in its status
  *      vocabulary section, and every matrix row must use one of them. A fifth marker invented
@@ -384,6 +384,15 @@ export function parseGapEvidence(cell) {
 }
 
 export const REQUIREMENTS_DIRECTORY = "docs/product/requirements";
+export const DECISIONS_DIRECTORY = "docs/architecture/decisions";
+
+/**
+ * The record-status line every requirement and decision record carries. Written once and shared,
+ * because two readers of one convention drift: a reader that matched `status` case-sensitively
+ * would count the records that write `Status:` as having none, while the requirement reader beside
+ * it was already case-insensitive.
+ */
+const RECORD_STATUS = /^\s*(?:\*\*)?status(?:\*\*)?\s*[:：]\s*(?:\*\*)?([A-Za-z][A-Za-z-]*)/imu;
 
 /**
  * The phrasings this document uses to assert that a capability has no requirement behind it. The
@@ -504,8 +513,39 @@ export function readRequirementStatus(repoRoot, id) {
   );
   if (!name) return null;
   const text = readFileSync(join(directory, name), "utf8");
-  const match = /^\s*(?:\*\*)?status(?:\*\*)?\s*[:：]\s*(?:\*\*)?([A-Za-z][A-Za-z-]*)/imu.exec(text);
+  const match = RECORD_STATUS.exec(text);
   return { file: `${REQUIREMENTS_DIRECTORY}/${name}`, status: match ? match[1].toLowerCase() : null };
+}
+
+/** Every `*.md` record in a directory, reduced to its file name and declared status. */
+function readRecordStatuses(repoRoot, relativeDirectory, pattern) {
+  const directory = join(repoRoot, relativeDirectory);
+  if (!existsSync(directory)) return [];
+  return readdirSync(directory)
+    .filter((name) => pattern.test(name))
+    .sort()
+    .map((name) => {
+      const text = readFileSync(join(directory, name), "utf8");
+      const match = RECORD_STATUS.exec(text);
+      return {
+        file: `${relativeDirectory}/${name}`,
+        status: match ? match[1].toLowerCase() : null,
+      };
+    });
+}
+
+/**
+ * Every requirement record with its declared status. The section 1.1 headline claims "27 份 `REQ-*`
+ * 中 0 份 `ready`（5 `accepted` / 22 `draft`）", and that sentence is the reason the whole repository
+ * is understood to be blocked, so it is counted rather than believed.
+ */
+export function readRequirementStatuses(repoRoot) {
+  return readRecordStatuses(repoRoot, REQUIREMENTS_DIRECTORY, /^REQ-\d{4}-\d{4}-.+\.md$/u);
+}
+
+/** Every architecture decision record with its declared status. */
+export function readDecisionStatuses(repoRoot) {
+  return readRecordStatuses(repoRoot, DECISIONS_DIRECTORY, /^ADR-\d{8}-.+\.md$/u);
 }
 
 /**
@@ -526,6 +566,7 @@ export const RULE_FAMILIES = Object.freeze([
   "implementation-coverage",
   "self-description",
   "shape-evidence",
+  "headline-numbers",
 ]);
 
 /** The surfaces that describe this gate, and the language each states the count in. */
@@ -551,7 +592,7 @@ const ENGLISH_COUNT_WORDS = Object.freeze({
 });
 
 const CHINESE_COUNT_WORDS = Object.freeze({
-  一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6,
+  一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6,
   七: 7, 八: 8, 九: 9, 十: 10, 十一: 11, 十二: 12,
 });
 
@@ -923,6 +964,227 @@ function backtickedTokens(cell) {
   return [...String(cell).matchAll(/`([^`]+)`/gu)].map((match) => match[1].trim());
 }
 
+export const ANSWER_SECTION = "### 1.1";
+export const ANSWER_COLUMNS = Object.freeze(["路径", "E2B 的形态", "本仓现状"]);
+export const EVIDENCE_REGISTRY = "specs/sandbox-real-evidence-registry.json";
+export const CONTRACT_SUFFIX = ".contract.json";
+export const API_SURFACE = "apis";
+
+/** The directories a machine contract may live under. */
+const CONTRACT_ROOTS = Object.freeze(["specs", "apis", "crates"]);
+
+/**
+ * Only the doubled emphasis is stripped. The document writes `` `REQ-*` `` -- a single asterisk
+ * inside backticks -- and the blanket `\*+` strip used on census cells turns that token into
+ * `` `REQ-` ``. After that the sentence this family exists to read stops matching, no finding is
+ * produced, and the gate reports a clean section it never actually parsed.
+ */
+function deEmphasize(value) {
+  return String(value).replace(/\*\*/gu, "");
+}
+
+/**
+ * The restated numbers, as a closed set of patterns. Each is anchored on the document's own literal
+ * phrasing, so a figure is only checked where the document makes the claim. The set is written out
+ * for the same reason the zero-requirement phrasings are: a new way to state one of these numbers
+ * has to be a deliberate edit here, not a sentence nobody reads. Every pattern carries only the
+ * numbers it states, so the expected values line up position by position.
+ */
+export const HEADLINE_PATTERNS = Object.freeze([
+  {
+    id: "census",
+    pattern:
+      /E2B 的能力集合共\s*(\d+)\s*项[^。]*本仓\s*✅\s*(\d+)\s*、\s*🟡\s*(\d+)\s*、\s*❌\s*(\d+)\s*、\s*⛔\s*(\d+)/gu,
+  },
+  {
+    id: "requirements",
+    pattern: /(\d+)\s*份\s*`REQ-\*`\s*中\s*(\d+)\s*份\s*`ready`\s*（\s*(\d+)\s*`accepted`\s*\/\s*(\d+)\s*`draft`\s*）/gu,
+  },
+  { id: "decisions", pattern: /(\d+)\s*份\s*`ADR`\s*全部\s*`proposed`/gu },
+  {
+    id: "contracts",
+    pattern: /(\d+)\s*份\s*`\*\.contract\.json`\s*中\s*(\d+)\s*份显式声明\s*`implementationAuthorized: false`/gu,
+  },
+  {
+    id: "evidence-partial",
+    pattern: /(\d+)\s*份契约声明的\s*(\d+)\s*个证据 id\s*中，只有\s*(\d+)\s*个有 host-precondition 半产出，(\d+)\s*个仍被/gu,
+  },
+  {
+    id: "evidence-gated",
+    pattern: /(\d+)\s*份契约声明的\s*(\d+)\s*个证据 id\s*中\s*(\d+)\s*个无产出者/gu,
+  },
+  { id: "evidence-registry", pattern: /(\d+)\s*个证据 id 的机器可读注册表/gu },
+]);
+
+/** The figure patterns section 1.1 itself must state, because that is where the claims are made. */
+export const ANSWER_REQUIRED_FIGURES = Object.freeze([
+  "census",
+  "requirements",
+  "decisions",
+  "contracts",
+  "evidence-partial",
+]);
+
+/** `另有两份不以 `.contract.json` 命名的机器契约（…）` -- the count is a numeral or 两. */
+export const UNNAMED_CONTRACT_CLAUSE =
+  /另有\s*([一二两三四五六七八九十]+|\d+)\s*份不以\s*`\.contract\.json`\s*命名的机器契约/u;
+
+/** `第 23 份 `specs/…contract.json`` -- the one contract that declares no authorization field. */
+export const EXCEPTION_CONTRACT_CLAUSE = /第\s*(\d+)\s*份\s*`([^`]+\.json)`/u;
+
+/** The section that describes the gates themselves, and so quotes their assertions as examples. */
+export const GATE_DESCRIPTION_SECTION = "### 3.3";
+
+/**
+ * A `### N.N` section's 1-based inclusive line range, or null when the heading is absent.
+ */
+function sectionRange(text, heading) {
+  const lines = String(text).split(/\r?\n/u);
+  const start = lines.findIndex((line) => line.trim().startsWith(heading));
+  if (start === -1) return null;
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^#{2,4}\s/u.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  return { start: start + 1, end };
+}
+
+/** The section 1.1 answer table: E2B's two core paths and this repository's state on each. */
+export function parseAnswerSection(text) {
+  const lines = String(text).split(/\r?\n/u);
+  const start = lines.findIndex((line) => line.trim().startsWith(ANSWER_SECTION));
+  if (start === -1) return null;
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^#{2,4}\s/u.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  let header = null;
+  const rows = [];
+  const malformed = [];
+  for (let index = start + 1; index < end; index += 1) {
+    const line = lines[index].trim();
+    if (!line.startsWith("|")) continue;
+    const cells = line
+      .replace(/^\|/u, "")
+      .replace(/\|$/u, "")
+      .split("|")
+      .map((cell) => cell.trim());
+    if (cells.every((cell) => /^:?-{2,}:?$/u.test(cell))) continue;
+    if (!header) {
+      header = cells;
+      continue;
+    }
+    if (cells.length !== header.length) {
+      malformed.push({ line: index + 1, cells });
+      continue;
+    }
+    const record = {};
+    ANSWER_COLUMNS.forEach((column, position) => {
+      record[column] = cells[position] ?? "";
+    });
+    record.line = index + 1;
+    rows.push(record);
+  }
+  return { header, rows, malformed, start: start + 1, end };
+}
+
+/** A JSON file's parsed value, or null when it is absent or not readable as JSON. */
+export function readJsonFile(absolutePath) {
+  if (!existsSync(absolutePath)) return null;
+  try {
+    return JSON.parse(readFileSync(absolutePath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether a machine contract authorizes implementation, by either field the repository's gates
+ * recognize: `check-sandbox-human-review-signoff.mjs` reads `implementationAuthorized === true` and
+ * `check-sandbox-commercial-readiness.mjs` reads
+ * `releaseDecision.runtimeImplementationAuthorizationGranted === true`. Both are checked here so a
+ * contract cannot slip through on the field this gate happened to pick.
+ */
+export function authorizesImplementation(value) {
+  if (!value || typeof value !== "object") return false;
+  return (
+    value.implementationAuthorized === true ||
+    value.releaseDecision?.runtimeImplementationAuthorizationGranted === true
+  );
+}
+
+/** Every `*.contract.json` under the contract roots, repository-relative and sorted. */
+export function listNamedContracts(repoRoot) {
+  const found = [];
+  for (const root of CONTRACT_ROOTS) {
+    const absolute = join(repoRoot, root);
+    if (!existsSync(absolute)) continue;
+    for (const relative of walkRelativeFiles(absolute)) {
+      if (relative.endsWith(CONTRACT_SUFFIX)) found.push(`${root}/${relative}`);
+    }
+  }
+  return found.sort();
+}
+
+/**
+ * The machine contracts that are not named `*.contract.json`. The document calls these "`apis/`
+ * 机器契约" and names two, so the surface is the API contract directory rather than "every JSON
+ * file that happens to carry the authorization field" -- `specs/sandbox-real-evidence-registry.json`
+ * carries one too and is a producer registry, not a contract. Using the document's own distinction
+ * is what keeps the count reproducible instead of a judgement call.
+ */
+export function listApiContracts(repoRoot) {
+  const absolute = join(repoRoot, API_SURFACE);
+  if (!existsSync(absolute)) return [];
+  return walkRelativeFiles(absolute)
+    .filter((relative) => relative.endsWith(".json") && !relative.endsWith(CONTRACT_SUFFIX))
+    .map((relative) => `${API_SURFACE}/${relative}`)
+    .filter((relative) => {
+      const value = readJsonFile(join(repoRoot, relative));
+      return value !== null && Object.hasOwn(value, "implementationAuthorized");
+    })
+    .sort();
+}
+
+/**
+ * The recorded evidence counts, read from the registry rather than re-derived. Re-deriving them here
+ * would mean a second copy of the "what counts as a required evidence id" rule, which is exactly the
+ * drift the evidence gate exists to prevent; the registry's `acknowledged` block is the number that
+ * gate keeps equal to the live contracts, so this gate compares the document to that.
+ */
+export function readEvidenceCounts(repoRoot) {
+  const acknowledged = readJsonFile(join(repoRoot, EVIDENCE_REGISTRY))?.acknowledged;
+  if (!acknowledged || typeof acknowledged !== "object") return null;
+  return {
+    contracts: acknowledged.sandbox_contracts_with_requirements,
+    ids: acknowledged.sandbox_total_distinct_evidence_ids,
+    partial: acknowledged.sandbox_host_precondition_partial,
+    gated: acknowledged.sandbox_fully_gated,
+  };
+}
+
+/**
+ * A cited token that does not resolve, or null when it does. Two forms are recognized: a path under
+ * a top-level repository directory, and a bare gate file name, which the document writes without its
+ * `tools/` prefix.
+ */
+function unresolvedCitation(repoRoot, token) {
+  if (REPO_PATH_PREFIXES.some((prefix) => token.startsWith(`${prefix}/`))) {
+    return citedPathExists(repoRoot, token) ? null : token;
+  }
+  const gate = /^check-sandbox-[a-z0-9-]+\.mjs$/u.exec(token);
+  if (gate) {
+    return existsSync(join(repoRoot, "tools", token)) ? null : token;
+  }
+  return null;
+}
+
 export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
   const documentPath = join(repoRoot, PARITY_DOCUMENT);
   const problems = [];
@@ -936,6 +1198,10 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
     claimCount: 0,
     coveredTests: 0,
     workspaceTests: 0,
+    shapeRows: 0,
+    shapeAnchors: 0,
+    answerRows: 0,
+    headlineChecks: 0,
     totals: { ok: 0, partial: 0, missing: 0, deliberate: 0 },
     problems,
   };
@@ -1689,6 +1955,254 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
     }
   }
 
+  // ---- 12. HEADLINE NUMBERS
+  // Section 1.1 is headed "直接回答" -- the direct answer -- and it is the part of the audit a
+  // reviewer quotes, because it is the part that says whether the capability set is aligned at all.
+  // Every figure in it is a *copy* of a number that some other artifact owns: the census table one
+  // section below, the requirement records, the decision records, the authorization field on each
+  // machine contract, the evidence registry. Until this family existed not one of those copies was
+  // compared to its original, and the section repeats whole sentences of itself -- the contract
+  // paragraph appears in both 1.1 and 3.2 -- so a single stale copy would have been quoted twice.
+  // The rule therefore reads every occurrence in the document, not just the first, and requires the
+  // ones section 1.1 is built out of to be present there: a figure that quietly disappears leaves a
+  // section that still reads like an answer while asserting nothing.
+  const answer = parseAnswerSection(text);
+  let answerRows = 0;
+  let headlineChecks = 0;
+
+  if (!answer) {
+    problems.push(`${PARITY_DOCUMENT} has no "${ANSWER_SECTION}" answer section`);
+  } else if (!answer?.header) {
+    problems.push(`${PARITY_DOCUMENT} section 1.1 has no path table`);
+  } else if (
+    answer.header.length !== ANSWER_COLUMNS.length ||
+    answer.header.join("|") !== ANSWER_COLUMNS.join("|")
+  ) {
+    problems.push(
+      `${PARITY_DOCUMENT} section 1.1 path table header is [${answer.header.join(", ")}]; expected [${ANSWER_COLUMNS.join(", ")}]`,
+    );
+  } else {
+    for (const row of answer.malformed) {
+      problems.push(
+        `${PARITY_DOCUMENT}:${row.line} section 1.1 row has ${row.cells.length} cell(s), expected ${ANSWER_COLUMNS.length}`,
+      );
+    }
+    if (answer.rows.length !== 2) {
+      problems.push(
+        `${PARITY_DOCUMENT} section 1.1 lists ${answer.rows.length} path(s); the claim it backs is about E2B's two core paths, so it must list exactly two`,
+      );
+    }
+    answerRows = answer.rows.length;
+    const journeys = new Set();
+    for (const row of answer.rows) {
+      const label = `section 1.1 row at line ${row.line}`;
+      const journey = stripEmphasis(row["路径"]).trim();
+      if (journey === "") {
+        problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} names no path`);
+      } else if (journeys.has(journey)) {
+        problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} repeats the path "${journey}"`);
+      } else {
+        journeys.add(journey);
+      }
+      // The state cell is where the row says what this repository has. A row whose state cites
+      // nothing reads exactly like a row whose state cites something, which is why the section is
+      // listed here at all.
+      if (backtickedTokens(row["本仓现状"]).length === 0) {
+        problems.push(
+          `${PARITY_DOCUMENT}:${row.line} ${label} states this repository's position without citing a single backticked artifact`,
+        );
+      }
+      for (const column of ANSWER_COLUMNS) {
+        for (const token of backtickedTokens(row[column])) {
+          const unresolved = unresolvedCitation(repoRoot, token);
+          if (unresolved !== null) {
+            problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} cites \`${unresolved}\`, which does not exist`);
+          }
+        }
+      }
+    }
+  }
+
+  // The originals, recomputed from the artifacts themselves. The census figures come from the matrix
+  // rows rather than from the census table, so a document that restates a wrong number in both places
+  // still turns red -- comparing copy to copy would only prove the two copies agree.
+  const requirementRecords = readRequirementStatuses(repoRoot);
+  const decisionRecords = readDecisionStatuses(repoRoot);
+  const namedContracts = listNamedContracts(repoRoot);
+  const apiContracts = listApiContracts(repoRoot);
+  const evidenceCounts = readEvidenceCounts(repoRoot);
+  const declaresFalse = namedContracts.filter(
+    (relative) => readJsonFile(join(repoRoot, relative))?.implementationAuthorized === false,
+  );
+  const declaresNothing = namedContracts.filter((relative) => !declaresFalse.includes(relative));
+
+  const headlineExpectations = {
+    census: [rows.length, recomputed.ok, recomputed.partial, recomputed.missing, recomputed.deliberate],
+    requirements: [
+      requirementRecords.length,
+      requirementRecords.filter((record) => record.status === "ready").length,
+      requirementRecords.filter((record) => record.status === "accepted").length,
+      requirementRecords.filter((record) => record.status === "draft").length,
+    ],
+    decisions: [decisionRecords.length],
+    contracts: [namedContracts.length, declaresFalse.length],
+    "evidence-partial": evidenceCounts
+      ? [evidenceCounts.contracts, evidenceCounts.ids, evidenceCounts.partial, evidenceCounts.gated]
+      : null,
+    "evidence-gated": evidenceCounts
+      ? [evidenceCounts.contracts, evidenceCounts.ids, evidenceCounts.gated]
+      : null,
+    "evidence-registry": evidenceCounts ? [evidenceCounts.ids] : null,
+  };
+
+  const lines = text.split(/\r?\n/u);
+  const occurrences = new Map(HEADLINE_PATTERNS.map(({ id }) => [id, []]));
+  // Section 3.3 is about the gates, and it quotes their assertions while explaining them ("the
+  // sentence that says every ADR is proposed"), so a match there is a quotation rather than a claim
+  // about the repository. Reading it would fire on a description of a finding instead of on the
+  // finding -- the same reason the zero-requirement registry is exempt from its own citation scan --
+  // and a gate that cries wolf is a gate somebody eventually weakens. The exemption is narrow: it is
+  // the one prose section about the tooling, not the audit's findings.
+  const descriptionRange = sectionRange(text, GATE_DESCRIPTION_SECTION);
+  const inDescription = (lineNumber) =>
+    descriptionRange !== null &&
+    lineNumber >= descriptionRange.start &&
+    lineNumber <= descriptionRange.end;
+  for (const { id, pattern } of HEADLINE_PATTERNS) {
+    const expected = headlineExpectations[id];
+    for (let index = 0; index < lines.length; index += 1) {
+      if (inDescription(index + 1)) continue;
+      const line = deEmphasize(lines[index]);
+      for (const match of line.matchAll(pattern)) {
+        const lineNumber = index + 1;
+        occurrences.get(id).push(lineNumber);
+        headlineChecks += 1;
+        const stated = match.slice(1).map((value) => Number.parseInt(value, 10));
+        if (!expected) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${lineNumber} states a ${id} figure, but the artifact it restates could not be read, so nothing refutes it`,
+          );
+        } else if (stated.join(",") !== expected.join(",")) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${lineNumber} states ${id} as [${stated.join(", ")}], but the repository yields [${expected.join(", ")}]`,
+          );
+        }
+        for (const token of backtickedTokens(line)) {
+          const unresolved = unresolvedCitation(repoRoot, token);
+          if (unresolved !== null) {
+            problems.push(`${PARITY_DOCUMENT}:${lineNumber} cites \`${unresolved}\`, which does not exist`);
+          }
+        }
+      }
+    }
+  }
+
+  if (answer) {
+    for (const id of ANSWER_REQUIRED_FIGURES) {
+      const inside = occurrences.get(id).some((line) => line >= answer.start && line <= answer.end);
+      if (!inside) {
+        problems.push(
+          `${PARITY_DOCUMENT} section 1.1 states no ${id} figure; the answer section is where that claim belongs, so either state it there or remove the pattern deliberately`,
+        );
+      }
+    }
+  }
+
+  // "27 份 `ADR` 全部 `proposed`" carries a claim the count cannot: that *none* of them is accepted.
+  // A record promoted to `accepted` leaves the count intact, so the adjective would stay on the page
+  // asserting something that is no longer true -- and that adjective is a governance blocker.
+  if (occurrences.get("decisions").length > 0) {
+    const accepted = decisionRecords.filter((record) => record.status !== "proposed");
+    if (accepted.length > 0) {
+      problems.push(
+        `${PARITY_DOCUMENT} states every one of the ${decisionRecords.length} \`ADR\` record(s) is \`proposed\`, but ${accepted.length} no longer is (first: \`${accepted[0].file}\` is ${accepted[0].status ?? "unstated"})`,
+      );
+    }
+  }
+
+  // The contract sentence carries two things the positional patterns above cannot: a count of
+  // contracts that are not named `*.contract.json`, and the identity of the one that declares no
+  // authorization field. Both are checked against the tree, because "22 of 23 declare false" is only
+  // meaningful if the twenty-third is named -- otherwise the exception reads as an omission.
+  lines.forEach((raw, index) => {
+    const lineNumber = index + 1;
+    const line = deEmphasize(raw);
+    const unnamed = UNNAMED_CONTRACT_CLAUSE.exec(line);
+    if (unnamed) {
+      headlineChecks += 1;
+      const stated = /^\d+$/u.test(unnamed[1])
+        ? Number.parseInt(unnamed[1], 10)
+        : CHINESE_COUNT_WORDS[unnamed[1]] ?? null;
+      if (stated !== apiContracts.length) {
+        problems.push(
+          `${PARITY_DOCUMENT}:${lineNumber} states ${stated ?? unnamed[1]} unnamed machine contract(s), but ${apiContracts.length} exist under ${API_SURFACE}/`,
+        );
+      }
+      // The document lists these in prose order, so the comparison is over sorted sets: matching
+      // order would fail a sentence that merely names them the other way round, which says the rule
+      // is brittle rather than that the document is wrong.
+      const cited = backtickedTokens(line)
+        .filter((token) => /^apis\/.+\.json$/u.test(token))
+        .sort();
+      if (cited.join(",") !== apiContracts.join(",")) {
+        problems.push(
+          `${PARITY_DOCUMENT}:${lineNumber} names unnamed machine contracts [${cited.join(", ") || "none"}], but the repository holds [${apiContracts.join(", ") || "none"}]`,
+        );
+      }
+    }
+    const exception = EXCEPTION_CONTRACT_CLAUSE.exec(line);
+    if (!exception) return;
+    headlineChecks += 1;
+    const ordinal = Number.parseInt(exception[1], 10);
+    if (ordinal !== namedContracts.length) {
+      problems.push(
+        `${PARITY_DOCUMENT}:${lineNumber} calls its exception contract #${ordinal}, but the repository holds ${namedContracts.length}`,
+      );
+    }
+    const path = exception[2];
+    if (!namedContracts.includes(path)) {
+      problems.push(
+        `${PARITY_DOCUMENT}:${lineNumber} names \`${path}\` as the contract that declares no \`implementationAuthorized\`, but it is not one`,
+      );
+      return;
+    }
+    const value = readJsonFile(join(repoRoot, path));
+    if (value !== null && Object.hasOwn(value, "implementationAuthorized")) {
+      problems.push(
+        `${PARITY_DOCUMENT}:${lineNumber} states \`${path}\` has no \`implementationAuthorized\` field, but it declares one`,
+      );
+    }
+    if (line.includes("runtimeImplementationAuthorizationGranted: false") &&
+        value?.releaseDecision?.runtimeImplementationAuthorizationGranted !== false) {
+      problems.push(
+        `${PARITY_DOCUMENT}:${lineNumber} states \`${path}\` declares \`runtimeImplementationAuthorizationGranted: false\`, but it does not`,
+      );
+    }
+    if (line.includes('releaseDecision.status: "no-go"') && value?.releaseDecision?.status !== "no-go") {
+      problems.push(
+        `${PARITY_DOCUMENT}:${lineNumber} states \`${path}\` declares \`releaseDecision.status: "no-go"\`, but it does not`,
+      );
+    }
+  });
+
+  for (const relative of declaresNothing) {
+    if (!text.includes(`\`${relative}\``)) {
+      problems.push(
+        `${PARITY_DOCUMENT} states that ${declaresFalse.length} of ${namedContracts.length} ${CONTRACT_SUFFIX} files declare \`implementationAuthorized: false\`, but never names \`${relative}\`, the one that does not`,
+      );
+    }
+  }
+  // The bolded claim behind all of the above: no machine contract authorizes implementation. A
+  // contract could declare the field false and still carry a go decision, so the assertion is checked
+  // against both recognized fields on every contract rather than inferred from the count.
+  for (const relative of [...namedContracts, ...apiContracts]) {
+    if (authorizesImplementation(readJsonFile(join(repoRoot, relative)))) {
+      problems.push(
+        `${PARITY_DOCUMENT} states that no machine contract authorizes implementation, but \`${relative}\` does`,
+      );
+    }
+  }
+
   problems.push(...checkCitations(text, repoRoot));
   problems.push(...checkRegistration(repoRoot));
 
@@ -1704,6 +2218,8 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
     workspaceTests,
     shapeRows,
     shapeAnchors,
+    answerRows,
+    headlineChecks,
     totals: census.total ?? summed,
     problems,
   };
@@ -1720,6 +2236,7 @@ export function formatE2bParityMatrixReport(assessment) {
     `zero-requirement claims: ${assessment.claimCount}`,
     `implementation coverage: ${assessment.coveredTests} of ${assessment.workspaceTests} workspace test(s) accounted for`,
     `shape evidence: ${assessment.shapeRows} component row(s), ${assessment.shapeAnchors} line-numbered anchor(s) resolved`,
+    `answer section: ${assessment.answerRows} path row(s), ${assessment.headlineChecks} restated figure(s) compared to their source`,
   ];
   if (assessment.totals) {
     lines.push(
