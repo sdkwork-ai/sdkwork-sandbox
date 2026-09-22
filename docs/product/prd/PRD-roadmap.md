@@ -4,9 +4,11 @@ Status: draft
 
 Owner: SDKWork Runtime Platform
 
-Updated: 2026-07-30
+Updated: 2026-09-22
 
 Parent: [SDKWork Sandbox PRD](PRD.md)
+
+Specs: `REQUIREMENTS_SPEC.md`, `PERFORMANCE_SPEC.md`, `TEST_SPEC.md`, `QUALITY_GATE_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `DEPLOYMENT_SPEC.md`
 
 ## Phase 0: Foundation
 
@@ -105,3 +107,116 @@ Parent: [SDKWork Sandbox PRD](PRD.md)
 候选结果：为 SDKWork IDE、Web IDE、Desktop、Browser、Workflow、DevOps、Automation 与 Serverless Agent 提供统一执行底座；建立第三方 Provider 治理与 Conformance 体系；实现工作负载感知调度、成本/计量优化与多区域恢复。
 
 每项工作都必须拥有独立 Requirement、必要 ADR、Verification、Release Evidence 与 Rollback Plan。版本标签只表达产品顺序，不构成对未评审范围的交付承诺。
+
+## 能力建设顺序与阶段映射
+
+产品能力有一个自然的建设顺序，它与本仓交付阶段的关系如下。本表只表达建设先后，**不构成实施授权**：每一行的能力仍须先形成 `ready` 的 `REQ-*`。
+
+| 建设顺序 | 内容 | 映射阶段 | 当前门禁 |
+| --- | --- | --- | --- |
+| 1. 原生执行底座 | 生命周期核心、文件系统、进程、资源限制、安全约束、网络策略、API 面 | V1 | `REQ-2026-0002`~`0007`（部分候选实现，含 `draft`） |
+| 2. 池化与状态物化 | Runtime Pool、Scheduler、Template、Workspace、Snapshot | V1/V2 交界 | `REQ-2026-0016`~`0021`（全部 `draft`） |
+| 3. 强隔离 | microVM 后端、Snapshot 恢复、按需内存、写时复制根文件系统 | V2 | `REQ-2026-0008`、`0012`~`0015`（全部 `draft`） |
+| 4. 集群能力 | 集群 Placement、自动扩缩、高可用、故障转移、迁移 | V2/V3 | `REQ-2026-0016`、`0017`（全部 `draft`） |
+| 5. Agent 集成 | Sandbox 内 Agent 运行时、MCP、Skills、Browser、Computer Use | V3/V4 | 未授权（`REQ-2026-0024`、`0025` 仅门禁） |
+
+组件拆分与 Crate 命名必须遵守既有架构决策与 `NAMING_SPEC.md`；**不得**由能力清单直接推导出组件结构，也不得引入被禁止的通用后缀组件。详见 [TECH_ARCHITECTURE.md](../../architecture/tech/TECH_ARCHITECTURE.md) 第 3 节与 [TECH-runtime-backends-and-pools.md](../../architecture/tech/TECH-runtime-backends-and-pools.md)。
+
+## 阶段性 MVP 定义
+
+三个 MVP 是建设顺序上的**最小闭环**，不是交付承诺。每个 MVP 的完成都必须以其 `REQ-*` 的 Acceptance Criteria 为准。
+
+### MVP 1：可闭环的原生执行
+
+最小闭环要求：Agent 经 SDK 到达 Sandbox，可执行 shell、读写文件、访问网络。覆盖：Sandbox 创建与删除、进程执行与查询、文件读/写/列举、网络代理出口、CPU 与内存配额、命名空间/控制组/系统调用过滤/写时复制文件系统约束。
+
+当前状态：生命周期核心有候选实现；文件系统、进程、网络与配额的实现全部未授权。SDK 家族不存在。
+
+### MVP 2：池化与状态物化
+
+最小闭环要求：创建、运行、暂停、恢复可稳定往复。在此基础上增加 Template、Snapshot、Fork、Runtime Pool 与预热容量。
+
+当前状态：全部为 `draft` Gate 0，无实现、无真实 Snapshot 证据、无 Pool 运行时。
+
+### MVP 3：强隔离与能力兼容
+
+最小闭环要求：microVM 运行模式下完成 Snapshot 恢复、按需内存加载与写时复制根文件系统，达到与参考 Runtime 的能力兼容。
+
+当前状态：仅有 Firecracker 制品、网络、资源、Workspace 设备、Broker 的 Gate 0 候选；无任何真实 KVM 运行证据。
+
+## 验收标准
+
+以下标准是本产品的能力验收口径。**所有数值都是工程目标，不是未经验证的承诺**；在参考硬件、Template、工作负载与统计方法被记录前，任何数值不得写入 Release Evidence 作为已达成指标。
+
+### 功能验收
+
+产品完成条件是对齐能力矩阵中的全部能力（见 [PRD-capabilities.md](PRD-capabilities.md) 第 11 节），且每项满足“有承载 `REQ-*` + 有验证证据”双条件：
+
+```text
+Create / Delete / Pause / Resume / Restart / Fork / Snapshot
+Filesystem / Process / PTY / Shell
+Network / Egress / Port
+Template / Workspace / Runtime Pool
+Resource Quota / Tenant Isolation
+Metrics / Logs / Audit
+```
+
+### 性能验收
+
+| 指标 | 目标（工程目标） | 前置条件 |
+| --- | --- | --- |
+| 命名空间沙箱创建 P95 | 小于 30 ms | 参考硬件、固定 Template、冷/热分别统计 |
+| 命名空间沙箱恢复 P95 | 小于 30 ms | 同上 |
+| 预热 microVM 恢复 P95 | 小于 300 ms | 同上；需真实 KVM 证据 |
+| CPU 开销 | 小于 5% | 相对裸机同工作负载基线 |
+| 单节点轻量执行环境数量 | 万级 | 需定义“轻量”的精确 Assurance 与资源档位 |
+
+### 资源验收
+
+| 指标 | 目标（工程目标） |
+| --- | --- |
+| 空闲轻量执行环境内存占用 | 小于 10 MB |
+| 预热 Runtime 内存占用 | 尽可能小于 20 MB |
+| microVM 资源 | 按 Guest 内存、vCPU、内核与运行时动态分配，不做统一声明 |
+
+资源目标必须按运行模式分别测量与报告；不得用最轻模式的数据代表强隔离模式。
+
+### 高并发验收
+
+| 指标 | 目标（工程目标） |
+| --- | --- |
+| 单集群控制面吞吐 | 十万级请求/秒 |
+| 创建、暂停、恢复、删除 | 必须能够水平扩展；吞吐不随副本数增加而劣化 |
+
+并发能力不得通过增加线程数或增加容器数量换取（`PRD.md` 非目标）。控制面水平扩展的边界必须由压测确定，而不是由架构推断。
+
+## Benchmark 与专项测试要求
+
+### 基准套件
+
+必须建立独立的基准套件，覆盖：创建、启动、暂停、恢复、Fork、删除、文件系统、网络、进程、Snapshot、Template，并在递增并发档位（百、千、万、十万）下分别测量。
+
+### 性能测试矩阵
+
+| 维度 | 取值 |
+| --- | --- |
+| CPU | 4 / 8 / 16 / 32 / 64 / 128 核 |
+| 内存 | 32 / 64 / 128 / 256 GB |
+| 磁盘 | SATA / SSD / NVMe |
+| 网络 | 1G / 10G / 25G |
+
+### 压测记录指标
+
+必须记录 P50、P90、P95、P99、Max、错误率、CPU、内存、IOPS、带宽、上下文切换与页缺失。缺失分位数或缺失环境描述的测量结果不得作为门禁证据。
+
+### Chaos 测试
+
+必须覆盖：Node 崩溃、网络故障、存储故障、协调服务故障、元数据数据库故障、对象存储故障、Sandbox 崩溃、Agent 崩溃、OOM、磁盘写满、CPU 耗尽。
+
+### 安全测试
+
+必须覆盖：容器逃逸、命名空间逃逸、文件系统逃逸、权限提升、系统调用过滤绕过、网络逃逸、云 Metadata 访问、宿主访问、跨租户访问。
+
+### 性能设计约束
+
+高频路径禁止全局锁；调度必须在 `O(log n)` 量级完成，禁止扫描全部 Sandbox；资源不足时必须背压排队而不是无限创建；不同租户之间必须加权公平，不允许大租户饿死小租户。工程化设计原则与落地要求见 [TECH-performance-and-capacity.md](../../architecture/tech/TECH-performance-and-capacity.md)。

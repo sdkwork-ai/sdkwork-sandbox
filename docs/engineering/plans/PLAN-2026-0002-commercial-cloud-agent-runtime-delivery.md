@@ -68,9 +68,9 @@ The Local standalone path uses the same Revision/Transaction/Command/Checkpoint 
 | P0 | Firecracker supply chain has no concrete release tuple. | No approved Firecracker/Jailer/Kernel/RootFS/Guest Agent versions, digests, signatures, SBOM/provenance or revocation owner. | `MicroVm` assurance cannot be claimed. |
 | P0 | Workspace, network and resource isolation are not implemented. | Draft Gate 0 contracts only; no block device/KMS, netns/Tap/firewall, cgroup v2 or effective readback. | Tenant isolation and usage facts are unproven. |
 | P0 | Allocation, Attachment, Command, Checkpoint and Release had no single transaction authority. | REQ-2026-0021 now defines the missing Gate 0 composition, but no Port, state store or runtime exists. | Pool/Attachment unit correctness cannot prevent end-to-end lost writes or capacity leaks. |
-| P0 | Cloud Workspace execution is unresolved in BirdCoder. | BirdCoder REQ-2026-0006 and `hybrid-execution-commercial-readiness.spec.json` now formalize per-Session intent but are `blocked`/pending human review; the current local binding is transitional, Cloud remains hard-disabled, and Remote Terminal still emits `/bin/bash -lc` command strings. | BirdCoder cannot safely execute Cloud code through the Sandbox Command contract. |
+| P0 | Cloud Workspace execution is unresolved in BirdCoder. | BirdCoder `sdkwork-birdcoder/docs/product/requirements/REQ-2026-0006-hybrid-local-cloud-agent-execution.md` and `hybrid-execution-commercial-readiness.spec.json` now formalize per-Session intent but are `blocked`/pending human review; the current local binding is transitional, Cloud remains hard-disabled, and Remote Terminal still emits `/bin/bash -lc` command strings. | BirdCoder cannot safely execute Cloud code through the Sandbox Command contract. |
 | P0 | Agents durable execution orchestration is not authorized or implemented. | Agents `agent-execution-placement-orchestration.contract.json` is `draft`/`implementationAuthorized: false`; current client-created binding is transitional, Turn does not consume resolved placement, process-local semaphore is the active concurrency gate, and lease/outbox/organization-isolation evidence is incomplete. | No authoritative SaaS execution intent, retry, cancellation or tenant-isolated handoff exists. |
-| P0 | Kernel adapter is lifecycle-only and legacy execution can bypass policy. | Kernel REQ-2026-0002 and its review are `blocked`/No-Go; `sandbox_runtime.rs` still lacks Revision/Attachment/Command/Checkpoint intent, while public legacy `SandboxProvider`/`PlatformSandboxProvider`/`NoOpSandboxProvider` can bypass the target policy path. | One security authority is not enforced. |
+| P0 | Kernel adapter is lifecycle-only and legacy execution can bypass policy. | Kernel `sdkwork-kernel/docs/product/requirements/REQ-2026-0002-distributed-execution-placement-control-plane.md` and its review are `blocked`/No-Go; `sandbox_runtime.rs` still lacks Revision/Attachment/Command/Checkpoint intent, while public legacy `SandboxProvider`/`PlatformSandboxProvider`/`NoOpSandboxProvider` can bypass the target policy path. | One security authority is not enforced. |
 | P0 | Kernel Execution Placement and Sandbox Capacity Placement are not correlated as independent fenced records in runtime code. | Draft contracts now require distinct IDs, leases, fencing and idempotency, but the current Kernel adapter and Sandbox lifecycle schema have no approved cross-plane reference/generation contract. | Duplicate or delayed delivery can create dual placement authority or stale side effects. |
 | P0 | Local all-data-local runtime evidence is absent. | REQ-2026-0022 now defines the 11-class, four-repository, database-role, capability, transfer, backup/restore and purge Gate, but it remains draft; no real composition or OS/network evidence exists. | Local commercial privacy and recovery claims remain No-Go. |
 | P0 | Cloud data residency and recovery is not one approved release gate. | REQ-2026-0026 now supplies a draft Cloud-only inventory/region/replication/backup/PITR/recovery/export/delete contract, but no region policy, storage authority, exact RPO/RTO or real recovery evidence is approved. | Cloud isolation alone cannot prove SaaS privacy, residency, deletion or recovery claims. |
@@ -99,7 +99,7 @@ Exit evidence:
 5. Integrate the delivered PostgreSQL 16/17 evidence runner into owned CI; provide KMS test authority, PKI/attestation test authority and artifact signing/provenance pipelines.
 6. Product, Database and Reliability owners approve lifecycle Operation idempotency retention, archival/compaction and maximum supported Session lifetime before any implementation changes the current full-history behavior.
 7. BirdCoder, Agents, Kernel, Workspace/Drive/Storage and Runtime owners approve REQ-2026-0021 ownership, Revision/Checkpoint, independent Kernel/Sandbox placement records and cross-repository adapter decisions; Product/Privacy, Database and Local Operations owners separately approve REQ-2026-0022 claim modes, data inventory, store roles, transfer, backup/restore and purge behavior.
-8. BirdCoder REQ-2026-0006, Agents REQ-2026-0730 and Kernel REQ-2026-0002 plus their ADR/Review/machine contracts reach approved implementation authority with one versioned Agents-to-Kernel and Kernel-to-Sandbox handoff; transitional client-created binding and shell-string execution are excluded from Cloud readiness.
+8. BirdCoder `sdkwork-birdcoder/docs/product/requirements/REQ-2026-0006-hybrid-local-cloud-agent-execution.md`, Agents `sdkwork-agents/docs/product/requirements/REQ-2026-0730-hybrid-agent-execution-orchestration.md` and Kernel `sdkwork-kernel/docs/product/requirements/REQ-2026-0002-distributed-execution-placement-control-plane.md` plus their ADR/Review/machine contracts reach approved implementation authority with one versioned Agents-to-Kernel and Kernel-to-Sandbox handoff; transitional client-created binding and shell-string execution are excluded from Cloud readiness.
 9. Owners approve REQ-2026-0024 Interactive Terminal, REQ-2026-0025 Runtime Secret Projection, REQ-2026-0026 Cloud Data Residency/Recovery and REQ-2026-0027 Cross-Repository Version Compatibility, including public names, exact bounds, authorities, lane/region behavior, immutable revisions, compatibility/support windows and real evidence. These responsibilities are not inferred from Command, Provider, Service Host or deployment profile selection.
 
 No implementation phase below starts before its own Gate A subset passes.
@@ -210,7 +210,12 @@ Release is allowed only when all rows have evidence:
 Run the repository baseline on every slice, then add slice-specific evidence:
 
 ```text
-cargo fmt --all -- --check
+node tools/check-sandbox-cargo-path-dependencies.mjs
+node tools/check-sandbox-workspace-dependency-inheritance.mjs
+node tools/check-sandbox-doc-integrity.mjs
+node tools/check-sandbox-component-contract-alignment.mjs
+node tools/check-sandbox-database-contract-reproducibility.mjs
+cargo fmt --check
 cargo check --workspace
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
@@ -222,11 +227,43 @@ node ../sdkwork-specs/tools/check-application-layering.mjs --root .
 node ../sdkwork-specs/tools/check-rust-backend-composition.mjs --root .
 node ../sdkwork-specs/tools/check-identity-naming.mjs --root .
 node ../sdkwork-specs/tools/audit-repository-baseline.mjs --root .
+node ../sdkwork-specs/tools/check-database-framework-standard.mjs --root .
+node ../sdkwork-specs/tools/verify-database-initialization-state.mjs --root .
+node tools/check-sandbox-evidence-traceability.mjs
+node tools/check-sandbox-human-review-signoff.mjs
 ```
+
+The formatting gate is `cargo fmt --check`, not `cargo fmt --all -- --check`: `--all` also formats local path dependencies, so it reports and writes formatting diffs owned by sibling repositories that this repository must not edit. `check-sandbox-cargo-path-dependencies.mjs` runs first because one surplus `..` in a manifest path dependency breaks `cargo metadata` for the whole workspace and makes every subsequent cargo command unrunnable. `check-sandbox-doc-integrity.mjs` runs because the documentation-standard validator checks document structure and path ownership only, not whether a relative link resolves or a prescribed command exists. `check-sandbox-component-contract-alignment.mjs` runs because `component.spec.json` identity and spec references are consumed by the Kernel, packaging and publication flows, while `check-rust-manifest-standard.mjs`, `validate-api-assembly.mjs` and `verify-repo.mjs` all accept a phantom `component.languages` entry, a missing `WEB_BACKEND_SPEC.md`, a missing `CODE_STYLE_SPEC.md` and a wrong `component.surface`. `check-sandbox-database-contract-reproducibility.mjs` runs because `DATABASE_FRAMEWORK_SPEC.md` section 6.2 makes `database/contract/` a generated artifact and regeneration deletes fields the generator does not know about, so a non-reproducible registry silently loses authored data; the database framework and initialization-state validators check the contract's shape against the baseline but never re-run the generator.
 
 Additional release evidence must include live PostgreSQL, real cross-platform Local runners, real KVM x86_64/aarch64, multi-controller contention, tenant residue, security fault injection, performance, soak, PITR and rollback. Fake Host, Windows/WSL without KVM, static JSON tests and ignored integration tests do not satisfy those gates.
 
-## Current Verification Checkpoint (2026-07-30)
+## Current Verification Checkpoint (2026-09-22)
+
+Measured on the current worktree. Every command below was executed; the counts are the observed output, not carried forward from an earlier checkpoint.
+
+| Command | Result |
+| --- | --- |
+| `node tools/check-sandbox-cargo-path-dependencies.mjs` | PASS: every manifest path dependency resolves and lands inside the workspace root. |
+| `node tools/check-sandbox-workspace-dependency-inheritance.mjs` | PASS: 8 member manifests, 27 inherited dependency entries, 14 root `[workspace.dependencies]` keys, no member-local third-party version. |
+| `node tools/check-sandbox-doc-integrity.mjs` | PASS: 195 documents, 602 relative links, 160 live documents, 145 fenced code blocks, 260 script targets, 0 unresolved links, 0 unrunnable prescriptions. |
+| `node tools/check-sandbox-component-contract-alignment.mjs` | PASS: 9 component contracts; every declared language is backed by authored source, every component with source references its language and code-style specs, and `sdkwork-api-sandbox-assembly` references all seven specs its MUST sentence names and declares `component.surface: "api-assembly"`. |
+| `node tools/check-sandbox-database-contract-reproducibility.mjs` | PASS: re-running the registered `db:materialize:contract` reproduces `schema.yaml`, `prefix-registry.json` and `table-registry.json` byte for byte. |
+| `cargo fmt --check` | PASS over all 8 Sandbox members. |
+| `cargo check --workspace` | PASS. |
+| `cargo test --workspace` | PASS: 63 passed, 1 ignored (the live PostgreSQL test, which needs an external database). |
+| `cargo clippy --workspace --all-targets -- -D warnings` | PASS. |
+| `cargo metadata --locked` | PASS: `Cargo.lock` is synchronized with the manifests. |
+| `node --test tests/contract/*.test.mjs` | PASS: 359/359. |
+| Repository docs-standard, identity-naming, packages-layout, strict component ports, application layering, database framework, initialization state, Rust manifest standard, workspace path portability, Rust backend composition, crate naming standard and baseline audit validators | PASS. |
+| `node tools/check-sandbox-commercial-readiness.mjs` | FAIL by design: reports NO-GO. Provider, Service Host, Cloud, Pool, Local data claim and commercial release gates stay closed until their human reviews complete. |
+| `node tools/check-sandbox-evidence-traceability.mjs` | PASS as a gate: 127 required evidence ids across 8 Gate 0 contracts; 125 have no producer at all, which is the recorded Gate 0 gap, not a regression. |
+| `node tools/check-sandbox-human-review-signoff.mjs` | PASS as a gate: the sign-off backlog index is complete and every review status is coherent; 14 contract-gated packets remain `pending-human-review`, and all 27 ADRs remain `proposed`. |
+
+This checkpoint proves Sandbox code, contract, dependency and sdkwork-specs Gate 0 consistency. It is not Local Host execution, PostgreSQL release, KVM, tenant isolation, Pool latency or commercial readiness evidence.
+
+## Historical Verification Checkpoint (2026-07-30)
+
+Superseded by the 2026-09-22 checkpoint above; retained as a dated record of what was true on that date, including the test and crate counts that have since grown. The `cargo fmt --all -- --check` row records the prescription in force then; it was corrected to `cargo fmt --check` on 2026-09-22 because `--all` also formats local path dependencies owned by sibling repositories (see the verification block above).
 
 | Command | Result |
 | --- | --- |

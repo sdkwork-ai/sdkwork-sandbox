@@ -31,7 +31,7 @@ Implement `SandboxProviderAllocationKeySource` for an approved Secret/KMS adapte
 ```bash
 cargo test -p sdkwork-intelligence-sandbox-repository-sqlx
 cargo clippy -p sdkwork-intelligence-sandbox-repository-sqlx --all-targets -- -D warnings
-node ../../sdkwork-specs/tools/check-database-framework-standard.mjs --root ../..
+node ../sdkwork-specs/tools/check-database-framework-standard.mjs --root .
 ```
 
 Live PostgreSQL verification is explicit and remains ignored in the default suite:

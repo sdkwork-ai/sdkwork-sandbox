@@ -94,9 +94,9 @@ Docker Provider 不在本路线图、不作为 Capability Fallback、不作为�
 
 ## 8. References
 
-- [PRD](docs/product/prd/PRD.md)
-- [Tech Architecture](docs/architecture/tech/TECH_ARCHITECTURE.md)
-- [PRD Roadmap](docs/product/prd/PRD-roadmap.md)
-- [Provider Delivery Plan](docs/engineering/plans/PLAN-2026-0001-local-and-firecracker-provider-delivery.md)
-- [Provider Delivery Gates](specs/sandbox-provider-delivery-gates.contract.json)
-- [INDEX](docs/INDEX.yaml)
+- [PRD](../product/prd/PRD.md)
+- [Tech Architecture](../architecture/tech/TECH_ARCHITECTURE.md)
+- [PRD Roadmap](../product/prd/PRD-roadmap.md)
+- [Provider Delivery Plan](../engineering/plans/PLAN-2026-0001-local-and-firecracker-provider-delivery.md)
+- [Provider Delivery Gates](../../specs/sandbox-provider-delivery-gates.contract.json)
+- [INDEX](../INDEX.yaml)

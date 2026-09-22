@@ -65,7 +65,7 @@ Decision: [ADR-20260728: Sandbox Provider Allocation Key Rotation And Re-encrypt
 ## Verification
 
 ```bash
-cargo fmt --all -- --check
+cargo fmt --check
 cargo test -p sdkwork-sandbox-provider-spi
 cargo test -p sdkwork-intelligence-sandbox-repository-sqlx
 cargo test --workspace

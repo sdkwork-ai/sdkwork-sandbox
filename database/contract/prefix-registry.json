@@ -15,7 +15,12 @@
         "sandbox_runtime_binding",
         "sandbox_session_lease"
       ],
-      "forbidden_aliases": ["app_", "sys_", "common_", "runtime_"],
+      "forbidden_aliases": [
+        "app_",
+        "sys_",
+        "common_",
+        "runtime_"
+      ],
       "status": "ACTIVE",
       "valid_from": "2026-07-28"
     }

@@ -68,7 +68,7 @@ Decision: [ADR-20260728: PostgreSQL Sandbox Lifecycle Persistence And Reconcilia
 ## Verification
 
 ```bash
-cargo fmt --all -- --check
+cargo fmt --check
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 node ../sdkwork-specs/tools/check-database-framework-standard.mjs --root .

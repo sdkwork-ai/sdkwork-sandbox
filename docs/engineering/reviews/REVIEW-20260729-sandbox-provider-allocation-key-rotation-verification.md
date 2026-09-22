@@ -4,6 +4,8 @@ Status: conditional-pass
 
 Requirement: [REQ-2026-0006](../../product/requirements/REQ-2026-0006-sandbox-provider-allocation-key-rotation.md)
 
+Decision: [ADR-20260728-sandbox-provider-allocation-key-rotation-and-reencryption](../../architecture/decisions/ADR-20260728-sandbox-provider-allocation-key-rotation-and-reencryption.md)
+
 Owner: SDKWork Runtime Platform
 
 Date: 2026-07-29

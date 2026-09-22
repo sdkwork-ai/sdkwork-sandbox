@@ -85,7 +85,7 @@ Decision: [ADR-20260729: Sandbox Service Host Composition And Readiness](../../a
 ## Verification Plan
 
 ```bash
-cargo fmt --all -- --check
+cargo fmt --check
 cargo check -p sdkwork-sandbox-service-host
 cargo test -p sdkwork-sandbox-service-host
 cargo clippy -p sdkwork-sandbox-service-host --all-targets -- -D warnings

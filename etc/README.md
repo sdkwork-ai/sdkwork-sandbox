@@ -1,6 +1,6 @@
 # Source Runtime Profiles
 
-Purpose: future source-controlled, typed, secret-free runtime and deployment profile inputs.
+Purpose: source-controlled, typed, secret-free runtime and deployment profile inputs.
 
 Owner: SDKWork Sandbox runtime configuration maintainers.
 
@@ -8,7 +8,7 @@ Allowed: safe defaults, schemas, profile templates, and secret references. Forbi
 
 Related specs: `../../sdkwork-specs/SOURCE_CONFIG_SPEC.md`, `../../sdkwork-specs/CONFIG_SPEC.md`, `../../sdkwork-specs/RUNTIME_DIRECTORY_SPEC.md`.
 
-Verification: inactive in Phase 0; activate with source-config validation before a deployable host is claimed.
+Verification: `node ../sdkwork-specs/tools/check-source-config-standard.mjs --root .`. The deployment profile index and its four `topology/*.env` profiles are in place, and the gate passes. It is part of `pnpm run check`. A green gate proves source-config consistency only, not a running Sandbox or a deployable host.
 
 <!-- SDKWORK-DEPLOY-LAYOUT: v1 -->
 ## Installed Runtime Paths
@@ -29,7 +29,7 @@ Source profiles live under `etc/` (`sdkwork.deployment.config.json` index). Depl
 ```bash
 node ../sdkwork-specs/tools/check-source-config-standard.mjs --root .
 node ../sdkwork-specs/tools/check-application-deploy-layout.mjs --root .
-node ../sdkwork-specs/tools/check-webserver-toml-standard.mjs --root deployments/webserver
+node ../sdkwork-specs/tools/check-webserver-toml-standard.mjs --root .
 ```
 <!-- /SDKWORK-DEPLOY-LAYOUT -->
 

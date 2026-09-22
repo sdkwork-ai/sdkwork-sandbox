@@ -10,8 +10,7 @@
     "domain": "intelligence",
     "capability": "sandbox",
     "languages": [
-      "rust",
-      "typescript"
+      "rust"
     ],
     "generated": false,
     "private": true,
@@ -44,6 +43,11 @@
       "purpose": "Canonical SDKWork naming rules."
     },
     {
+      "file": "RUST_CODE_SPEC.md",
+      "path": "../sdkwork-specs/RUST_CODE_SPEC.md",
+      "purpose": "Rust crate structure, error, lint and dependency rules for the authored workspace source."
+    },
+    {
       "file": "MODULE_SPEC.md",
       "path": "../sdkwork-specs/MODULE_SPEC.md",
       "purpose": "Reusable module and package boundary rules."
@@ -55,6 +59,7 @@
     }
   ],
   "contracts": {
+    "layerRole": "runtime-composition",
     "publicExports": [],
     "sdkDependencies": [],
     "runtimeEntrypoints": [],

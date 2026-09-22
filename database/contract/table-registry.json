@@ -1,8 +1,6 @@
 {
   "schemaVersion": 1,
   "kind": "sdkwork.database.table-registry",
-  "contractVersion": "0.1.0",
-  "moduleId": "sandbox",
   "tables": [
     {
       "table_name": "sandbox_session",

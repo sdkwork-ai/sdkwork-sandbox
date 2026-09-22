@@ -9,7 +9,9 @@ This directory owns the product Canon for the repository.
 ## Active Shards
 
 - [Capability and lifecycle requirements](PRD-capabilities.md)
-- [Delivery roadmap and phase gates](PRD-roadmap.md)
+- [Runtime execution model, pool, and state materialization](PRD-runtime-execution-model.md)
+- [Sandbox capability surfaces and access paths](PRD-sandbox-surfaces.md)
+- [Delivery roadmap, phase gates, and acceptance criteria](PRD-roadmap.md)
 
 ## Splitting Rules
 

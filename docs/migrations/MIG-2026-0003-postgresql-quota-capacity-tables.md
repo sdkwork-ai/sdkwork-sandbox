@@ -159,7 +159,7 @@ CREATE INDEX idx_node_capacity_healthy
 
 ## 3. REVOKE Strategy（RLS/Role）
 
-按 REQ-2026-0018 与 ADR-20260729-quota-persistence：
+按 REQ-2026-0018 与 `ADR-20260729-sandbox-postgresql-quota-and-capacity-reservation-persistence`：
 
 ```sql
 ALTER TABLE sandbox_quota_state           ENABLE ROW LEVEL SECURITY;

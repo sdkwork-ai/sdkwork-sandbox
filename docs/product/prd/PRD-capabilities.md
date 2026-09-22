@@ -4,7 +4,7 @@ Status: draft
 
 Owner: SDKWork Runtime Platform
 
-Updated: 2026-07-30
+Updated: 2026-09-22
 
 Parent: [SDKWork Sandbox PRD](PRD.md)
 
@@ -156,3 +156,56 @@ Terminal Stream、Operational Log、Audit Event 与 Metric 是不同数据类别
 ## 10. 列表与搜索
 
 `SandboxSession`、Workspace Attachment、Sandbox、Event、Log、Snapshot、Pool 与 Node 列表必须在 Store 或维护索引层分页。Agents Workspace/Session 列表由 `sdkwork-agents` API 权威提供。新 HTTP 列表使用 `page`/`page_size` 或 `cursor`/`page_size`，返回 `data.items` 与 `data.pageInfo`；Continuation 只在权威 Store 或维护索引确认存在后继项时返回，不允许用“本页刚好满”推测。Log/Event Search 必须限制 Tenant、Time Range、Filter 和 Cursor；禁止下载无界历史后在内存中 `slice`。
+
+## 11. 能力对齐矩阵 (Capability Alignment Matrix)
+
+本产品以成熟 microVM Agent Runtime 的公开能力集合为对齐基线。下表的每一行都是**必须**能力：`必须` 表示产品承诺覆盖，不表示已经实现。第三列给出当前承载与门禁状态；`无` 表示该能力尚无任何 `REQ-*`，处于未授权状态。
+
+| # | 能力 | 承载与状态 |
+| --- | --- | --- |
+| 1 | Sandbox Create | `REQ-2026-0002`（候选实现）、`REQ-2026-0019`（池化分配，`draft`） |
+| 2 | Sandbox Delete | `REQ-2026-0002`（候选实现） |
+| 3 | Pause | `REQ-2026-0008`/`0021` 门禁（`draft`）；产品行为见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 9 节 |
+| 4 | Resume | 同上 |
+| 5 | Restart | **无**；见 [PRD-capabilities.md](PRD-capabilities.md) 第 3 节状态机的 `Stopped -> Starting` 路径（候选） |
+| 6 | Fork | **无**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 6 节 |
+| 7 | Snapshot | **无产品级能力**；仅有 Workspace Checkpoint 与 Firecracker Snapshot 的 Gate 0（`REQ-2026-0021`、`0008`） |
+| 8 | Template | **无**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 4 节 |
+| 9 | Workspace | `REQ-2026-0004`（Agents 权威 + Attachment 边界，候选） |
+| 10 | Filesystem API | `REQ-2026-0007`（`draft`，部分覆盖）；见 [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 3 节 |
+| 11 | Shell | `REQ-2026-0007`（`draft`） |
+| 12 | Process | `REQ-2026-0007`（`draft`） |
+| 13 | PTY | `REQ-2026-0024`（`draft`，未批准实现） |
+| 14 | Port Forward | **无**；见 [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 8 节 |
+| 15 | Network Isolation | `REQ-2026-0014`（`draft`，`DenyAll` 门禁） |
+| 16 | Egress Policy | `REQ-2026-0014`（`draft`）；`shared` 模式无 `REQ-*` |
+| 17 | Resource Quota | `REQ-2026-0015`、`0018`（`draft`） |
+| 18 | Metrics | `REQ-2026-0010`（`draft`） |
+| 19 | Logs | `REQ-2026-0010`（`draft`） |
+| 20 | Runtime Pool | `REQ-2026-0019`（`draft`） |
+| 21 | Placement | `REQ-2026-0016`（`draft`） |
+| 22 | Multi Tenant | `REQ-2026-0016`、`0017`、`0018`（`draft`） |
+| 23 | Auto Pause | **无独立 `REQ-*`**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 9 节 |
+| 24 | Auto Resume | 同上 |
+| 25 | Snapshot Restore | **无产品级能力**；兼容性门禁见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 5 节 |
+| 26 | COW Storage | **无**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 7.2 节 |
+| 27 | Lazy Memory | **无**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 7.1 节 |
+| 28 | Template Cache | **无**；缓存策略见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 8 节 |
+| 29 | Object Storage | **无**；存储分层要求见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 8 节；权威归属未定 |
+| 30 | Local Cache | 同上 |
+| 31 | Edge Router | **无**；见 [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 8 节 |
+| 32 | MCP | 仅 Transport 级（本文件第 5 节）；无独立 `REQ-*` |
+| 33 | Skills | **无**；见 [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 11 节 |
+| 34 | Agent Runtime | **无**；见 [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 9 节 |
+
+对齐完成度必须按“有承载 `REQ-*` + 有验证证据”双条件统计，而不是按接口是否存在统计。任何一行在没有证据前不得对外声明为已具备。
+
+## 12. 运行模式与隔离等级映射
+
+产品定义三级运行模式（共享执行运行时、命名空间沙箱、microVM 沙箱），并要求调用方显式声明最低隔离等级。隔离等级判定复用 SDKWork 共享类型 `IsolationAssurance`（当前取值 `HostUser`、`Container`、`UserSpaceKernel`、`MicroVm`、`DedicatedVm`），不得新建平行语义。
+
+其中最轻的共享执行运行时**弱于现有任何取值**，引入它需要独立 ADR 与人工评审；不满足声明等级时一律失败关闭，禁止静默降级，也禁止把它作为容量不足时的回退。完整定义、映射表与门禁见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 2 节。
+
+## 13. 能力面拆分
+
+`Command`（非交互执行）与 `Interactive Terminal`（PTY）是不同 Capability，必须分别声明，不得用一个 `Terminal` 声明同时暗示两者（`REQ-2026-0024` 固定的拆分门禁）。Port、Network 与 Browser 在专项 `REQ-*` 获批前不得由 Provider Descriptor 声明；`shared` 网络模式与 Agent Runtime、MCP 执行面、Skills、SDK 家族同样处于未授权状态，详见 [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md)。

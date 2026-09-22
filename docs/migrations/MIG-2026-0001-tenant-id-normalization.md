@@ -9,7 +9,7 @@ Engine: postgres
 
 ## 1. Purpose
 
-将现有 `sandbox_session`、`sandbox_session_operation`、`sandbox_runtime_binding`、`sandbox_lease_fencing` 等已有表上的 `tenant_id` 字段从 `TEXT` 类型规范迁移到 `BIGINT`。同时解决租户业务主键、外部 ID 映射与内部存储层表达分离。
+将现有 `sandbox_session`、`sandbox_session_operation`、`sandbox_runtime_binding`、`sandbox_session_lease` 四张已注册表上的 `tenant_id` 字段从 `TEXT` 类型规范迁移到 `BIGINT`。同时解决租户业务主键、外部 ID 映射与内部存储层表达分离。
 
 当前 TEXT `tenant_id` 保持了灵活性但破坏了以下约束：
 - 索引与 Join 性能依赖 text_pattern_ops 或更宽泛的对比函数。
@@ -23,8 +23,9 @@ Engine: postgres
 | `sandbox_session` | TEXT NOT NULL | BIGINT NOT NULL |
 | `sandbox_session_operation` | TEXT NOT NULL | BIGINT NOT NULL |
 | `sandbox_runtime_binding` | TEXT NOT NULL | BIGINT NOT NULL |
-| `sandbox_lease_fencing` | TEXT NOT NULL | BIGINT NOT NULL |
-| `sandbox_session_binding_intent` | TEXT NOT NULL | BIGINT NOT NULL |
+| `sandbox_session_lease` | TEXT NOT NULL | BIGINT NOT NULL |
+
+这四张表由 `database/contract/table-registry.json` 登记为唯一活跃清单；本迁移不得引入第五张表。Runtime Binding 的 intent 字段位于 `sandbox_runtime_binding`，不存在独立的 binding-intent 表。
 
 后续 REQ-2026-0018 新增的四张表 (`sandbox_quota_state`、`sandbox_admission_reservation`、`sandbox_capacity_reservation`、`sandbox_node_capacity`) 直接以 `tenant_id BIGINT NOT NULL` 创建，不在本迁移修改范围。
 
@@ -57,8 +58,8 @@ Rollback：
 
 ## 6. Dependencies
 
-- `database/migrations/postgres/0001_create_sandbox_lifecycle.up.sql`（已物化）
-- `0002_tenant_id_mapping.up.sql`（本迁移前置新增）
+- `database/ddl/baseline/postgres/0001_sandbox_baseline.sql`（已物化；`baseline-plus-migrations` 的不可变引导锚点，原 `0001_create_sandbox_lifecycle.up.sql` 已合并至此）
+- `0002_tenant_id_mapping.up.sql`（本迁移前置新增；将成为 `database/migrations/postgres/` 下第一条 post-baseline 有序迁移）
 - `REQ-2026-0018` 四表创建（后续迁移，不在 MIG-2026-0001 内执行）
 
 ## 7. Evidence

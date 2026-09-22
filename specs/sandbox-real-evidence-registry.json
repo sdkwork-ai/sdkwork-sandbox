@@ -1,0 +1,281 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.sandbox.real-evidence-producer-registry",
+  "status": "draft",
+  "implementationAuthorized": false,
+  "requirementIds": [
+    "REQ-2026-0003",
+    "REQ-2026-0007",
+    "REQ-2026-0008",
+    "REQ-2026-0011",
+    "REQ-2026-0012",
+    "REQ-2026-0013",
+    "REQ-2026-0014",
+    "REQ-2026-0015",
+    "REQ-2026-0016",
+    "REQ-2026-0017",
+    "REQ-2026-0018"
+  ],
+  "purpose": [
+    "The Gate 0 contracts in specs/ name 127 evidence ids that they require before a Provider may be implemented,",
+    "but nothing in the repository declared who or what is supposed to produce any of them. A required piece of",
+    "evidence with no producer is a silent gap: it looks satisfied because nothing fails.",
+    "This registry is the traceability authority for that gap. It snapshots every required evidence id per contract,",
+    "records the two ids for which this repository can produce a host-precondition half, and makes the size of the",
+    "human- and real-runner-gated remainder an explicit, drift-checked number."
+  ],
+  "doesNotAuthorize": [
+    "a Provider, Provider Port, API route, HTTP route, SDK, scheduler, isolation policy, secret injection, deployable",
+    "profile, runtime dependency change, process spawn, host I/O, public port, cgroup, namespace, netns, Tap, firewall, or MicroVm"
+  ],
+  "producerClasses": {
+    "host-precondition-facts": {
+      "description": "Read-only host facts that tools/testing/sandbox-host-capability-evidence.mjs can observe and classify.",
+      "satisfiesEvidence": false,
+      "note": "Host facts are an input to real-runner conformance, never a substitute for it."
+    },
+    "real-runner-required": {
+      "description": "Evidence that can only come from executing the real path (process spawn, filesystem races, VM lifecycle, network policy, crash recovery) on reviewable hardware.",
+      "satisfiesEvidence": false,
+      "note": "Requires a human-owned runner, a reproducible bootstrap and the review packet each contract names."
+    },
+    "human-review-required": {
+      "description": "Evidence that is an accepted review outcome rather than machine output.",
+      "satisfiesEvidence": false
+    }
+  },
+  "hostPreconditionEvidence": [
+    {
+      "evidenceId": "sandbox_real_host_runner_matrix",
+      "requiredBy": [
+        "sandbox-provider-delivery-gates.contract.json"
+      ],
+      "provider": "sandbox_local_provider",
+      "producerClass": "host-precondition-facts",
+      "producedBy": "tools/testing/sandbox-host-capability-evidence.mjs",
+      "witnesses": [
+        "platform.kernel",
+        "platform.arch",
+        "platform.distro",
+        "namespace.mount-userns",
+        "namespace.pid-userns",
+        "namespace.net-userns",
+        "cgroup.v2-mounted",
+        "cgroup.controllers",
+        "cgroup.subtree-control",
+        "cgroup.pids-controller",
+        "cgroup.kill-file",
+        "cgroup.events-file",
+        "filesystem.overlayfs-supported",
+        "filesystem.openat2-kernel-version",
+        "security.seccomp-mode",
+        "security.userns-budget",
+        "security.lsm",
+        "isolation.kvm-device",
+        "isolation.numa-nodes"
+      ],
+      "doesNotSatisfy": [
+        "the runner owner and reproducible bootstrap decision",
+        "any descendant-cleanup, race, crash or residue conformance run",
+        "Windows Job Object and macOS supervision evidence"
+      ],
+      "limitations": "Reports what the probed host can do under the probing identity. A denied capability is a host fact, not a Provider limitation decision, and a verified capability is not conformance evidence."
+    },
+    {
+      "evidenceId": "real-host-runner-owner-and-reproducible-bootstrap",
+      "requiredBy": [
+        "sandbox-local-provider-host-boundary.contract.json"
+      ],
+      "provider": "sandbox_local_provider",
+      "producerClass": "host-precondition-facts",
+      "producedBy": "tools/testing/sandbox-host-capability-evidence.mjs",
+      "witnesses": [
+        "platform.kernel",
+        "platform.distro",
+        "filesystem.openat2-kernel-version",
+        "cgroup.pids-controller",
+        "cgroup.delegation-writable",
+        "filesystem.overlayfs-usable",
+        "security.userns-budget"
+      ],
+      "doesNotSatisfy": [
+        "naming the accountable runner owner",
+        "freezing the platform test matrix",
+        "any platform conformance or negative-test result"
+      ],
+      "limitations": "Contributes the reproducible probe invocation and the observed capability floor for a candidate runner. It does not name an owner and must not be presented as an approved runner."
+    }
+  ],
+  "evidenceRequirementSnapshot": {
+    "sandbox-cloud-data-residency.contract.json": [
+      "sandbox_cloud_class_complete_export_and_purge_with_legal_hold",
+      "sandbox_cloud_corruption_checksum_pitr_gap_and_quarantine",
+      "sandbox_cloud_cross_region_replication_policy_and_lag",
+      "sandbox_cloud_cross_tenant_restore_export_cache_log_backup_and_support_denial",
+      "sandbox_cloud_drive_or_volume_backup_restore_and_version_integrity",
+      "sandbox_cloud_high_concurrency_recovery_export_purge_and_capacity_bounds",
+      "sandbox_cloud_operator_audit_support_bundle_redaction_and_incident_drill",
+      "sandbox_cloud_postgresql_base_wal_pitr_restore_and_role_isolation",
+      "sandbox_cloud_primary_region_and_storage_tuple",
+      "sandbox_cloud_region_outage_control_plane_restart_and_node_loss",
+      "sandbox_cloud_secret_projection_and_runtime_image_exclusion",
+      "sandbox_cloud_stale_replica_revision_checkpoint_and_fencing_denial",
+      "sandbox_cloud_tenant_workspace_revision_checkpoint_restore"
+    ],
+    "sandbox-cross-repository-version-compatibility.contract.json": [
+      "sandbox_release_artifact_revocation_node_drain_and_quarantine",
+      "sandbox_release_generated_sdk_proto_and_artifact_provenance",
+      "sandbox_release_high_concurrency_rollout_drain_and_capacity_load",
+      "sandbox_release_migration_forward_fix_rollback_and_downgrade_denial",
+      "sandbox_release_mixed_version_cloud_control_and_node_matrix",
+      "sandbox_release_mixed_version_standalone_matrix",
+      "sandbox_release_rpc_sdk_skew_duplicate_reorder_cancel_and_stream",
+      "sandbox_release_secret_projection_residency_and_assurance_compatibility",
+      "sandbox_release_set_immutable_member_and_digest_verification",
+      "sandbox_release_support_window_expiry_and_upgrade_required",
+      "sandbox_release_workspace_revision_checkpoint_and_recovery_compatibility"
+    ],
+    "sandbox-interactive-terminal-session.contract.json": [
+      "sandbox_terminal_control_plane_restart_recovery",
+      "sandbox_terminal_cross_tenant_authorization_and_residue",
+      "sandbox_terminal_descendant_cleanup_and_quarantine",
+      "sandbox_terminal_disconnect_reconnect_and_grace_expiry",
+      "sandbox_terminal_duplicate_and_conflicting_input",
+      "sandbox_terminal_firecracker_guest_agent_kvm",
+      "sandbox_terminal_freeze_checkpoint_and_release",
+      "sandbox_terminal_linux_pty_cgroup_v2_containment",
+      "sandbox_terminal_macos_explicit_denial",
+      "sandbox_terminal_output_replay_gap_and_slow_consumer",
+      "sandbox_terminal_privacy_retention_and_deletion",
+      "sandbox_terminal_shared_provider_conformance",
+      "sandbox_terminal_stale_connection_and_fencing",
+      "sandbox_terminal_windows_conpty_job_containment"
+    ],
+    "sandbox-internal-control-plane.contract.json": [
+      "sandbox_ambiguous_result_operation_lookup",
+      "sandbox_certificate_rotation_and_revocation",
+      "sandbox_deadline_and_cancellation_reconciliation",
+      "sandbox_discovery_loss_and_recovery",
+      "sandbox_in_process_and_rpc_conformance",
+      "sandbox_multi_process_duplicate_delivery",
+      "sandbox_restart_and_dependency_loss",
+      "sandbox_saturation_and_bounded_shutdown",
+      "sandbox_stale_kernel_generation_rejection",
+      "sandbox_stream_backpressure_and_slow_consumer",
+      "sandbox_transport_adapter_dependency_boundary",
+      "sandbox_version_skew_drain_and_rollback",
+      "sandbox_workload_identity_and_authorization_denial"
+    ],
+    "sandbox-local-provider-host-boundary.contract.json": [
+      "ambient-credential-denial",
+      "cgroup-populated-zero-and-zero-residue",
+      "detached-and-breakaway-attempt-denial",
+      "double-fork-setsid-process-group-escape-containment",
+      "fork-storm-pid-controller-enforcement",
+      "idempotent-stop-destroy-zero-residue",
+      "nested-job-fail-closed",
+      "no-platform-or-provider-fallback",
+      "parent-child-grandchild-cleanup",
+      "private-metadata-redaction",
+      "protected-environment-override-denial",
+      "provider-crash-and-handle-close-cleanup",
+      "provider-descriptor-known-limitations",
+      "provider-owned-executable-resolution-without-path-search",
+      "race-free-cgroup-membership-before-user-code",
+      "real-host-runner-owner-and-reproducible-bootstrap",
+      "reparse-device-ads-hardlink-file-identity-negative-tests",
+      "runtime-binding-policy-snapshot-immutability",
+      "symlink-mount-rename-race-negative-tests",
+      "terminal-capability-denial",
+      "timeout-cancel-output-fencing-crash-cleanup",
+      "timeout-cancel-output-limit-cleanup",
+      "unsupported-terminal-request-fail-closed"
+    ],
+    "sandbox-provider-delivery-gates.contract.json": [
+      "sandbox_cgroup_v2_cpu_memory_pid_io_limits",
+      "sandbox_cross_tenant_residue_scan",
+      "sandbox_fencing_restart_recovery",
+      "sandbox_firecracker_artifact_compatibility_contract",
+      "sandbox_firecracker_jailer_compatibility_manifest",
+      "sandbox_firecracker_network_isolation_contract",
+      "sandbox_firecracker_resource_isolation_contract",
+      "sandbox_guest_vsock_authenticated_readiness",
+      "sandbox_jailer_uid_gid_chroot_seccomp",
+      "sandbox_kernel_rootfs_guest_agent_digest_signature",
+      "sandbox_linux_cgroup_v2_descendant_cleanup",
+      "sandbox_local_execution_policy_snapshot",
+      "sandbox_local_provider_host_boundary_contract",
+      "sandbox_macos_supervision_scope_or_terminal_denial",
+      "sandbox_minimum_privilege_host_isolation_broker",
+      "sandbox_multi_tenant_admission_scheduling_capacity_contract",
+      "sandbox_network_namespace_tap_egress_denial",
+      "sandbox_node_drain_and_artifact_rollback_runbook",
+      "sandbox_node_trust_enrollment_attestation_inventory_contract",
+      "sandbox_protected_environment_override_denial",
+      "sandbox_provider_descriptor_known_limitations",
+      "sandbox_provider_owned_executable_registry_without_path_search",
+      "sandbox_real_host_runner_matrix",
+      "sandbox_real_linux_kvm_node_matrix",
+      "sandbox_unix_symlink_mount_negative_tests",
+      "sandbox_vmm_crash_and_destroy_cleanup",
+      "sandbox_windows_job_object_descendant_cleanup",
+      "sandbox_windows_reparse_device_ads_negative_tests",
+      "sandbox_workspace_attachment_authority",
+      "sandbox_workspace_block_device_attachment_contract"
+    ],
+    "sandbox-runtime-secret-projection.contract.json": [
+      "sandbox_secret_atomic_rotation_and_environment_process_replacement",
+      "sandbox_secret_audit_redaction_output_privacy_and_incident_drill",
+      "sandbox_secret_crash_restart_without_value_or_raw_grant_persistence",
+      "sandbox_secret_cross_tenant_workspace_binding_device_lane_region_and_audience_denial",
+      "sandbox_secret_firecracker_attested_guest_projection_on_real_kvm",
+      "sandbox_secret_freeze_checkpoint_snapshot_backup_and_support_bundle_exclusion",
+      "sandbox_secret_grant_replay_and_stale_fencing",
+      "sandbox_secret_high_concurrency_backpressure_and_cleanup_quarantine",
+      "sandbox_secret_local_linux_device_authority_and_process_projection",
+      "sandbox_secret_local_macos_device_authority_and_process_projection",
+      "sandbox_secret_local_windows_device_authority_and_process_projection",
+      "sandbox_secret_microvm_destroy_pool_non_reuse_sanitization_and_residue",
+      "sandbox_secret_revocation_expiry_authority_outage_and_recovery",
+      "sandbox_secret_target_identity_permissions_link_mount_and_path_races"
+    ],
+    "sandbox-standalone-data-residency.contract.json": [
+      "sandbox_agents_local_postgresql_business_persistence_export_purge_and_restore_evidence",
+      "sandbox_backup_restore_corruption_disk_full_uninstall_purge_and_residue_evidence",
+      "sandbox_birdcoder_local_mount_identity_restart_profile_and_purge_evidence",
+      "sandbox_birdcoder_zero_business_table_and_device_fact_inventory",
+      "sandbox_kernel_declared_runtime_database_role_retention_purge_and_recovery_evidence",
+      "sandbox_network_capture_no_implicit_storage_sync_telemetry_or_strict_content_egress_evidence",
+      "sandbox_sandbox_local_postgresql_runtime_directory_checkpoint_cleanup_and_restore_evidence",
+      "sandbox_windows_macos_linux_user_profile_account_isolation_evidence",
+      "sandbox_workspace_local_folder_or_drive_authorization_and_no_implicit_sync_evidence"
+    ]
+  },
+  "acknowledged": {
+    "sandbox_total_distinct_evidence_ids": 127,
+    "sandbox_total_occurrences": 127,
+    "sandbox_contracts_with_requirements": 8,
+    "sandbox_host_precondition_partial": 2,
+    "sandbox_fully_gated": 125
+  },
+  "readiness": {
+    "sandbox_missing_producer_is_ready": false,
+    "sandbox_registry_completeness_is_implementation_authority": false,
+    "sandbox_host_probe_output_is_conformance_evidence": false,
+    "sandbox_snapshot_drift_requires_human_update": true
+  },
+  "humanReview": {
+    "required": true,
+    "requiredRoles": [
+      "product-architecture-owner",
+      "security-owner",
+      "workspace-kernel-owner",
+      "platform-operations-owner"
+    ],
+    "approvedOutcomeRequiredBeforeImplementation": true
+  },
+  "x-sdkwork-status": "draft",
+  "x-sdkwork-require-human-review": true,
+  "x-sdkwork-no-provider-runtime": true,
+  "x-sdkwork-no-process-spawn": true
+}

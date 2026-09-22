@@ -26,6 +26,11 @@
       "purpose": "L4 repository adapter dependency direction."
     },
     {
+      "file": "CODE_STYLE_SPEC.md",
+      "path": "../../../sdkwork-specs/CODE_STYLE_SPEC.md",
+      "purpose": "Authored source structure and generated code boundaries for the repository adapter."
+    },
+    {
       "file": "DATABASE_SPEC.md",
       "path": "../../../sdkwork-specs/DATABASE_SPEC.md",
       "purpose": "PostgreSQL authority, transactions, tenant isolation, and repository rules."

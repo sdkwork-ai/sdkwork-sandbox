@@ -14,7 +14,7 @@ name = "sdkwork_api_sandbox_assembly"
 path = "src/lib.rs"
 
 [dependencies]
-axum = "0.8"
+axum.workspace = true
 tokio.workspace = true
 sdkwork-web-bootstrap = { workspace = true }
 sdkwork-web-core = { workspace = true }

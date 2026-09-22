@@ -1,9 +1,9 @@
 //! API assembly bootstrap for sdkwork-sandbox.
 
 use axum::Router;
-use std::sync::Arc;
 use sdkwork_web_bootstrap::{ApiAssemblyContribution, ReadinessCheck, WebModule};
 use sdkwork_web_core::{DomainContextInjector, HttpRouteManifest};
+use std::sync::Arc;
 
 pub type ApiAssembly = ApiAssemblyContribution;
 
@@ -25,10 +25,10 @@ pub async fn assemble_api_router(context: ApiAssemblyContext) -> Result<ApiAssem
 
 /// Installs this application as a Web Module with caller-supplied assembly
 /// context (API_ASSEMBLY_SPEC §4.1.1).
-pub async fn web_module_with_context(
-    context: ApiAssemblyContext,
-) -> Result<WebModule, String> {
-    Ok(WebModule::from_contribution(assemble_api_router(context).await?))
+pub async fn web_module_with_context(context: ApiAssemblyContext) -> Result<WebModule, String> {
+    Ok(WebModule::from_contribution(
+        assemble_api_router(context).await?,
+    ))
 }
 
 /// Canonical Web Module definition for this application

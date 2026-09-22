@@ -1,0 +1,306 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+
+import {
+  assessHumanReviewSignoff,
+  parseHeaderField,
+  parseReviewPacket,
+  readContractHumanReview,
+  readReviewPackets,
+  readSignoffIndex,
+  resolveHeaderField,
+} from "../../tools/check-sandbox-human-review-signoff.mjs";
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const reviewsDirectory = path.join(repoRoot, "docs/engineering/reviews");
+
+const packet = (name) => readFileSync(path.join(reviewsDirectory, `${name}.md`), "utf8");
+
+const live = () => ({
+  packets: readReviewPackets(),
+  demands: readContractHumanReview(),
+  indexDocument: readSignoffIndex(),
+});
+
+const assess = (overrides = {}) => assessHumanReviewSignoff({ ...live(), ...overrides });
+
+test("the live repository human-review sign-off state is coherent", () => {
+  const assessment = assess();
+
+  assert.equal(assessment.ok, true, assessment.failures.join("\n"));
+  assert.equal(assessment.summary.sandbox_named_by_contracts, 14);
+  assert.equal(assessment.summary.sandbox_named_by_contracts_and_pending, 14);
+  assert.ok(assessment.summary.sandbox_pending_human_review > 0);
+  assert.equal(
+    assessment.backlog.filter((item) => item.gatingContracts.length > 0).length,
+    14,
+    "every contract-gated packet must currently be pending",
+  );
+});
+
+test("the sign-off index lists exactly the contract-required packets and nothing else", () => {
+  const { packets, demands, indexDocument } = live();
+  const assessment = assessHumanReviewSignoff({ packets, demands, indexDocument });
+
+  assert.equal(assessment.ok, true, assessment.failures.join("\n"));
+  const mentioned = new Set(indexDocument.match(/REVIEW-[0-9]{8}-[a-z0-9-]+/gu));
+  assert.deepEqual([...mentioned].sort(), assessment.declaredReviewIds);
+});
+
+test("the shared provider conformance packet is named by more than one gating contract", () => {
+  const assessment = assess();
+  const local = assessment.backlog.find(
+    (item) => item.reviewId === "REVIEW-20260729-local-provider-architecture-security",
+  );
+
+  assert.deepEqual(local.gatingContracts, [
+    "sandbox-local-provider-host-boundary.contract.json",
+    "sandbox-provider-delivery-gates.contract.json",
+  ]);
+});
+
+test("a contract naming a review packet that does not exist fails", () => {
+  const assessment = assess({
+    demands: [
+      ...readContractHumanReview(),
+      {
+        contractFile: "sandbox-fabricated.contract.json",
+        implementationAuthorized: false,
+        approvedOutcomeRequired: true,
+        packetIds: ["REVIEW-20260101-does-not-exist"],
+        requiredRoles: [],
+      },
+    ],
+  });
+
+  assert.equal(assessment.ok, false);
+  assert.ok(
+    assessment.failures.some((line) => line.includes("REVIEW-20260101-does-not-exist")),
+    assessment.failures.join("\n"),
+  );
+});
+
+test("a required reviewer role the packet never asks to sign fails", () => {
+  const demands = readContractHumanReview().map((demand) =>
+    demand.contractFile === "sandbox-local-provider-host-boundary.contract.json"
+      ? { ...demand, requiredRoles: [...demand.requiredRoles, "data-protection-owner"] }
+      : demand,
+  );
+
+  const assessment = assess({ demands });
+
+  assert.equal(assessment.ok, false);
+  assert.ok(
+    assessment.failures.some((line) => line.includes("data-protection-owner")),
+    assessment.failures.join("\n"),
+  );
+});
+
+test("a contract requiring roles from a packet with no sign-off table fails", () => {
+  const packets = readReviewPackets().map((entry) =>
+    entry.file === "REVIEW-20260729-local-provider-architecture-security.md"
+      ? { ...entry, hasReviewerTable: false, reviewerRows: [] }
+      : entry,
+  );
+
+  const assessment = assess({ packets });
+
+  assert.equal(assessment.ok, false);
+  assert.ok(
+    assessment.failures.some((line) => line.includes("must carry a reviewer sign-off table")),
+    assessment.failures.join("\n"),
+  );
+});
+
+test("a pending packet cannot coexist with an Approved reviewer outcome", () => {
+  const packets = readReviewPackets().map((entry) =>
+    entry.file === "REVIEW-20260729-local-provider-architecture-security.md"
+      ? {
+          ...entry,
+          reviewerRows: entry.reviewerRows.map((row, index) =>
+            index === 0 ? { ...row, outcome: "Approved" } : row,
+          ),
+        }
+      : entry,
+  );
+
+  const assessment = assess({ packets });
+
+  assert.equal(assessment.ok, false);
+  assert.ok(
+    assessment.failures.some((line) => line.includes("already read Approved")),
+    assessment.failures.join("\n"),
+  );
+});
+
+test("a defect on a packet named by two contracts is reported once, not once per contract", () => {
+  const shared = "REVIEW-20260729-local-provider-architecture-security";
+  const packets = readReviewPackets().map((entry) =>
+    entry.file === `${shared}.md`
+      ? {
+          ...entry,
+          reviewerRows: entry.reviewerRows.map((row, index) =>
+            index === 0 ? { ...row, outcome: "Approved" } : row,
+          ),
+        }
+      : entry,
+  );
+  const demands = readContractHumanReview();
+  const naming = demands.filter((demand) => demand.packetIds.includes(shared));
+
+  assert.ok(naming.length > 1, "this packet must be named by more than one contract for the test to mean anything");
+
+  const assessment = assess({ packets, demands });
+  const matching = assessment.failures.filter((line) => line.includes("already read Approved"));
+
+  assert.equal(matching.length, 1, assessment.failures.join("\n"));
+});
+
+test("a pending packet cannot coexist with a ready requirement or an accepted decision", () => {
+  const readyRequirement = readReviewPackets().map((entry) =>
+    entry.file === "REVIEW-20260729-local-provider-architecture-security.md"
+      ? { ...entry, resolvedRequirement: { ...entry.resolvedRequirement, status: "ready" } }
+      : entry,
+  );
+  const acceptedDecision = readReviewPackets().map((entry) =>
+    entry.file === "REVIEW-20260729-local-provider-architecture-security.md"
+      ? { ...entry, resolvedDecision: { ...entry.resolvedDecision, status: "accepted" } }
+      : entry,
+  );
+
+  for (const packets of [readyRequirement, acceptedDecision]) {
+    const assessment = assess({ packets });
+    assert.equal(assessment.ok, false);
+  }
+});
+
+test("an authorized contract fails while any packet it names is still pending", () => {
+  const demands = readContractHumanReview().map((demand) =>
+    demand.contractFile === "sandbox-local-provider-host-boundary.contract.json"
+      ? { ...demand, implementationAuthorized: true }
+      : demand,
+  );
+
+  const assessment = assess({ demands });
+
+  assert.equal(assessment.ok, false);
+  assert.ok(
+    assessment.failures.some((line) => line.includes("implementationAuthorized")),
+    assessment.failures.join("\n"),
+  );
+});
+
+test("a review status outside the vocabulary fails", () => {
+  const packets = readReviewPackets().map((entry) =>
+    entry.file === "REVIEW-20260729-local-provider-architecture-security.md"
+      ? { ...entry, status: "looks-fine-to-me" }
+      : entry,
+  );
+
+  const assessment = assess({ packets });
+
+  assert.equal(assessment.ok, false);
+  assert.ok(
+    assessment.failures.some((line) => line.includes("unsupported review status")),
+    assessment.failures.join("\n"),
+  );
+});
+
+test("the sign-off index must list every contract-required packet", () => {
+  const assessment = assess({
+    indexDocument: readSignoffIndex().replaceAll(
+      "REVIEW-20260729-local-provider-architecture-security",
+      "REVIEW-20260729-local-provider-architecture-securit",
+    ),
+  });
+
+  assert.equal(assessment.ok, false);
+  assert.ok(
+    assessment.failures.some((line) => line.includes("sign-off index omits")),
+    assessment.failures.join("\n"),
+  );
+});
+
+test("the sign-off index must not list a packet no contract requires", () => {
+  const assessment = assess({
+    indexDocument: `${readSignoffIndex()}\n\nsee REVIEW-20260301-imaginary-packet\n`,
+  });
+
+  assert.equal(assessment.ok, false);
+  assert.ok(
+    assessment.failures.some((line) => line.includes("no contract requires")),
+    assessment.failures.join("\n"),
+  );
+});
+
+test("requirement and decision headers resolve in both real header shapes", () => {
+  const plain = parseHeaderField("Decision: ADR-20260728-runtime-boundary-and-rust-workspace", /\bADR-[0-9]{8}(?:-[a-z0-9]+)*\b/u);
+  const linked = parseHeaderField(
+    "Decision: [ADR-20260729: Sandbox Observability, Event, Audit And Outbox Boundary](../../architecture/decisions/ADR-20260729-sandbox-observability-event-audit-outbox-boundary.md)",
+    /\bADR-[0-9]{8}(?:-[a-z0-9]+)*\b/u,
+  );
+  const linkedShortRequirement = parseHeaderField(
+    "Requirement: [REQ-2026-0005](../../product/requirements/REQ-2026-0005-durable-sandbox-session-repository-and-reconciliation.md)",
+    /\bREQ-[0-9]{4}-[0-9]{4}\b/u,
+  );
+
+  assert.deepEqual(plain, {
+    id: "ADR-20260728-runtime-boundary-and-rust-workspace",
+    href: null,
+    raw: "ADR-20260728-runtime-boundary-and-rust-workspace",
+  });
+  // The link text carries the date-only id and a human title; the href is what disambiguates the file.
+  assert.equal(linked.id, "ADR-20260729");
+  assert.match(linked.href, /ADR-20260729-sandbox-observability-event-audit-outbox-boundary\.md$/u);
+  assert.equal(linkedShortRequirement.id, "REQ-2026-0005");
+  assert.equal(parseHeaderField(null, /\bREQ-[0-9]{4}-[0-9]{4}\b/u), null);
+});
+
+test("a date-only decision id without an href is left unresolved rather than guessed", () => {
+  const ambiguous = resolveHeaderField(
+    parseHeaderField("Decision: ADR-20260729", /\bADR-[0-9]{8}(?:-[a-z0-9]+)*\b/u),
+  );
+
+  assert.equal(ambiguous.exists, false, "several ADRs share the ADR-20260729 prefix, so it must not resolve");
+  assert.equal(ambiguous.ambiguousCandidates > 1, true);
+
+  const unique = resolveHeaderField(
+    parseHeaderField("Decision: ADR-20260728-sandbox-provider-allocation-key-rotation-and-reencryption", /\bADR-[0-9]{8}(?:-[a-z0-9]+)*\b/u),
+  );
+  assert.equal(unique.exists, true);
+  assert.equal(unique.status, "proposed");
+});
+
+test("every review packet parses a status and the two accepted verification headers", () => {
+  for (const entry of readReviewPackets()) {
+    const name = entry.file.replace(/\.md$/u, "");
+    assert.ok(entry.status.length > 0, `${name} must declare a status`);
+    if (entry.status !== "active") {
+      assert.ok(entry.requirement, `${name} must declare a Requirement header`);
+      assert.ok(entry.decision, `${name} must declare a Decision header`);
+    }
+  }
+});
+
+test("a packet without a Status header is rejected", () => {
+  assert.throws(() => parseReviewPacket("# REVIEW\n\nOwner: nobody\n"), /has no Status header/u);
+});
+
+test("the two verification reviews that previously dropped their Decision header stay linked", () => {
+  for (const [name, decisionId] of [
+    [
+      "REVIEW-20260728-sandbox-postgresql-persistence-verification",
+      "ADR-20260728-postgresql-sandbox-lifecycle-persistence-and-reconciliation",
+    ],
+    [
+      "REVIEW-20260729-sandbox-provider-allocation-key-rotation-verification",
+      "ADR-20260728-sandbox-provider-allocation-key-rotation-and-reencryption",
+    ],
+  ]) {
+    const parsed = parseReviewPacket(packet(name), { file: `${name}.md` });
+    assert.equal(parsed.decision.id, decisionId);
+  }
+});

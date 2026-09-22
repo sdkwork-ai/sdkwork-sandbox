@@ -35,12 +35,12 @@ use crate::codec::{
 pub const MAX_SANDBOX_SESSION_OPERATIONS: usize = 10_000;
 
 /// Statement timeout applied to every sandbox repository transaction,
-/// matching the authoritative-server migration header contract
-/// (`0001_create_sandbox_lifecycle.up.sql`).
+/// matching the authoritative-server baseline header contract
+/// (`database/ddl/baseline/postgres/0001_sandbox_baseline.sql`).
 const SANDBOX_DATABASE_STATEMENT_TIMEOUT: &str = "30s";
 
 /// Lock timeout applied to every sandbox repository transaction, matching the
-/// authoritative-server migration header contract.
+/// authoritative-server baseline header contract.
 const SANDBOX_DATABASE_LOCK_TIMEOUT: &str = "2s";
 
 pub struct SqlxSandboxSessionRepository {

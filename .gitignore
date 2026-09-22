@@ -41,4 +41,5 @@ Thumbs.db
 # Runtime-generated environment configuration
 **/public/runtime-env.json
 
-# Build artifacts
+# Agent-local working state (memory, scratch); not repository content
+.workbuddy/

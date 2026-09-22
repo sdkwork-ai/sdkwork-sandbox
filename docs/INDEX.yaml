@@ -5,6 +5,66 @@ canon:
   prd: docs/product/prd/PRD.md
   techArchitecture: docs/architecture/tech/TECH_ARCHITECTURE.md
 entries:
+  - id: PRD-CAPABILITIES
+    path: docs/product/prd/PRD-capabilities.md
+    layer: canon
+    audience: [product, architecture, engineering, security]
+    status: draft
+  - id: PRD-RUNTIME-EXECUTION-MODEL
+    path: docs/product/prd/PRD-runtime-execution-model.md
+    layer: canon
+    audience: [product, architecture, engineering, security, performance, capacity]
+    status: draft
+  - id: PRD-SANDBOX-SURFACES
+    path: docs/product/prd/PRD-sandbox-surfaces.md
+    layer: canon
+    audience: [product, architecture, engineering, security, sdk, network]
+    status: draft
+  - id: PRD-ROADMAP
+    path: docs/product/prd/PRD-roadmap.md
+    layer: canon
+    audience: [product, engineering, performance, release, review]
+    status: draft
+  - id: TECH-MODULES-AND-CONTRACTS
+    path: docs/architecture/tech/TECH-modules-and-contracts.md
+    layer: canon
+    audience: [architecture, engineering]
+    status: active
+  - id: TECH-RUNTIME-TOPOLOGY
+    path: docs/architecture/tech/TECH-runtime-topology.md
+    layer: canon
+    audience: [architecture, engineering, operations]
+    status: active
+  - id: TECH-SECURITY-AND-OPERATIONS
+    path: docs/architecture/tech/TECH-security-and-operations.md
+    layer: canon
+    audience: [architecture, engineering, security, operations]
+    status: active
+  - id: TECH-RUNTIME-BACKENDS-AND-POOLS
+    path: docs/architecture/tech/TECH-runtime-backends-and-pools.md
+    layer: canon
+    audience: [architecture, engineering, security, capacity, storage, network]
+    status: active
+  - id: TECH-PERFORMANCE-AND-CAPACITY
+    path: docs/architecture/tech/TECH-performance-and-capacity.md
+    layer: canon
+    audience: [architecture, engineering, performance, capacity, review]
+    status: active
+  - id: TECH-PERFORMANCE-BASELINE
+    path: docs/architecture/tech/TECH-performance-baseline.md
+    layer: canon
+    audience: [architecture, engineering, performance, capacity, review]
+    status: active
+  - id: TECH-PLATFORM-SUPPORT
+    path: docs/architecture/tech/TECH-platform-support.md
+    layer: canon
+    audience: [architecture, engineering, security, operations, review]
+    status: active
+  - id: TECH-E2B-CAPABILITY-PARITY
+    path: docs/architecture/tech/TECH-e2b-capability-parity.md
+    layer: canon
+    audience: [product, architecture, engineering, security, review]
+    status: active
   - id: REQ-2026-0001
     path: docs/product/requirements/REQ-2026-0001-sandbox-foundation.md
     layer: work

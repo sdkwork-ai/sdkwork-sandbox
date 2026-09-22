@@ -2,7 +2,7 @@
 
 Deployment, monitoring, and incident response entrypoints.
 
-See `../../DOCUMENTATION_SPEC.md` section 2.
+See `DOCUMENTATION_SPEC.md` section 2.
 
 ## 概述
 
@@ -233,5 +233,5 @@ Options:
 - [部署视图](../../architecture/views/deployment-view.md)
 - [故障恢复 Runbook](../../runbooks/RUNBOOK-sandbox-provider-failure-recovery.md)
 - [CLI 破坏性操作 Runbook](../../runbooks/RUNBOOK-sandbox-cli-destructive-operation.md)
-- [`SECURITY_SPEC`](../../../sdkwork-specs/SECURITY_SPEC.md)
-- [`OBSERVABILITY_SPEC`](../../../sdkwork-specs/OBSERVABILITY_SPEC.md)
+- [`SECURITY_SPEC`](../../../../sdkwork-specs/SECURITY_SPEC.md)
+- [`OBSERVABILITY_SPEC`](../../../../sdkwork-specs/OBSERVABILITY_SPEC.md)

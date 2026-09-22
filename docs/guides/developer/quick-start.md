@@ -15,7 +15,7 @@ git clone <sdkwork-sandbox-url>
 cd sdkwork-sandbox
 
 # Format check
-cargo fmt --all -- --check
+cargo fmt --check
 
 # Compile
 cargo check --workspace
@@ -46,7 +46,8 @@ sdkwork-sandbox/
     commands/                          # Command contract schemas
     async/                            # Event/Outbox schemas
   specs/                               # Machine contracts
-  database/migrations/postgres/        # PostgreSQL migrations
+  database/ddl/baseline/postgres/      # Immutable bootstrap baseline (0001_sandbox_baseline.sql)
+  database/migrations/postgres/        # Post-baseline ordered migrations (empty at initialization)
 ```
 
 ## Architecture Overview
@@ -121,6 +122,6 @@ cargo clippy -p sdkwork-sandbox-provider-local --all-targets -- -D warnings
 # Run contract tests only
 node --test tests/contract/*.test.mjs
 
-# Format all
-cargo fmt --all
+# Format the workspace members
+cargo fmt
 ```

@@ -4,6 +4,8 @@ Status: conditional-pass
 
 Requirement: [REQ-2026-0005](../../product/requirements/REQ-2026-0005-durable-sandbox-session-repository-and-reconciliation.md)
 
+Decision: [ADR-20260728-postgresql-sandbox-lifecycle-persistence-and-reconciliation](../../architecture/decisions/ADR-20260728-postgresql-sandbox-lifecycle-persistence-and-reconciliation.md)
+
 Owner: SDKWork Runtime Platform
 
 Date: 2026-07-28

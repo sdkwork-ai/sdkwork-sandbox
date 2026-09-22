@@ -2,7 +2,7 @@
 
 SDK consumption, API boundaries, and integration examples.
 
-See `../../DOCUMENTATION_SPEC.md` section 2.
+See `DOCUMENTATION_SPEC.md` section 2.
 
 ## 概述
 
@@ -226,6 +226,6 @@ ExponentialBackoff {
 
 - [技术架构概述](../../architecture/tech/TECH_ARCHITECTURE.md)
 - [Traceability Map](../../architecture/views/traceability-map.md)
-- [Command Contract](../../apis/commands/README.md)
-- [`API_SPEC`](../../../sdkwork-specs/API_SPEC.md)
-- [`HTTP_API_SPEC`](../../../sdkwork-specs/HTTP_API_SPEC.md)
+- [Command Contract](../../../apis/commands/README.md)
+- [`API_SPEC`](../../../../sdkwork-specs/API_SPEC.md)
+- [`INTERNAL_API_SPEC`](../../../../sdkwork-specs/INTERNAL_API_SPEC.md)

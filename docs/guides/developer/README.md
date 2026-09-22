@@ -2,7 +2,7 @@
 
 Local setup, verification, and contribution workflow.
 
-See `../../DOCUMENTATION_SPEC.md` section 2.
+See `DOCUMENTATION_SPEC.md` section 2.
 
 ## Quick Start
 
@@ -65,11 +65,17 @@ See `../../DOCUMENTATION_SPEC.md` section 2.
 
 ```bash
 # 每次修改后运行
+node tools/check-sandbox-cargo-path-dependencies.mjs
+node tools/check-sandbox-workspace-dependency-inheritance.mjs
+cargo fmt --check
 cargo check --workspace
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --all -- --check
 ```
+
+`cargo fmt --check` 而不是 `cargo fmt --all -- --check`：`--all` 的语义包含本地路径依赖，会把
+`sdkwork-web-framework`、`sdkwork-utils`、`sdkwork-database` 等兄弟仓库的格式偏差算到本仓门禁上，
+并要求改写本仓不得修改的文件。
 
 ### 2. 契约测试
 
@@ -80,17 +86,29 @@ node --test tests/contract/*.test.mjs
 ### 3. 全量验证
 
 ```bash
-# 文档检查
-node scripts/documentation-checker.mjs
+# 路径依赖与依赖声明位置（必须先跑：清单里多余的 .. 会让 cargo metadata 失败）
+node tools/check-sandbox-cargo-path-dependencies.mjs
+node tools/check-sandbox-workspace-dependency-inheritance.mjs
 
-# 端口冲突检查
-node scripts/component-port-checker.mjs
+# 文档链接与命令处方
+node tools/check-sandbox-doc-integrity.mjs
 
-# 包布局检查
-node scripts/packages-layout-checker.mjs
+# 文档规范
+node ../sdkwork-specs/tools/check-repository-docs-standard.mjs --root .
 
-# 基线审计
-node scripts/repository-baseline-audit.mjs
+# 组件端口绑定
+node ../sdkwork-specs/tools/check-component-port-bindings.mjs --root . --strict
+
+# 包布局
+node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --root . --mode enforce
+
+# 仓库存量基线审计
+node ../sdkwork-specs/tools/audit-repository-baseline.mjs --root .
+
+# Gate 0 状态
+node tools/check-sandbox-commercial-readiness.mjs
+node tools/check-sandbox-evidence-traceability.mjs
+node tools/check-sandbox-human-review-signoff.mjs
 ```
 
 ### 4. PR 提交
@@ -130,5 +148,5 @@ node scripts/repository-baseline-audit.mjs
 - [技术架构概述](../../architecture/tech/TECH_ARCHITECTURE.md)
 - [Traceability Map](../../architecture/views/traceability-map.md)
 - [Gate Zero Current State](../../architecture/views/gate-zero-current-state.md)
-- [`CODE_STYLE_SPEC`](../../../sdkwork-specs/CODE_STYLE_SPEC.md)
-- [`COMPONENT_SPEC`](../../../sdkwork-specs/COMPONENT_SPEC.md)
+- [`CODE_STYLE_SPEC`](../../../../sdkwork-specs/CODE_STYLE_SPEC.md)
+- [`COMPONENT_SPEC`](../../../../sdkwork-specs/COMPONENT_SPEC.md)

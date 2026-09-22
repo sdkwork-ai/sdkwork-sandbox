@@ -42,11 +42,13 @@ Related: `../docs/product/requirements/REQ-2026-0005-durable-sandbox-session-rep
 
 ## Initialization state
 
-This module is in **initialization state** for greenfield deployments:
+This module is in **initialization state** for greenfield deployments: it can be bootstrapped from its committed assets without replaying superseded history, and every committed asset is accounted for by the contract.
 
-1. **Baseline** — `database/ddl/baseline/{engine}/0001_sandbox_baseline.sql` contains the full DDL snapshot.
-2. **Migrations** — `database/migrations/{engine}/` is reserved for post-GA incremental schema changes only. It is intentionally empty at initialization.
-3. **Drift** — run `pnpm db:drift:check` before release.
+- **`baselineStrategy`** — `baseline-plus-migrations`, declared by `database/database.manifest.json#baselineStrategy`.
+- **Committed primary baseline** — `database/ddl/baseline/postgres/0001_sandbox_baseline.sql`, the single immutable bootstrap anchor named `0001_<moduleId>_baseline.sql` for `moduleId: sandbox` (`DATABASE_FRAMEWORK_SPEC.md` section 7.5). It carries the full lifecycle DDL and its `sdkwork:migration` metadata header, and it is the source `pnpm run db:materialize:contract` materializes into `contract/schema.yaml`.
+- **Ordered migration range** — none committed. `database/migrations/postgres/` is reserved for post-baseline incremental schema changes; an empty tree is valid at initialization state and is not debt by itself. The first post-baseline change will be authored as a new ordered `*.up.sql` in that directory. A fresh install applies the baseline followed by every ordered migration, so the baseline alone is not the complete active table inventory.
+- **Consolidation** — no superseded migration history remains to replay, and the four registered tables are the complete owned inventory. Verified by `node ../sdkwork-specs/tools/verify-database-initialization-state.mjs` and `node --test tests/contract/database-framework.contract.test.mjs`, which asserts this state against the effective installed schema (baseline plus ordered migrations).
+- **Drift** — run `pnpm db:drift:check` before release.
 
 ## Commands
 

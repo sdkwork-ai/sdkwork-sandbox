@@ -64,7 +64,7 @@ Decision: [ADR-20260728: Sandbox Lifecycle, Provider SPI And In-memory Store](..
 cargo test -p sdkwork-sandbox-provider-spi
 cargo test -p sdkwork-intelligence-sandbox-service
 cargo test -p sdkwork-intelligence-sandbox-repository-memory
-cargo fmt --all -- --check
+cargo fmt --check
 cargo check --workspace
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings

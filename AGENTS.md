@@ -70,7 +70,11 @@ Rust components use responsibility-specific crate names, keep `lib.rs` and `main
 
 ## Build, Test, And Verification
 
-Run commands from this repository root. Phase 0 verification is `cargo fmt --all -- --check`, `cargo check --workspace`, `cargo test --workspace`, the documentation checker, component port checker, packages-layout checker, and repository baseline audit listed in root `README.md`.
+Run commands from this repository root. Phase 0 verification is `node tools/check-sandbox-cargo-path-dependencies.mjs`, `node tools/check-sandbox-workspace-dependency-inheritance.mjs`, `node tools/check-sandbox-doc-integrity.mjs`, `node ../sdkwork-specs/tools/check-workspace-path-portability.mjs --root .`, `node ../sdkwork-specs/tools/check-shell-portability.mjs --root .`, `node tools/check-sandbox-platform-code.mjs`, `node tools/check-sandbox-component-contract-alignment.mjs`, `node tools/check-sandbox-requirement-traceability.mjs`, `node tools/check-sandbox-e2b-parity-matrix.mjs`, `node tools/check-sandbox-database-contract-reproducibility.mjs`, `cargo fmt --check`, `cargo check --workspace`, `cargo test --workspace`, the documentation checker, component port checker, packages-layout checker, and repository baseline audit listed in root `README.md`.
+
+Use `cargo fmt --check`, never `cargo fmt --all -- --check`. `--all` also formats local path dependencies, so it reports formatting diffs owned by sibling repositories (`sdkwork-web-framework`, `sdkwork-utils`, `sdkwork-database`) that this repository must not edit.
+
+A third-party dependency version belongs in the root `[workspace.dependencies]` table; every member inherits it with `workspace = true` (`RUST_CODE_SPEC.md` section 14, `NAMING_SPEC.md` section 3.2 rule 6). Every relative markdown link must resolve, and every command inside a live document's fenced code block must be runnable as written; `docs/changelogs/`, `docs/engineering/reviews/`, `docs/releases/` and `docs/archive/` are point-in-time evidence and are exempt from the command rules.
 
 ## Agent Execution Rules
 

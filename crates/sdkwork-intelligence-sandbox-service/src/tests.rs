@@ -2469,3 +2469,441 @@ fn sandbox_allocation_protection_metadata_rejects_unsafe_key_identity() {
     );
     assert!(SandboxProviderAllocationProtectionVersion::new("kms/key:v2", 1, 1).is_ok());
 }
+
+/// Builds a sandbox session in an arbitrary state with or without a runtime binding. The guard
+/// matrix uses the binding-free variant to prove the *precedence* between state validation and
+/// invariant validation: a lifecycle operation that is forbidden for the current state must be
+/// reported as a forbidden transition, not as an internal inconsistency, even when the session is
+/// also missing the binding that operation would need.
+fn guard_matrix_sandbox_session(
+    sandbox_session_id_value: &str,
+    sandbox_session_state: SandboxSessionState,
+    sandbox_operation_kind: SandboxSessionOperationKind,
+    include_sandbox_runtime_binding: bool,
+) -> SandboxSession {
+    let sandbox_runtime_binding = include_sandbox_runtime_binding.then(|| {
+        let mut sandbox_runtime_binding = SandboxRuntimeBinding::new_intent(
+            SandboxId::generate(),
+            SandboxRuntimeBindingId::generate(),
+            sandbox_provider_id("provider-test"),
+        );
+        sandbox_runtime_binding.set_sandbox_allocation_reference(
+            SandboxProviderAllocationRef::new(format!("allocation-{sandbox_session_id_value}"))
+                .unwrap_or_else(|error| {
+                    panic!("invalid test sandbox allocation reference: {error}")
+                }),
+        );
+        sandbox_runtime_binding
+    });
+    SandboxSession::restore(
+        tenant_id("tenant-a"),
+        sandbox_workspace_id("workspace-a"),
+        SandboxSessionId::parse(sandbox_session_id_value)
+            .unwrap_or_else(|error| panic!("invalid test sandbox session id: {error}")),
+        sandbox_session_state,
+        BTreeSet::from([RuntimeCapability::Filesystem]),
+        IsolationAssurance::HostUser,
+        sandbox_runtime_binding,
+        None,
+        vec![
+            SandboxSessionOperation::restore(
+                OperationId::generate(),
+                SandboxSessionOperationKind::Create,
+                SandboxOperationOutcome::Succeeded,
+            ),
+            SandboxSessionOperation::restore(
+                OperationId::generate(),
+                sandbox_operation_kind,
+                SandboxOperationOutcome::InProgress,
+            ),
+        ],
+        0,
+    )
+}
+
+/// Total number of provider round trips the lifecycle service performed. A forbidden lifecycle
+/// operation must never reach the provider, so this stays at zero.
+fn sandbox_provider_rpc_call_count(sandbox_provider: &FakeSandboxProvider) -> usize {
+    sandbox_provider.sandbox_health_calls.load(Ordering::SeqCst)
+        + sandbox_provider
+            .sandbox_allocate_calls
+            .load(Ordering::SeqCst)
+        + sandbox_provider.sandbox_start_calls.load(Ordering::SeqCst)
+        + sandbox_provider.sandbox_stop_calls.load(Ordering::SeqCst)
+        + sandbox_provider
+            .sandbox_destroy_calls
+            .load(Ordering::SeqCst)
+}
+
+/// The operation guard an operator actually hits is a function of (current sandbox session state,
+/// requested lifecycle operation), not of the state -> state matrix that `model.rs` already locks
+/// exhaustively. All 8 x 3 cells are evaluated, each with and without a runtime binding, and a
+/// forbidden cell must additionally be rejected *without reaching the provider* and without
+/// mutating the persisted sandbox session.
+#[tokio::test]
+async fn sandbox_lifecycle_guard_matrix_matches_the_documented_operation_contract() {
+    const SANDBOX_ALLOWED_OPERATIONS: &[(SandboxSessionState, SandboxSessionOperationKind)] = &[
+        (
+            SandboxSessionState::Created,
+            SandboxSessionOperationKind::Start,
+        ),
+        (
+            SandboxSessionState::Created,
+            SandboxSessionOperationKind::Destroy,
+        ),
+        (
+            SandboxSessionState::Running,
+            SandboxSessionOperationKind::Stop,
+        ),
+        (
+            SandboxSessionState::Stopped,
+            SandboxSessionOperationKind::Start,
+        ),
+        (
+            SandboxSessionState::Stopped,
+            SandboxSessionOperationKind::Destroy,
+        ),
+        (
+            SandboxSessionState::Failed,
+            SandboxSessionOperationKind::Start,
+        ),
+        (
+            SandboxSessionState::Failed,
+            SandboxSessionOperationKind::Destroy,
+        ),
+    ];
+    let sandbox_all_states = [
+        SandboxSessionState::Created,
+        SandboxSessionState::Starting,
+        SandboxSessionState::Running,
+        SandboxSessionState::Stopping,
+        SandboxSessionState::Stopped,
+        SandboxSessionState::Failed,
+        SandboxSessionState::Destroying,
+        SandboxSessionState::Destroyed,
+    ];
+    let sandbox_all_operations = [
+        SandboxSessionOperationKind::Start,
+        SandboxSessionOperationKind::Stop,
+        SandboxSessionOperationKind::Destroy,
+    ];
+
+    let mut sandbox_evaluated_cells = 0;
+    for sandbox_session_state in sandbox_all_states {
+        for sandbox_operation_kind in sandbox_all_operations {
+            for include_sandbox_runtime_binding in [true, false] {
+                let sandbox_cell = format!(
+                    "{sandbox_session_state:?} + {sandbox_operation_kind:?} (runtime binding: {include_sandbox_runtime_binding})"
+                );
+                let sandbox_provider = Arc::new(FakeSandboxProvider::ready(
+                    [RuntimeCapability::Filesystem],
+                    IsolationAssurance::HostUser,
+                ));
+                let sandbox_session_repository = Arc::new(TestSandboxSessionRepository::default());
+                let sandbox_lifecycle_service = sandbox_lifecycle_service_with_repository(
+                    Arc::clone(&sandbox_session_repository),
+                    Arc::clone(&sandbox_provider),
+                );
+                let sandbox_session = guard_matrix_sandbox_session(
+                    &format!(
+                        "guard-{sandbox_session_state:?}-{sandbox_operation_kind:?}-{include_sandbox_runtime_binding}"
+                    ),
+                    sandbox_session_state,
+                    sandbox_operation_kind,
+                    include_sandbox_runtime_binding,
+                );
+                let sandbox_session_id = sandbox_session.sandbox_session_id().clone();
+                let sandbox_inserted_version = sandbox_session.sandbox_version();
+                let sandbox_inserted_operation_count = sandbox_session.sandbox_operations().len();
+                sandbox_session_repository
+                    .insert_sandbox_session(sandbox_session)
+                    .await
+                    .unwrap_or_else(|error| {
+                        panic!("guard matrix sandbox session insert failed: {error}")
+                    });
+
+                let sandbox_command = SandboxSessionLifecycleCommand {
+                    tenant_id: tenant_id("tenant-a"),
+                    sandbox_session_id: sandbox_session_id.clone(),
+                    sandbox_operation_id: OperationId::generate(),
+                };
+                let sandbox_result = match sandbox_operation_kind {
+                    SandboxSessionOperationKind::Start => {
+                        sandbox_lifecycle_service
+                            .start_sandbox_session(sandbox_command)
+                            .await
+                    }
+                    SandboxSessionOperationKind::Stop => {
+                        sandbox_lifecycle_service
+                            .stop_sandbox_session(sandbox_command)
+                            .await
+                    }
+                    SandboxSessionOperationKind::Destroy => {
+                        sandbox_lifecycle_service
+                            .destroy_sandbox_session(sandbox_command)
+                            .await
+                    }
+                    SandboxSessionOperationKind::Create => {
+                        panic!("create is not a lifecycle operation on an existing sandbox session")
+                    }
+                };
+
+                let sandbox_is_allowed = SANDBOX_ALLOWED_OPERATIONS
+                    .contains(&(sandbox_session_state, sandbox_operation_kind));
+                match sandbox_result {
+                    Err(SandboxLifecycleError::InvalidTransition {
+                        sandbox_session_state: rejected_sandbox_session_state,
+                        sandbox_operation_kind: rejected_sandbox_operation_kind,
+                    }) => {
+                        assert!(
+                            !sandbox_is_allowed,
+                            "sandbox cell {sandbox_cell} is documented as allowed but the guard rejected it"
+                        );
+                        assert_eq!(
+                            rejected_sandbox_session_state, sandbox_session_state,
+                            "sandbox cell {sandbox_cell} reported the wrong sandbox session state"
+                        );
+                        assert_eq!(
+                            rejected_sandbox_operation_kind, sandbox_operation_kind,
+                            "sandbox cell {sandbox_cell} reported the wrong sandbox operation kind"
+                        );
+                    }
+                    Err(sandbox_other_error) => {
+                        assert!(
+                            sandbox_is_allowed,
+                            "sandbox cell {sandbox_cell} is documented as forbidden but failed with {sandbox_other_error:?} instead of InvalidTransition"
+                        );
+                    }
+                    Ok(_) => {
+                        assert!(
+                            sandbox_is_allowed,
+                            "sandbox cell {sandbox_cell} is documented as forbidden but completed"
+                        );
+                    }
+                }
+
+                if !sandbox_is_allowed {
+                    assert_eq!(
+                        sandbox_provider_rpc_call_count(&sandbox_provider),
+                        0,
+                        "sandbox cell {sandbox_cell} is forbidden but still reached the sandbox provider"
+                    );
+                    let sandbox_persisted = sandbox_session_repository
+                        .get_sandbox_session(&tenant_id("tenant-a"), &sandbox_session_id)
+                        .await
+                        .unwrap_or_else(|error| panic!("guard matrix read-back failed: {error}"))
+                        .unwrap_or_else(|| {
+                            panic!("guard matrix sandbox session {sandbox_session_id} vanished")
+                        });
+                    assert_eq!(
+                        sandbox_persisted.sandbox_session_state(),
+                        sandbox_session_state,
+                        "sandbox cell {sandbox_cell} mutated the persisted sandbox session state"
+                    );
+                    assert_eq!(
+                        sandbox_persisted.sandbox_version(),
+                        sandbox_inserted_version,
+                        "sandbox cell {sandbox_cell} bumped the persisted sandbox session version"
+                    );
+                    assert_eq!(
+                        sandbox_persisted.sandbox_operations().len(),
+                        sandbox_inserted_operation_count,
+                        "sandbox cell {sandbox_cell} recorded a sandbox operation"
+                    );
+                }
+                sandbox_evaluated_cells += 1;
+            }
+        }
+    }
+    assert_eq!(sandbox_evaluated_cells, 48);
+}
+
+/// A replayed operation that is still in flight is reported as such, and the idempotency replay
+/// wins over state validation: the same session in `Starting` is both "already has this operation
+/// in progress" and "cannot start again", and the caller must learn the former.
+#[tokio::test]
+async fn sandbox_lifecycle_replay_reports_an_in_progress_sandbox_operation() {
+    let sandbox_provider = Arc::new(FakeSandboxProvider::ready(
+        [RuntimeCapability::Filesystem],
+        IsolationAssurance::HostUser,
+    ));
+    let sandbox_session_repository = Arc::new(TestSandboxSessionRepository::default());
+    let sandbox_lifecycle_service = sandbox_lifecycle_service_with_repository(
+        Arc::clone(&sandbox_session_repository),
+        Arc::clone(&sandbox_provider),
+    );
+    let sandbox_session = transient_sandbox_session(
+        "in-progress-1",
+        SandboxSessionState::Starting,
+        SandboxSessionOperationKind::Start,
+        false,
+    );
+    let sandbox_in_progress_operation_id = sandbox_session
+        .sandbox_operations()
+        .iter()
+        .find(|sandbox_operation| {
+            sandbox_operation.sandbox_operation_kind() == SandboxSessionOperationKind::Start
+                && sandbox_operation.sandbox_operation_outcome()
+                    == SandboxOperationOutcome::InProgress
+        })
+        .map(|sandbox_operation| sandbox_operation.sandbox_operation_id().clone())
+        .unwrap_or_else(|| {
+            panic!("transient sandbox session must carry an in-progress start operation")
+        });
+    let sandbox_session_id = sandbox_session.sandbox_session_id().clone();
+    sandbox_session_repository
+        .insert_sandbox_session(sandbox_session)
+        .await
+        .unwrap_or_else(|error| panic!("in-progress sandbox session insert failed: {error}"));
+
+    let sandbox_result = sandbox_lifecycle_service
+        .start_sandbox_session(SandboxSessionLifecycleCommand {
+            tenant_id: tenant_id("tenant-a"),
+            sandbox_session_id,
+            sandbox_operation_id: sandbox_in_progress_operation_id.clone(),
+        })
+        .await;
+
+    match sandbox_result {
+        Err(SandboxLifecycleError::OperationInProgress { sandbox_operation_id }) => {
+            assert_eq!(sandbox_operation_id, sandbox_in_progress_operation_id);
+        }
+        sandbox_other => panic!(
+            "expected OperationInProgress for the replayed in-flight sandbox operation, got {sandbox_other:?}"
+        ),
+    }
+}
+
+/// Only corrupt persisted state can produce a `Running` sandbox session with no runtime binding.
+/// The lifecycle service must fail closed with a typed invariant error rather than dereferencing
+/// the missing binding or, worse, stopping a sandbox it cannot address.
+#[tokio::test]
+async fn sandbox_stop_fails_closed_when_a_running_sandbox_session_has_no_runtime_binding() {
+    let sandbox_provider = Arc::new(FakeSandboxProvider::ready(
+        [RuntimeCapability::Filesystem],
+        IsolationAssurance::HostUser,
+    ));
+    let sandbox_session_repository = Arc::new(TestSandboxSessionRepository::default());
+    let sandbox_lifecycle_service = sandbox_lifecycle_service_with_repository(
+        Arc::clone(&sandbox_session_repository),
+        Arc::clone(&sandbox_provider),
+    );
+    let sandbox_session = SandboxSession::restore(
+        tenant_id("tenant-a"),
+        sandbox_workspace_id("workspace-a"),
+        SandboxSessionId::parse("corrupt-running-1")
+            .unwrap_or_else(|error| panic!("invalid test sandbox session id: {error}")),
+        SandboxSessionState::Running,
+        BTreeSet::from([RuntimeCapability::Filesystem]),
+        IsolationAssurance::HostUser,
+        None,
+        None,
+        vec![SandboxSessionOperation::restore(
+            OperationId::generate(),
+            SandboxSessionOperationKind::Create,
+            SandboxOperationOutcome::Succeeded,
+        )],
+        0,
+    );
+    let sandbox_session_id = sandbox_session.sandbox_session_id().clone();
+    sandbox_session_repository
+        .insert_sandbox_session(sandbox_session)
+        .await
+        .unwrap_or_else(|error| panic!("corrupt sandbox session insert failed: {error}"));
+
+    let sandbox_result = sandbox_lifecycle_service
+        .stop_sandbox_session(SandboxSessionLifecycleCommand {
+            tenant_id: tenant_id("tenant-a"),
+            sandbox_session_id,
+            sandbox_operation_id: OperationId::generate(),
+        })
+        .await;
+
+    assert!(matches!(
+        sandbox_result,
+        Err(SandboxLifecycleError::InvariantViolation(
+            "running sandbox session has no sandbox runtime binding"
+        ))
+    ));
+}
+
+/// Performance harness for the provider-neutral create path, i.e. the control-plane cost an agent
+/// pays before any machine actually boots. Inert unless `SDKWORK_SANDBOX_BENCH_ITERATIONS` is set,
+/// so an ordinary `cargo test` run never pays for it.
+///
+/// It reports raw nanosecond samples on one machine-readable line.
+/// `tools/bench-sandbox-lifecycle.mjs` drives this test, samples process resources from outside, and
+/// renders the report. Keeping every OS-specific sampling call out of this file is deliberate: this
+/// crate stays free of platform-conditional code, and the portability gate enforces that.
+#[tokio::test]
+async fn sandbox_lifecycle_create_start_benchmark() {
+    let sandbox_iterations = match std::env::var("SDKWORK_SANDBOX_BENCH_ITERATIONS") {
+        Ok(sandbox_iterations) => sandbox_iterations.parse::<usize>().unwrap_or_else(|error| {
+            panic!("SDKWORK_SANDBOX_BENCH_ITERATIONS must be an integer: {error}")
+        }),
+        Err(_) => return,
+    };
+    if sandbox_iterations == 0 {
+        return;
+    }
+    let sandbox_warmup_iterations = (sandbox_iterations / 10).max(1);
+
+    let sandbox_provider = Arc::new(FakeSandboxProvider::ready(
+        [RuntimeCapability::Filesystem],
+        IsolationAssurance::HostUser,
+    ));
+    let sandbox_session_repository = Arc::new(TestSandboxSessionRepository::default());
+    let sandbox_lifecycle_service = sandbox_lifecycle_service_with_repository(
+        Arc::clone(&sandbox_session_repository),
+        Arc::clone(&sandbox_provider),
+    );
+
+    let mut sandbox_create_nanos = Vec::with_capacity(sandbox_iterations);
+    let mut sandbox_start_nanos = Vec::with_capacity(sandbox_iterations);
+    let mut sandbox_cold_create_nanos = 0_u128;
+    let mut sandbox_cold_start_nanos = 0_u128;
+    for sandbox_iteration in 0..(sandbox_warmup_iterations + sandbox_iterations) {
+        let sandbox_create_started_at = Instant::now();
+        let sandbox_session = sandbox_lifecycle_service
+            .create_sandbox_session(create_sandbox_session_command(
+                tenant_id("tenant-a"),
+                [RuntimeCapability::Filesystem],
+                IsolationAssurance::HostUser,
+            ))
+            .await
+            .unwrap_or_else(|error| panic!("benchmark sandbox session creation failed: {error}"));
+        let sandbox_create_elapsed = sandbox_create_started_at.elapsed();
+
+        let sandbox_start_started_at = Instant::now();
+        sandbox_lifecycle_service
+            .start_sandbox_session(sandbox_session_lifecycle_command(&sandbox_session))
+            .await
+            .unwrap_or_else(|error| panic!("benchmark sandbox session start failed: {error}"));
+        let sandbox_start_elapsed = sandbox_start_started_at.elapsed();
+
+        if sandbox_iteration == 0 {
+            // The spec requires hot allocation latency and cold start latency to be counted
+            // separately, so the very first pass is reported on its own rather than folded into
+            // the steady-state distribution.
+            sandbox_cold_create_nanos = sandbox_create_elapsed.as_nanos();
+            sandbox_cold_start_nanos = sandbox_start_elapsed.as_nanos();
+        }
+        if sandbox_iteration >= sandbox_warmup_iterations {
+            sandbox_create_nanos.push(sandbox_create_elapsed.as_nanos());
+            sandbox_start_nanos.push(sandbox_start_elapsed.as_nanos());
+        }
+    }
+
+    let sandbox_format_nanos = |sandbox_samples: &[u128]| {
+        sandbox_samples
+            .iter()
+            .map(u128::to_string)
+            .collect::<Vec<String>>()
+            .join(",")
+    };
+    println!(
+        "SDKWORK_BENCH_RESULT {{\"iterations\":{sandbox_iterations},\"warmup\":{sandbox_warmup_iterations},\"coldCreateNanos\":{sandbox_cold_create_nanos},\"coldStartNanos\":{sandbox_cold_start_nanos},\"createNanos\":[{}],\"startNanos\":[{}]}}",
+        sandbox_format_nanos(&sandbox_create_nanos),
+        sandbox_format_nanos(&sandbox_start_nanos)
+    );
+}

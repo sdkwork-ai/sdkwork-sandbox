@@ -73,7 +73,7 @@ Decisions: [ADR-20260729: Sandbox Command Execution And Terminal Boundary](../..
 ## Verification Plan
 
 ```bash
-cargo fmt --all -- --check
+cargo fmt --check
 cargo test -p sdkwork-sandbox-provider-spi
 cargo test -p sdkwork-intelligence-sandbox-service
 cargo test -p sdkwork-sandbox-provider-local

@@ -41,6 +41,11 @@
       "purpose": "Typed request context and HTTP framework composition rules."
     },
     {
+      "file": "WEB_BACKEND_SPEC.md",
+      "path": "../../../sdkwork-specs/WEB_BACKEND_SPEC.md",
+      "purpose": "HTTP backend host rules for the assembly's route surface and host boundary."
+    },
+    {
       "file": "DATABASE_FRAMEWORK_SPEC.md",
       "path": "../../../sdkwork-specs/DATABASE_FRAMEWORK_SPEC.md",
       "purpose": "Database lifecycle bootstrap ownership for embedded assemblies."

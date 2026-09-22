@@ -6,14 +6,16 @@ Owner: SDKWork Runtime Platform
 
 Application: sandbox
 
-Updated: 2026-08-01
+Updated: 2026-09-22
 
-Specs: `REQUIREMENTS_SPEC.md`, `DOCUMENTATION_SPEC.md`, `SECURITY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `PERFORMANCE_SPEC.md`
+Specs: `REQUIREMENTS_SPEC.md`, `DOCUMENTATION_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `DEPLOYMENT_SPEC.md`, `PERFORMANCE_SPEC.md`
 
 ## 文档地图 (Document Map)
 
 - [能力、生命周期与产品规则](PRD-capabilities.md)
-- [交付路线图与阶段门禁](PRD-roadmap.md)
+- [运行模式、Runtime Pool 与状态物化需求](PRD-runtime-execution-model.md)
+- [能力面与访问路径需求](PRD-sandbox-surfaces.md)
+- [交付路线图、阶段门禁与验收标准](PRD-roadmap.md)
 - [REQ-2026-0001: 初始化 Sandbox 工程基础](../requirements/REQ-2026-0001-sandbox-foundation.md)
 - [REQ-2026-0002: 交付 Provider-neutral Sandbox 生命周期核心](../requirements/REQ-2026-0002-sandbox-lifecycle-core.md)
 - [REQ-2026-0003: 交付受约束的 Local Sandbox Provider](../requirements/REQ-2026-0003-secure-local-provider.md)
@@ -51,6 +53,52 @@ Codex、Claude Code、OpenCode、Gemini CLI、Qwen Code 等 AI Coding Agent 在�
 
 SDKWork Sandbox 是面向 SDKWork Agent 的 Provider 无关执行环境。它将“在哪里执行、如何隔离”收敛为基础设施选择，同时保持 Kernel 面向的 Runtime 契约稳定。
 
+### 产品定位与边界
+
+`SDKWork Sandbox` 不是 Docker 的 Rust 版本，也不是对成熟开源 Agent Runtime 的简单移植，而是面向 SDKWork 海量租户场景自主设计的高性能 Agent 运行环境。它以公开成熟的 microVM Agent Runtime 能力（microVM 编排、Snapshot、COW RootFS、按需内存加载、Template、边缘路由、VM 内 Agent 进程）作为**架构参考基线**，目标是**能力兼容**而不是 API 拷贝：对齐其已被验证的运行时能力与关键性能思想，同时针对本平台的多租户规模重新设计调度、资源池与轻量运行模式。
+
+因此产品的核心问题不是“如何创建更多 Sandbox”，而是：
+
+> **如何让 Sandbox 只在需要的时候消耗资源。**
+
+产品最终要交付的体验是：Agent 感觉自己拥有一台完整的独立计算机，而基础设施尽可能共享所有可以共享的计算、内存、文件系统、网络与 Runtime 资源。
+
+### 规模目标
+
+产品的容量设计目标是分层共享而不是逐实例独占：
+
+```text
+100 万级注册用户
+        ↓
+10 万级活跃 Sandbox
+        ↓
+共享 Runtime
+        ↓
+动态实例池
+        ↓
+按需分配 CPU / Memory / Disk / Network
+```
+
+这些数字是**工程目标，不是未经验证的承诺**。任何对外容量声明都必须由参考硬件上的真实 Benchmark 修正；未完成测量前不得把它们写成已实现 SLO。
+
+### 解耦原则
+
+产品必须在长期演进中坚持下列边界不等式，它们约束全部后续能力设计：
+
+```text
+Control Plane ≠ Data Plane
+Agent ≠ Sandbox
+Sandbox ≠ Runtime
+Runtime ≠ Node
+Workspace ≠ Sandbox
+Template ≠ Snapshot
+Snapshot ≠ Storage
+Network ≠ API
+Storage ≠ Runtime
+```
+
+每个模块必须高内聚、低耦合、可替换、可测试、可观测、可水平扩展。控制面与数据面彻底分离，控制面不执行 Agent 任务，数据面不拥有跨租户业务权威；Sandbox 流量不经过控制面。详细运行边界见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md)。
+
 ## 2. 目标用户 (Target Users)
 
 | 用户 | 核心诉求 |
@@ -61,6 +109,11 @@ SDKWork Sandbox 是面向 SDKWork Agent 的 Provider 无关执行环境。它将
 | SDKWork Kernel 集成人员 | 使用同一 Runtime 契约，不按 Local、Docker、Firecracker、gVisor、Kubernetes 或 Remote VM 编写行为分支。 |
 | Sandbox Provider 开发者 | 实现并验证新的 Provider，而无需修改 Kernel 或产品生命周期策略。 |
 | IDE 与自动化开发者 | 通过稳定 SDK 获取终端、日志、事件和状态流，而不是适配各 Provider 私有协议。 |
+| AI Agent 应用开发者 | 用少量代码获得一个可执行代码、可读写文件、可访问网络、可持久化的独立运行环境，并按需暂停与恢复。 |
+| Coding Agent 集成方 | 在受控环境中运行任意构建、测试与工具链命令，并拿到结构化结果与终端。 |
+| Browser Agent 集成方 | 在强隔离环境中运行浏览器与自动化协议，且出网受策略约束。 |
+| MCP 工具与技能提供方 | 让自有的 MCP Server 与 Skills 在受治理的进程与网络边界内运行，不依赖宿主网络。 |
+| Runtime 平台工程团队 | 以节点容量、Pool 命中率、启动时延与隔离等级为可度量目标运营集群，而不是逐实例独占资源。 |
 
 ## 3. 目标与非目标 (Goals And Non-Goals)
 
@@ -74,6 +127,14 @@ SDKWork Sandbox 是面向 SDKWork Agent 的 Provider 无关执行环境。它将
 - 先覆盖 Windows、macOS、Linux 的 Local Provider 平台发现与精确 Capability Matrix：Windows/Linux 只有真实 containment 通过后声明 Terminal，macOS 在 detached-descendant containment 获批前明确拒绝 Terminal；再以同一 Provider-neutral Command Contract 跑通 Linux KVM Firecracker Provider。Docker 明确延期到 Local 与 Firecracker 验证完成之后，后续再分阶段评审 gVisor、Kubernetes 与 Remote VM。
 - 按 Provider 声明的隔离等级执行默认拒绝的文件系统、进程、网络、Capability、Secret 与资源策略。
 - 让启动时延、容量、失败、配额、安全事件和 Provider 健康状态可观测。
+- 对齐成熟 microVM Agent Runtime 的完整能力集合：创建、删除、暂停、恢复、重启、Fork、Snapshot、Template、Workspace、文件系统、Shell、进程、PTY、端口转发、网络隔离、出网策略、资源配额、指标、日志、Runtime Pool、Placement、多租户、自动暂停/恢复、COW 存储、按需内存、Template 缓存、对象存储、本地缓存、边缘路由、MCP、Skills 与 Agent Runtime。每项能力都必须有承载的 `REQ-*`、独立验证与门禁状态，不允许用推断代替证据。
+- 提供可显式声明的**运行模式分层**，覆盖从轻量共享运行时到强隔离 microVM 的完整区间，并让调用方按工作负载风险选择，而不是由实现沉默决定。
+- 提供 Runtime Pool 与可配置预热容量，把热分配时延与冷启动时延分开度量与承诺。
+- 提供 Template、Snapshot、Fork 与状态物化能力，使执行环境可复制、可加速恢复、可并行派生。
+- 提供三级网络模式与统一出网策略：默认拒绝，永久阻断云 Metadata、宿主控制面与租户间横向流量。
+- 提供端口暴露能力，使 Sandbox 内服务经统一边缘入口受控对外访问，而不暴露 Provider 私有地址。
+- 提供 Sandbox 内受控 Agent 运行时，使 MCP、Skills、进程、文件、终端与端口能力可被受治理地消费。
+- 提供 Rust、TypeScript、Python 三语言同语义 SDK 消费面，由权威契约生成，不手写方言。
 
 ### 非目标
 
@@ -82,10 +143,24 @@ SDKWork Sandbox 是面向 SDKWork Agent 的 Provider 无关执行环境。它将
 - 不负责 IAM 登录与租户身份权威，也不负责价格、账单和支付；Sandbox 只消费已验证身份/配额策略并输出计量事实。
 - 不宣称 Local Provider 具备与容器、gVisor 或 microVM 相同的隔离强度。
 - 不要求 V1 一次性实现全部 Provider；当目标隔离等级不可用时，禁止静默降级到更弱 Provider。
+- 不自己实现 KVM Hypervisor 或自研 microVM 监视器；第一阶段以成熟开源 VMM 作为 Backend 承载，自研不构成产品价值。
+- 不把 Docker 作为运行时依赖或隔离边界；Docker 只允许作为 Template 的构建输入格式。
+- 第一阶段不实现 Windows 内核级 Sandbox；Windows Agent 属于未来 VM Backend 议题。
+- GPU Sandbox、Computer Use 与多区域 SaaS 不属于第一阶段核心范围。
+- 不以“增加线程数”解决并发问题，也不以“增加容器数量”解决隔离问题。
+- 不承诺任何未经参考硬件压测的时延、并发或资源占用数字。
 
 ## 4. 范围 (Scope)
 
-产品范围包括 Runtime、Session、Workspace Runtime Transaction、Sandbox Provider SPI、资源与配额执行、Scheduler、Pool、面向执行的 Filesystem/Terminal/Browser/Port 能力、Checkpoint/Snapshot、Cache 集成、Network Policy、Secret Projection、日志、指标、Trace、审计事件与恢复编排。
+产品范围包括 Runtime、Session、Workspace Runtime Transaction、Sandbox Provider SPI、运行模式分层、资源与配额执行、Scheduler、Placement、Pool 与预热容量、Template 与构建链、状态物化（按需内存与写时复制）、面向执行的 Filesystem/Terminal/Browser/PTY/Port 能力、Checkpoint/Snapshot/Fork、Cache 与存储分层、边缘路由与端口暴露、Network Policy 与出网策略、Secret Projection、Sandbox 内 Agent Runtime、MCP 与 Skills 执行面、SDK 消费面、Node 信任与 Drain、单机与集群双形态、日志、指标、Trace、审计事件与恢复编排。
+
+范围拆分为三个层次，各自的详细要求位于对应分片：
+
+| 层次 | 内容 | 详细要求 |
+| --- | --- | --- |
+| 运行与容量 | 运行解耦原则、运行模式分层、Runtime Pool、Template、Snapshot/Fork、状态物化、存储分层与缓存、Idle 收敛 | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) |
+| 能力面 | Workspace 目录契约、Filesystem、Process、PTY、网络三模式、出网策略、端口暴露、Agent Runtime、MCP、Skills、SDK、可观测性 | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) |
+| 生命周期与所有权 | 身份、状态机、Workspace Attachment、Provider 契约、Scheduler/Pool/Quota、日志事件 | [PRD-capabilities.md](PRD-capabilities.md) |
 
 ### 术语与所有权
 
@@ -120,6 +195,11 @@ SDKWork 共享类型 `TenantId`、`OperationId`、`RuntimeCapability` 与 `Isola
 3. BirdCoder Cloud 通过 Agents/Kernel 请求 Firecracker Runtime；Sandbox 在 Capacity Reservation 后选择 Cold 或干净 Pool Slot，挂载不可变 Workspace Revision，执行命令，生成耐久 Checkpoint Candidate 并交由 Agents CAS 晋级 Revision，然后完成 Detach、Sanitization、Residue Scan 和资源归还。
 4. Provider 开发者增加 Firecracker 适配器，通过生命周期、文件系统约束、网络、资源、事件与清理一致性测试，不改变 Kernel-facing 契约。
 5. Kernel 仅请求 Capability 与隔离等级，不选择具体 Provider；不存在合规 Provider 时返回类型化错误，而不是降低隔离等级。
+6. Coding Agent 在强隔离运行模式下创建执行环境，挂载不可变 Workspace Revision，运行构建与测试命令，经受控出网拉取依赖，产出耐久 Checkpoint 后释放执行环境；Workspace 数据不随执行环境销毁而丢失。
+7. Browser Agent 在 MicroVM 运行模式中启动浏览器与自动化协议；其出网受与普通进程相同的策略约束，其对外端口经统一边缘入口受控暴露，运行时不接触宿主网络与云 Metadata。
+8. 并行评测与 A/B 场景从一个已就绪执行环境派生多个实例：只读 Base 共享，可写层独立；派生数量受租户配额约束，且不得因派生而降低隔离等级。
+9. 海量轻量 Agent 请求共享运行时：工作负载被归类为非危险且调用方显式接受弱隔离时使用最轻运行模式；一旦风险分类升级，必须显式切换到强隔离模式并重新准入，禁止静默降级或静默升级掩盖配置错误。
+10. Agent Session 跨执行环境迁移：会话在环境 A 暂停并物化状态，在环境 B 恢复继续；Workspace 与业务状态权威始终由 Agents 保持，Sandbox 只拥有运行生命周期投影与清理事实。
 
 ## 6. 成功指标 (Success Metrics)
 
@@ -135,6 +215,15 @@ SDKWork 共享类型 `TenantId`、`OperationId`、`RuntimeCapability` 与 `Isola
 | 容量安全 | 并发 Session 准入不超过租户与节点配额；拒绝结果包含安全的重试信息。 |
 | Workspace 持久性 | ReadWrite Runtime 释放前有耐久 Checkpoint/Handoff；并发 Writer 不覆盖新 Revision，断连恢复测试不存在静默丢写。 |
 | 数据驻留与恢复 | Local 的 `device-local-persistence`/`strict-device-local-processing` 声明分别通过完整数据清单、无隐式远程持久化/内容外传、角色正确的本地数据库、备份恢复、导出清除和真实 OS/网络证据；Cloud Workspace 只通过 Drive 或批准的 Block-volume Authority 投影。 |
+| 能力对齐完整性 | 能力对齐矩阵（见 [PRD-capabilities.md](PRD-capabilities.md)）中每一项都拥有承载的 `REQ-*`、门禁状态与验证证据；不存在“已声明但零证据”的能力。 |
+| 运行模式正确性 | 不满足最低隔离等级的请求全部失败关闭；负向测试能复现“无静默降级路径”，包括容量不足、Provider 不可用与策略拒绝三种情形。 |
+| 热分配时延 | 在参考硬件、固定 Template 与固定工作负载下分别记录热分配与冷启动的 P50/P95/P99，热路径显著优于冷启动；未达标不得写成已实现 SLO。 |
+| 恢复时延 | 暂停后恢复的 P50/P95/P99 在参考环境下记录；恢复不得丢失持久 Workspace 状态，也不得产生双重活动所有权。 |
+| 资源效率 | 单节点空闲执行环境占用、单节点可承载的轻量执行环境数量与活跃强隔离实例数量分别测量并记录，测量方法与模板一致。 |
+| 网络策略有效性 | 默认拒绝、云 Metadata 阻断、宿主控制面阻断与租户间横向阻断在真实内核与真实网络栈上被验证，而不是仅在单测中模拟。 |
+| 状态物化安全 | 跨租户 Snapshot 恢复被拒绝、不兼容版本恢复被拒绝、Fork 派生不产生跨租户可见性，三类负向用例均有可复现证据。 |
+| 水平扩展性 | 创建、暂停、恢复、删除的吞吐与错误率在控制面水平扩展下被记录，且不随副本数增加而劣化。 |
+| 缓存有效性 | Template 缓存命中率、对等缓存命中率与首命令时延改善被记录；缓存始终可被绕过且不构成唯一事实源。 |
 
 性能目标只有在参考硬件、工作负载、Provider 和统计方法被记录后才能作为发布门禁；它们不是对 Phase 0 空骨架的性能声明。
 
@@ -147,6 +236,20 @@ SDKWork 共享类型 `TenantId`、`OperationId`、`RuntimeCapability` 与 `Isola
 - **V4, Runtime Platform：** 多区域 SaaS、受治理 Provider 生态、工作负载感知调度，以及 SDKWork IDE/Browser/Workflow/DevOps 的统一接入。
 
 详细阶段门禁见 [PRD-roadmap.md](PRD-roadmap.md)。Roadmap 条目只有在形成 `ready` 状态的 `REQ-*` 后才进入实施范围。
+
+### 能力建设顺序与交付阶段的映射
+
+产品能力存在一个自然的建设顺序（先有单机原生执行，再有池化与状态物化，再有强隔离，最后是集群与 Agent 集成）。它与本仓库的交付阶段不是一对一关系：本仓库的阶段是**交付门禁**，只有对应 `REQ-*` 进入 `ready` 才会推进。映射如下：
+
+| 能力建设顺序 | 内容 | 本仓阶段 | 状态 |
+| --- | --- | --- | --- |
+| 1. 原生执行底座 | 生命周期核心、文件系统、进程、资源限制、安全约束、网络策略、API 面 | V1 | 部分候选实现（`REQ-2026-0002`~`0007`） |
+| 2. 池化与状态物化 | Runtime Pool、Scheduler、Template、Workspace、Snapshot | V1/V2 交界 | 仅 Gate 0 候选（`REQ-2026-0016`~`0021`） |
+| 3. 强隔离 | microVM 监视器后端、Snapshot 恢复、按需内存、写时复制根文件系统 | V2 | 仅 Gate 0 候选（`REQ-2026-0008`、`0012`~`0015`） |
+| 4. 集群能力 | 集群 Placement、自动扩缩、高可用、故障转移、迁移 | V2/V3 | 仅 Gate 0 候选（`REQ-2026-0016`、`0017`） |
+| 5. Agent 集成 | Sandbox 内 Agent 运行时、MCP、Skills、Browser、Computer Use | V3/V4 | 未授权（`REQ-2026-0024`、`0025` 仅门禁） |
+
+本表只表达**建设先后**，不构成任何实施授权。所列能力均需独立 `REQ-*`、必要 ADR、Verification、Release Evidence 与 Rollback Plan；阶段标签只表达产品顺序。具体组件拆分与命名必须遵守本仓架构决策与 `NAMING_SPEC.md`，不得按能力清单直接推导 Crate 结构（见 [TECH_ARCHITECTURE.md](../../architecture/tech/TECH_ARCHITECTURE.md) 第 3 节）。
 
 ## 8. 关联需求 (Linked Requirements)
 
@@ -180,6 +283,28 @@ SDKWork 共享类型 `TenantId`、`OperationId`、`RuntimeCapability` 与 `Isola
 
 后续 Runtime API、生命周期、Provider、Scheduler、安全、Snapshot、Cache 与 SaaS 工作必须在实施前拆分为可评审的需求记录。
 
+### 尚未拆分的能力
+
+下列能力已在本 PRD 中定义产品要求，但**尚无任何 `REQ-*` 承载**，因此处于未授权状态。它们必须在实施前各自拆分为独立、可评审的需求记录，且不得在实现中默认开启。
+
+本表按**产品需求分组**列举，与 [PRD-capabilities.md](PRD-capabilities.md) 第 11 节的**逐能力**矩阵不是同一粒度，也不是彼此的完整换算：第 11 节还标出本表未列出的能力（Restart、Auto Pause、Auto Resume、Template Cache、Object Storage、Local Cache、Edge Router），本表则包含第 11 节没有对应行的产品要求（运行模式分层、网络 `shared` 模式、SDK 家族、Node Drain 与迁移、Benchmark 套件与容量基线）。两份清单互补，判断某个能力是否已有承载必须以第 11 节逐行状态为准，而不是以本表是否列出为准；`node tools/check-sandbox-requirement-traceability.mjs` 每次运行都会打印第 11 节矩阵的逐行分类普查，可作为该判断的机器读数。
+
+| 能力 | 产品要求位置 | 缺口 |
+| --- | --- | --- |
+| 运行模式分层（Mode 0 / Mode 1） | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 2 节 | 无 `REQ-*`；Mode 0 还需新的 `IsolationAssurance` 值决策 |
+| Template 与构建链 | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 4 节 | 无 `REQ-*`；与 Firecracker 制品元组的分层关系未定 |
+| Snapshot 产品能力（创建/恢复/删除） | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 5 节 | 仅有 Checkpoint 与 Firecracker Snapshot 的 Gate 0，无产品级能力 |
+| Fork | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 6 节 | 无 `REQ-*`；一致性语义未定 |
+| 按需内存与写时复制根文件系统 | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 7 节 | 无 `REQ-*`；无真实 KVM 证据 |
+| 端口暴露 | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 8 节 | 无 `REQ-*`；公开端点命名与边缘入口归属未定 |
+| 网络 `shared` 模式 | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 6 节 | 无 `REQ-*`；无安全评审 |
+| Sandbox 内 Agent 运行时 | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 9 节 | 无 `REQ-*`；`REQ-2026-0024` 明确将 Guest Agent Stream 列为未批准 |
+| MCP 执行面 | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 10 节 | 仅 Transport 级描述，无独立 `REQ-*` |
+| Skills | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 11 节 | 无 `REQ-*`；目录命名与供应链 Owner 未定 |
+| SDK 家族 | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 12 节 | 无 `REQ-*`；无 `apis/` 权威契约 |
+| Node Drain 与迁移 | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 9 节 | `REQ-2026-0017` 仅覆盖 Drain 的信任侧，迁移无 `REQ-*` |
+| Benchmark 套件与容量基线 | [PRD-roadmap.md](PRD-roadmap.md) 验收标准 | 无 `REQ-*`；无参考硬件定义 |
+
 ## 9. 待决问题 (Open Questions)
 
 - 各操作系统上的 Local Provider 最低隔离保证是什么，哪些 Workload 必须升级到 Firecracker 或更强 Provider？
@@ -190,3 +315,10 @@ SDKWork 共享类型 `TenantId`、`OperationId`、`RuntimeCapability` 与 `Isola
 - 哪些 Provider 能提供 Snapshot/Restore，跨 Provider 的最小可移植 Snapshot 契约是什么？
 - 最大 Lifecycle Operation 数、最大活动 Session 生命周期、终态幂等保留窗口及窗口结束后的安全 Late Retry Outcome 分别是什么？
 - 首个 Local 商业版本采用哪一种公开驻留声明，哪些数据类进入本地备份，以及其 RPO/RTO、保留和验证恢复预算分别是多少？
+- 最轻的共享运行时运行模式是否需要引入新的 `IsolationAssurance` 取值？若是，其命名、取值范围、允许工作负载清单与禁止回退规则是什么？
+- 端口暴露的公开端点格式、认证方式与边缘入口由哪个仓库拥有？
+- Fork 的一致性语义取“快照点一致”还是“写后可见”，是否限制在同一节点内？
+- Template 与 Firecracker 制品元组的权威边界如何划分，单一 Template 是否允许跨架构复用？
+- 参考硬件、Template、工作负载与统计方法由哪套基线定义，才能把热分配、恢复与资源目标写成发布门禁？
+- 公开商业 SDK 是否存在，还是长期仅提供内部 SDK 家族？
+- 能力对齐的验收口径是“接口可用”还是“带真实证据的端到端闭环”，覆盖多少项才算对齐完成？

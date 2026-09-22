@@ -56,7 +56,7 @@ Decision: [ADR-20260728: Runtime Boundary And Rust Workspace](../../architecture
 ## Verification
 
 ```bash
-cargo fmt --all -- --check
+cargo fmt --check
 cargo check --workspace
 cargo test --workspace
 node ../sdkwork-specs/tools/check-repository-docs-standard.mjs --root .

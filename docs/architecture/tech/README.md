@@ -11,6 +11,11 @@ This directory owns the technical architecture Canon for the repository.
 - [Modules and contracts](TECH-modules-and-contracts.md)
 - [Runtime topology](TECH-runtime-topology.md)
 - [Security and operations](TECH-security-and-operations.md)
+- [Runtime backends, pools, and state materialization](TECH-runtime-backends-and-pools.md)
+- [Performance and capacity](TECH-performance-and-capacity.md)
+- [Performance and host-capability baseline](TECH-performance-baseline.md)
+- [Platform support and host capability](TECH-platform-support.md)
+- [E2B capability parity audit](TECH-e2b-capability-parity.md)
 
 ## Splitting Rules
 
