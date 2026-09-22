@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- demos C# 能力探针的最小控制台工程。
+       .NET 8 没有 "dotnet run file.cs"（文件式应用是 .NET 10 才有的），
+       所以必须有一个工程文件；它由 run.sh 复制到 target/demos-work/csharp 下编译。 -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>demo-probe</AssemblyName>
+    <RootNamespace>DemoProbe</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>
