@@ -12,6 +12,7 @@ import {
   GAP_KINDS,
   RULE_FAMILIES,
   RULE_FAMILY_SURFACES,
+  SHAPE_COLUMNS,
   assessE2bParityMatrix,
   discoverWorkspaceTests,
   formatE2bParityMatrixReport,
@@ -22,6 +23,8 @@ import {
   parseE2bParityMatrixArgs,
   parseGapEvidence,
   parseImplementationCoverage,
+  parseLineScopedRuleFamilies,
+  parseShapeEvidence,
   parseCensus,
   parseMatrixCategories,
   parseRequirementClaimRegistry,
@@ -101,11 +104,19 @@ const CLAIMS = [
 ].join("\n");
 
 const RUST_TEST_FILE = "crates/fixture/src/lib.rs";
+const RUST_TYPE_FILE = "crates/fixture/src/model.rs";
 
 /** A Rust source file whose single test the coverage table is expected to claim. */
 function rustTestSource(testName = "works") {
   return ["#[cfg(test)]", "mod tests {", "    #[test]", `    fn ${testName}() {}`, "}", ""].join("\n");
 }
+
+/**
+ * A second source file, without tests, so the crate holds two Rust sources rather than one. It gives
+ * the shape table a module count that is not trivially the "sole file" case, and it gives the absence
+ * check a real identifier in the tree to be refuted by.
+ */
+const RUST_TYPE_SOURCE = ["pub enum FixtureState {", "    Idle,", "}", ""].join("\n");
 
 const COVERAGE = [
   "### 3.1 已实现面的覆盖",
@@ -116,8 +127,37 @@ const COVERAGE = [
   "",
 ].join("\n");
 
+/**
+ * The section 1.2 shape table, the fixture's counterpart to the repository's own. It carries one row
+ * per checkable form: a module count, a line count with the file named, a line-numbered anchor, a
+ * bare anchor that has to resolve against the row's own crate, and a row that claims an absence by
+ * naming what must not exist.
+ */
+const SHAPE = [
+  "### 1.2 本仓当前真实形状（可点证据）",
+  "",
+  `| ${SHAPE_COLUMNS.join(" | ")} |`,
+  "| --- | --- | --- | --- |",
+  `| fixture crate | \`crates/fixture\` | 2 模块 | \`works\` is declared at \`lib.rs:4\` |`,
+  `| sized crate | \`crates/fixture\` | 5 行 \`lib.rs\` | the crate is \`#[cfg(test)] mod tests {\` at \`lib.rs:1\` |`,
+  `| negative claim | \`crates/fixture\` | 2 模块 | **无 \`Pausing\` 变体**（\`FixtureState\`，\`model.rs:1\`） |`,
+  "| absent component | — | 不存在 | no `FixtureAbsentType` implementation exists |",
+  "",
+].join("\n");
+
+/**
+ * The line that states how many rule families this gate implements, inside the audit document. The
+ * document is a self-description surface that cannot be scoped by blocks -- it names this gate and the
+ * field gate in adjacent table rows -- so it is read line by line, and the counter lives on a line of
+ * its own. The field gate's own line is here to prove the reader does not credit this gate with it.
+ */
+const GATE_DESCRIPTION = [
+  `The matrix gate (\`tools/check-sandbox-e2b-parity-matrix.mjs\`) holds ${RULE_FAMILIES.length} 条规则族.`,
+  "The field gate (`tools/check-sandbox-e2b-field-parity.mjs`) holds 10 条规则族.",
+].join("\n");
+
 /** The prose that describes this gate itself, in the two languages it is written in. */
-function gateSurfacesFixture(ruleFamilyWord = "ten", chineseWord = "十") {
+function gateSurfacesFixture(ruleFamilyWord = "eleven", chineseWord = "十一") {
   return {
     rootReadme: `# Fixture Repository\n\nThe gate holds ${ruleFamilyWord} rule families.\n`,
     toolsReadme: `${ruleFamilyWord[0].toUpperCase()}${ruleFamilyWord.slice(1)} rule families:\n`,
@@ -132,6 +172,8 @@ function buildDocument({
   coverage = COVERAGE,
   gaps = GAPS,
   claims = CLAIMS,
+  shape = SHAPE,
+  description = GATE_DESCRIPTION,
 } = {}) {
   return [
     "# E2B 能力对齐审计",
@@ -139,12 +181,15 @@ function buildDocument({
     "## 0. 基准快照与状态口径",
     "",
     vocabulary,
+    shape,
     census,
     matrix,
     "## 3. 测试覆盖矩阵",
     "",
     coverage,
     gaps,
+    "",
+    description,
     "",
     claims,
     "",
@@ -167,6 +212,7 @@ function buildDocument({
  *     docs/architecture/tech/README.md
  *     docs/architecture/tech/TECH-e2b-capability-parity.md
  *     crates/fixture/src/lib.rs                                   (one #[test])
+ *     crates/fixture/src/model.rs                                 (one type, no test)
  */
 function createFixture({
   document = buildDocument(),
@@ -186,6 +232,7 @@ function createFixture({
   mkdirSync(path.join(repo, "tools"), { recursive: true });
   mkdirSync(path.join(repo, "crates", "fixture", "src"), { recursive: true });
   writeFileSync(path.join(repo, RUST_TEST_FILE), rustSource);
+  writeFileSync(path.join(repo, RUST_TYPE_FILE), RUST_TYPE_SOURCE);
   writeFileSync(path.join(repo, "README.md"), surfaces.rootReadme);
   writeFileSync(path.join(repo, "tools", "README.md"), surfaces.toolsReadme);
   writeFileSync(
@@ -832,11 +879,25 @@ test("an ignored test is recorded as ignored rather than dropped", () => {
 // ---- rule 10: SELF-DESCRIPTION
 
 test("every surface describing this gate declares the rule families it implements", () => {
-  assert.equal(RULE_FAMILIES.length, 10);
+  assert.equal(RULE_FAMILIES.length, 11);
   assert.equal(new Set(RULE_FAMILIES).size, RULE_FAMILIES.length, "family keys must be unique");
 
   for (const surface of RULE_FAMILY_SURFACES) {
     const text = readFileSync(join(repoRoot, surface.path), "utf8");
+    if (surface.lineScoped === true) {
+      // This surface describes both gates inside one table, so it is read line by line: every line
+      // that names this gate and states a count is a claim, and all of them must agree.
+      const readings = parseLineScopedRuleFamilies(text, "check-sandbox-e2b-parity-matrix.mjs");
+      assert.ok(readings.length > 0, `${surface.id} (${surface.path}) must state the count`);
+      for (const reading of readings) {
+        assert.equal(
+          reading.value,
+          RULE_FAMILIES.length,
+          `${surface.id} (${surface.path}) line ${reading.line} must declare ${RULE_FAMILIES.length} rule families`,
+        );
+      }
+      continue;
+    }
     assert.equal(
       parseDeclaredRuleFamilies(text, surface.language, { own: surface.own === true }),
       RULE_FAMILIES.length,
@@ -936,6 +997,236 @@ test("a usage fence is not where the count lives", () => {
     "A trailing paragraph with no count.",
   ].join("\n");
   assert.equal(parseDeclaredRuleFamilies(withFence, "english"), 10);
+});
+
+// ---- rule family 11: shape evidence (section 1.2)
+
+test("the repository's own shape table resolves and its sizes recompute", () => {
+  const shape = parseShapeEvidence(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
+  assert.ok(shape?.header, "section 1.2 must carry a table");
+  assert.equal(shape.header.join("|"), SHAPE_COLUMNS.join("|"));
+  assert.equal(shape.rows.length, 11);
+
+  const assessment = assessE2bParityMatrix({ repoRoot });
+  assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
+  assert.equal(assessment.shapeRows, 11);
+  // Six lines in the real table point the reader at a numbered line. Each is resolved into its file
+  // and checked to still carry the construct the row names.
+  assert.equal(assessment.shapeAnchors, 6);
+});
+
+test("a module count that disagrees with the crate's sources is rejected", () => {
+  const shape = SHAPE.replace("| 2 模块 |", "| 4 模块 |");
+
+  expectProblem(
+    inspect({ document: buildDocument({ shape }) }),
+    "declares 4 模块, but `crates/fixture/src` holds 2 Rust source file(s)",
+  );
+});
+
+test("a line count that disagrees with the file it names is rejected", () => {
+  const shape = SHAPE.replace("| 5 行 `lib.rs` |", "| 9 行 `lib.rs` |");
+
+  expectProblem(
+    inspect({ document: buildDocument({ shape }) }),
+    "declares 9 行, but the file it names holds 5 line(s)",
+  );
+});
+
+test("a size that names no resolvable file is rejected", () => {
+  const shape = SHAPE.replace("| 5 行 `lib.rs` |", "| 5 行 |");
+
+  // The crate holds two sources, so "5 行" with no file named has no single referent. Guessing one
+  // would make the figure unfalsifiable, which is the state this family exists to end.
+  expectProblem(
+    inspect({ document: buildDocument({ shape }) }),
+    "declares 5 行 but names no single resolvable Rust source file to count",
+  );
+});
+
+test("a cited shape path that does not exist is rejected", () => {
+  const shape = SHAPE.replace("`crates/fixture`", "`crates/absent`");
+
+  expectProblem(
+    inspect({ document: buildDocument({ shape }) }),
+    "`crates/absent`, which does not exist",
+  );
+});
+
+test("a line anchor past the end of its file is rejected", () => {
+  const shape = SHAPE.replace("`lib.rs:4`", "`lib.rs:9999`");
+
+  expectProblem(inspect({ document: buildDocument({ shape }) }), "`lib.rs` has 5 line(s)");
+});
+
+test("a line anchor that resolves but points at unrelated code is rejected", () => {
+  // The quiet half of this rot. The number still lands inside the file, so nothing looks broken until
+  // the reader follows it and finds a plausible declaration that has nothing to do with the row.
+  const shape = SHAPE.replace("at `lib.rs:1`", "at `lib.rs:5`");
+
+  expectProblem(
+    inspect({ document: buildDocument({ shape }) }),
+    "nothing the row attributes to it is visible at `lib.rs:5`",
+  );
+});
+
+test("a shape row that cites no evidence is rejected", () => {
+  const shape = SHAPE.replace(
+    "no `FixtureAbsentType` implementation exists",
+    "nothing of the sort is implemented here",
+  );
+
+  expectProblem(inspect({ document: buildDocument({ shape }) }), "cites no backticked evidence");
+});
+
+test("a row that declares a component absent without naming what is absent is rejected", () => {
+  const shape = SHAPE.replace(
+    "no `FixtureAbsentType` implementation exists",
+    "nothing of the sort beyond `REQ-*`",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ shape }) }),
+    "declares the component absent but names nothing absent",
+  );
+});
+
+test("an absence claim refuted by a crate directory is rejected", () => {
+  const shape = SHAPE.replace("no `FixtureAbsentType` implementation exists", "no `fixture` crate exists");
+
+  expectProblem(
+    inspect({ document: buildDocument({ shape }) }),
+    "declares no `fixture` implementation, but crates/fixture exists",
+  );
+});
+
+test("an absence claim refuted by a source identifier is rejected", () => {
+  // The other half of the absence check: a PascalCase token is looked up in `crates/**/*.rs`, so a
+  // row may only claim an identifier absent if the tree agrees.
+  const shape = SHAPE.replace("no `FixtureAbsentType` implementation exists", "no `FixtureState` enum exists");
+
+  expectProblem(
+    inspect({ document: buildDocument({ shape }) }),
+    "declares `FixtureState` absent, but it appears in crates/fixture/src/model.rs",
+  );
+});
+
+test("an identifier named inside a negative phrase is re-derived from the anchored file", () => {
+  // The fixture says the enum has no `Pausing` variant. Swapping in a variant the enum really does
+  // declare must fail -- scope is the anchored file, so this is a check on that construct in that
+  // file, not a search of the repository for a word.
+  const shape = SHAPE.replace("**无 `Pausing` 变体**", "**无 `Idle` 变体**");
+
+  expectProblem(
+    inspect({ document: buildDocument({ shape }) }),
+    "names `Idle` inside a negative phrase, but it occurs in crates/fixture/src/model.rs",
+  );
+});
+
+test("a cited glob that matches nothing is rejected", () => {
+  const shape = SHAPE.replace("`works` is declared at `lib.rs:4`", "`works` is declared in `crates/**/*.toml`");
+
+  expectProblem(
+    inspect({ document: buildDocument({ shape }) }),
+    "`crates/**/*.toml`, which does not exist",
+  );
+});
+
+test("a shape table with the wrong columns reports the header and stops", () => {
+  const shape = SHAPE.replace(`| ${SHAPE_COLUMNS.join(" | ")} |`, "| 组件 | 位置 | 规模 | 状态 |");
+
+  expectProblem(
+    inspect({ document: buildDocument({ shape }) }),
+    `expected [${SHAPE_COLUMNS.join(", ")}]`,
+  );
+});
+
+test("a shape row with the wrong cell count is rejected", () => {
+  const shape = SHAPE.replace("| absent component | — | 不存在 |", "| absent component | — | 不存在 | extra |");
+
+  expectProblem(inspect({ document: buildDocument({ shape }) }), "shape-evidence row has 5 cell(s)");
+});
+
+test("a shape section that describes no component is rejected", () => {
+  const shape = [
+    "### 1.2 本仓当前真实形状（可点证据）",
+    "",
+    `| ${SHAPE_COLUMNS.join(" | ")} |`,
+    "| --- | --- | --- | --- |",
+    "",
+  ].join("\n");
+
+  expectProblem(inspect({ document: buildDocument({ shape }) }), "describes no component");
+});
+
+test("a missing shape section is reported rather than thrown", () => {
+  expectProblem(
+    inspect({ document: buildDocument({ shape: "" }) }),
+    'has no "### 1.2" shape-evidence section',
+  );
+});
+
+test("parseShapeEvidence is total on the real document and on one without the section", () => {
+  const real = readFileSync(path.join(repoRoot, PARITY_DOC), "utf8");
+  assert.equal(parseShapeEvidence(real).rows.length, 11);
+  assert.equal(parseShapeEvidence("# nothing to see\n"), null);
+});
+
+// ---- the audit document is a self-description surface, read line by line
+
+test("the audit document states this gate's rule-family count where it names the gate", () => {
+  const real = readFileSync(path.join(repoRoot, PARITY_DOC), "utf8");
+  const readings = parseLineScopedRuleFamilies(real, "check-sandbox-e2b-parity-matrix.mjs");
+
+  assert.ok(readings.length > 0, "the document must state how many families this gate implements");
+  for (const reading of readings) {
+    assert.equal(reading.value, RULE_FAMILIES.length, `line ${reading.line} disagrees`);
+  }
+});
+
+test("a line-scoped surface stating the wrong count is rejected", () => {
+  const description = GATE_DESCRIPTION.replace(`${RULE_FAMILIES.length} 条规则族`, "9 条规则族");
+
+  expectProblem(
+    inspect({ document: buildDocument({ description }) }),
+    `declares 9 rule families, this gate implements ${RULE_FAMILIES.length}`,
+  );
+});
+
+test("a line-scoped surface that never states a count is rejected", () => {
+  expectProblem(
+    inspect({
+      document: buildDocument({
+        description: "`tools/check-sandbox-e2b-parity-matrix.mjs` keeps the audit honest.",
+      }),
+    }),
+    "names this gate but never states how many rule families it implements",
+  );
+});
+
+test("the line-scoped reader keeps each gate's count on its own line", () => {
+  const text = [
+    "The matrix gate (`tools/check-sandbox-e2b-parity-matrix.mjs`) holds 11 条规则族.",
+    "The field gate (`tools/check-sandbox-e2b-field-parity.mjs`) holds 10 条规则族.",
+  ].join("\n");
+
+  // No borrowing: the field gate's ten sits on the very next line and must not be attributed here.
+  assert.deepEqual(parseLineScopedRuleFamilies(text, "check-sandbox-e2b-parity-matrix.mjs"), [
+    { value: 11, line: 1 },
+  ]);
+});
+
+test("an ordinal reference is not read as a declaration of the count", () => {
+  // "this is why the 9th rule family exists" names a family, not a total. Both spellings have to be
+  // excluded: with no space the numeral follows `第` directly, and with a space `\d+` would otherwise
+  // start at the second digit of `第 11`.
+  const text = [
+    "The field gate (`tools/check-sandbox-e2b-field-parity.mjs`) holds 10 条规则族.",
+    "`check-sandbox-e2b-parity-matrix.mjs` — this is why the 第 4 条规则族 exists.",
+    "`check-sandbox-e2b-parity-matrix.mjs` — this is why the 第 11 条规则族 exists.",
+  ].join("\n");
+
+  assert.deepEqual(parseLineScopedRuleFamilies(text, "check-sandbox-e2b-parity-matrix.mjs"), []);
 });
 
 test("arguments are parsed strictly", () => {

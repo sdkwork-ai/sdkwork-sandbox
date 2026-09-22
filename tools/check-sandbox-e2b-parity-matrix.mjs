@@ -12,7 +12,7 @@
  * 34-row `PRD-capabilities.md` census). A census that does not add up is worse than no census,
  * because the number gets quoted in review.
  *
- * Ten deterministic rule families:
+ * Eleven deterministic rule families:
  *
  *   1. VOCABULARY. The document must declare exactly the four status markers in its status
  *      vocabulary section, and every matrix row must use one of them. A fifth marker invented
@@ -525,6 +525,7 @@ export const RULE_FAMILIES = Object.freeze([
   "zero-requirement-claims",
   "implementation-coverage",
   "self-description",
+  "shape-evidence",
 ]);
 
 /** The surfaces that describe this gate, and the language each states the count in. */
@@ -535,6 +536,13 @@ export const RULE_FAMILY_SURFACES = Object.freeze([
   { id: "tools README", path: "tools/README.md", language: "english" },
   { id: "root README", path: "README.md", language: "english" },
   { id: "Gate 0 view", path: "docs/architecture/views/gate-zero-current-state.md", language: "chinese" },
+  // The parity document is a surface that block scoping cannot read. It describes this gate and the
+  // field gate inside one table -- this gate's row carries `11 条规则族：…`, the field gate's own count
+  // sits on the row below with no blank line between -- so a whole-block scope would read both counts
+  // as one claim and could never tell which gate was wrong. `lineScoped` narrows the scope to a single
+  // line: only a line that names *this* gate can carry its count. That also disposes of the document's
+  // ordinal references ("this is why the 9th rule family exists"), which name a family, not a total.
+  { id: "parity document", path: PARITY_DOCUMENT, language: "chinese", lineScoped: true },
 ]);
 
 const ENGLISH_COUNT_WORDS = Object.freeze({
@@ -624,6 +632,38 @@ export function parseDeclaredRuleFamilies(text, language, { own = false } = {}) 
     if (declared !== null) return declared;
   }
   return null;
+}
+
+/**
+ * Every rule-family count stated on a line that names `gateFileName`, with the line it sits on.
+ *
+ * This exists because one surface cannot be scoped by blocks at all: the audit document describes
+ * this gate and the field gate in adjacent rows of the *same* markdown table. Splitting that table
+ * into blocks is impossible (its rows are separated by newlines, not blank lines) and splitting it
+ * any other way is guesswork, so the scope is narrowed to a line instead -- a line asserts a count
+ * for this gate only if it names this gate. The reader also has to leave the document's ordinal
+ * references alone: "this is why the 9th rule family exists" and "the 8th rule family re-reads
+ * section 3.2" both contain `N 条规则族` and would otherwise be read as the gate declaring nine or
+ * eight families. A leading `第` marks an ordinal, so it is excluded.
+ */
+export function parseLineScopedRuleFamilies(text, gateFileName) {
+  const declared = [];
+  const lines = String(text).split(/\r?\n/u);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.includes(gateFileName)) continue;
+    // Two lookbehinds, because one is not enough. `第九条规则族` is excluded by the character class
+    // (`第` immediately before the numeral), but `第 11 条规则族` is not: the space between them lets
+    // `\d+` start at the *second* `1`, reading a declaration of eleven as one. The class also stops a
+    // match from starting mid-number, so the digit-boundary and the ordinal are both needed.
+    const match = /(?<![0-9第])(?<!第\s{0,3})(\d+|[一二三四五六七八九十]+)\s*条规则族/u.exec(line);
+    if (!match) continue;
+    const value = /^\d+$/u.test(match[1])
+      ? Number.parseInt(match[1], 10)
+      : CHINESE_COUNT_WORDS[match[1]] ?? null;
+    if (value !== null) declared.push({ value, line: index + 1 });
+  }
+  return declared;
 }
 
 export const COVERAGE_SECTION = "### 3.1";
@@ -723,6 +763,159 @@ export function parseImplementationCoverage(text) {
     rows.push(record);
   }
   return { header, rows, malformed };
+}
+
+export const SHAPE_SECTION = "### 1.2";
+export const SHAPE_COLUMNS = Object.freeze(["组件", "路径", "规模", "真实状态"]);
+
+/** The top-level directories a citation may open with. A token below one is a path, not prose. */
+const REPO_PATH_PREFIXES = Object.freeze([
+  "crates", "apis", "sdks", "specs", "docs", "tools", "tests",
+]);
+
+/** `provider.rs:136` -- a file and the line the row points the reader at. */
+const LINE_ANCHOR = /^([A-Za-z0-9_./-]+\.rs):(\d+)$/u;
+
+/** `5 模块` -- how many Rust source files the crate's `src/` holds. */
+const MODULE_COUNT = /^(\d+)\s*模块$/u;
+
+/** `8 行 \`lib.rs\`` / `5 行` -- the physical line count of a Rust source file. */
+const LINE_COUNT = /^(\d+)\s*行(?:\s*`([^`]+)`)?$/u;
+
+/** A Rust type name: the form an absence claim takes when it names an implementation. */
+const TYPE_NAME = /^[A-Z][A-Za-z0-9_]*$/u;
+
+/** A bare lowercase word: the form an absence claim takes when it names a crate family. */
+const BARE_WORD = /^[a-z][a-z0-9_]*$/u;
+
+/** How far past an anchor the row's own vocabulary may appear, in lines. */
+const ANCHOR_WINDOW = 3;
+
+/** The section 1.2 shape-evidence table: a component, where it lives, its size and its real state. */
+export function parseShapeEvidence(text) {
+  const lines = text.split(/\r?\n/u);
+  const start = lines.findIndex((line) => line.trim().startsWith(SHAPE_SECTION));
+  if (start === -1) return null;
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^#{2,4}\s/u.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  let header = null;
+  const rows = [];
+  const malformed = [];
+  for (let index = start + 1; index < end; index += 1) {
+    const line = lines[index].trim();
+    if (!line.startsWith("|")) continue;
+    const cells = line
+      .replace(/^\|/u, "")
+      .replace(/\|$/u, "")
+      .split("|")
+      .map((cell) => cell.trim());
+    if (cells.every((cell) => /^:?-{2,}:?$/u.test(cell))) continue;
+    if (!header) {
+      header = cells;
+      continue;
+    }
+    if (cells.length !== header.length) {
+      malformed.push({ line: index + 1, cells });
+      continue;
+    }
+    const record = {};
+    SHAPE_COLUMNS.forEach((column, position) => {
+      record[column] = cells[position] ?? "";
+    });
+    record.line = index + 1;
+    rows.push(record);
+  }
+  return { header, rows, malformed };
+}
+
+/** Recursively list the `.rs` files under an absolute directory, sorted. */
+function listRustSources(absoluteDirectory) {
+  if (!existsSync(absoluteDirectory)) return [];
+  const found = [];
+  const walk = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) =>
+      a.name < b.name ? -1 : 1,
+    )) {
+      const child = join(directory, entry.name);
+      if (entry.isDirectory()) walk(child);
+      else if (entry.name.endsWith(".rs")) found.push(child);
+    }
+  };
+  walk(absoluteDirectory);
+  return found;
+}
+
+/**
+ * The physical line count of a file, which is what `wc -l` prints for a newline-terminated source
+ * file -- the convention section 1.2 states its `N 行` figures in. `split("\n").length` would report
+ * one more for the same file, because a trailing newline leaves an empty final element; a reader who
+ * runs `wc -l` and gets 8 while the table says 9 has been handed a number that does not reproduce.
+ */
+function countSourceLines(absolutePath) {
+  const content = readFileSync(absolutePath, "utf8");
+  if (content === "") return 0;
+  const newlines = (content.match(/\n/gu) ?? []).length;
+  return content.endsWith("\n") ? newlines : newlines + 1;
+}
+
+/** Every file under an absolute directory, as paths relative to it. */
+function walkRelativeFiles(directory, prefix = "") {
+  const found = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const relative = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
+    if (entry.isDirectory()) found.push(...walkRelativeFiles(join(directory, entry.name), relative));
+    else found.push(relative);
+  }
+  return found;
+}
+
+/**
+ * Whether a cited repository-relative path exists. A `*` in a segment is expanded rather than
+ * believed, so `apis/commands/*.json` is checked as the set of files it names; a `**` segment walks
+ * the subtree, so a row may cite a shape such as `crates/**\/*.rs` and still be falsified by a
+ * directory listing. Without this the citation would read like evidence while proving nothing.
+ */
+function citedPathExists(repoRoot, cited) {
+  const star = cited.indexOf("*");
+  if (star === -1) return existsSync(join(repoRoot, cited));
+  const slash = cited.lastIndexOf("/", star);
+  const directory = slash === -1 ? repoRoot : join(repoRoot, cited.slice(0, slash));
+  if (!existsSync(directory)) return false;
+  const pattern = cited.slice(slash + 1);
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/gu, "\\$&");
+  const regex = new RegExp(
+    `^${escaped.replace(/\*\*/gu, "\u0000").replace(/\*/gu, "[^/]*").replace(/\u0000/gu, ".*")}$`,
+    "u",
+  );
+  const candidates = pattern.includes("**") ? walkRelativeFiles(directory) : readdirSync(directory);
+  return candidates.some((entry) => regex.test(entry));
+}
+
+/** The first `.rs` file under `crates/` containing `identifier`, repository-relative, or null. */
+function findRustOccurrence(repoRoot, identifier) {
+  if (!existsSync(join(repoRoot, CRATES_DIRECTORY))) return null;
+  for (const relative of listRustFiles(repoRoot, CRATES_DIRECTORY).sort()) {
+    if (readFileSync(join(repoRoot, relative), "utf8").includes(identifier)) return relative;
+  }
+  return null;
+}
+
+/** The first crate directory whose name contains `word` (case-insensitive), or null. */
+function findCrateNamed(repoRoot, word) {
+  const directory = join(repoRoot, CRATES_DIRECTORY);
+  if (!existsSync(directory)) return null;
+  const lowered = word.toLowerCase();
+  return readdirSync(directory).find((entry) => entry.toLowerCase().includes(lowered)) ?? null;
+}
+
+/** A repository-relative path, with separators normalized for a finding. */
+function repositoryPath(repoRoot, absolutePath) {
+  return absolutePath.slice(repoRoot.length + 1).replace(/\\/gu, "/");
 }
 
 /** Backticked tokens in a cell. */
@@ -1216,6 +1409,27 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
       );
       continue;
     }
+    if (surface.lineScoped === true) {
+      // A surface that names this gate many times, in a document that also names another gate: every
+      // line that names this gate *and* states a count is a separate claim, and all of them must
+      // agree. Reading only the first would let the second rot; reading only the last is the
+      // misattribution that `declarationScopes` exists to avoid.
+      const readings = parseLineScopedRuleFamilies(surfaceText, GATE_FILE_NAME);
+      if (readings.length === 0) {
+        problems.push(
+          `the ${surface.id} (${surface.path}) names this gate but never states how many rule families it implements; it must say the ${RULE_FAMILIES.length} this gate implements`,
+        );
+        continue;
+      }
+      for (const reading of readings) {
+        if (reading.value !== RULE_FAMILIES.length) {
+          problems.push(
+            `the ${surface.id} (${surface.path}) line ${reading.line} declares ${reading.value} rule families, this gate implements ${RULE_FAMILIES.length}`,
+          );
+        }
+      }
+      continue;
+    }
     const declared = parseDeclaredRuleFamilies(surfaceText, surface.language, { own: surface.own === true });
     if (declared === null) {
       problems.push(
@@ -1227,6 +1441,251 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
       problems.push(
         `the ${surface.id} declares ${declared} rule families, this gate implements ${RULE_FAMILIES.length}`,
       );
+    }
+  }
+
+  // ---- 11. SHAPE EVIDENCE
+  // Section 1.2 is headed "本仓当前真实形状（可点证据）" -- clickable evidence -- and it is the part of
+  // the audit a reader trusts fastest and checks least. Each row names a component, a path, a size and
+  // a state, and the state cells carry line-numbered citations such as `provider.rs:136`. Until this
+  // family existed nothing resolved one of them: a stale line number, a crate that gained a production
+  // implementation, or a state enum that grew `Pausing` would leave the table asserting the old shape
+  // indefinitely -- and this table is what a reader quotes when asked "so what does the repository
+  // actually have?". The rules make each claim falsifiable. A cited path must resolve (a `*` segment is
+  // expanded, so `apis/commands/*.json` is checked as a set rather than believed). A size written
+  // `N 模块` must equal the Rust sources under the crate's `src/`; one written `N 行` must equal the
+  // file's real line count, stated in the `wc -l` convention so the number reproduces at a shell. Every
+  // `file:N` anchor must land inside its file *and* have something the row attributes to it visible at
+  // that line, because a line number that still resolves while pointing at unrelated code is the quiet
+  // half of this rot: the reader follows it, finds a plausible declaration and believes the row. Every
+  // row must cite backticked evidence, and a row that declares a component absent must name what is
+  // absent -- an identifier that must not occur in `crates/**/*.rs`, or a crate name that must match no
+  // directory -- so the absence is re-derived from the tree instead of asserted.
+  const shape = parseShapeEvidence(text);
+  let shapeRows = 0;
+  let shapeAnchors = 0;
+  if (!shape) {
+    problems.push(`${PARITY_DOCUMENT} has no "${SHAPE_SECTION}" shape-evidence section`);
+  } else if (!shape.header) {
+    problems.push(`${PARITY_DOCUMENT} section 1.2 has no shape-evidence table`);
+  } else if (
+    shape.header.length !== SHAPE_COLUMNS.length ||
+    shape.header.join("|") !== SHAPE_COLUMNS.join("|")
+  ) {
+    // As in 3.1 and 3.2: a header mismatch reads every cell below at the wrong offset, so per-row
+    // findings would be artefacts of the misparse rather than defects in the document.
+    problems.push(
+      `${PARITY_DOCUMENT} section 1.2 shape-evidence header is [${shape.header.join(", ")}]; expected [${SHAPE_COLUMNS.join(", ")}]`,
+    );
+  } else {
+    for (const row of shape.malformed) {
+      problems.push(
+        `${PARITY_DOCUMENT}:${row.line} shape-evidence row has ${row.cells.length} cell(s), expected ${SHAPE_COLUMNS.length}`,
+      );
+    }
+    if (shape.rows.length === 0) {
+      problems.push(
+        `${PARITY_DOCUMENT} section 1.2 describes no component, which asserts the repository has no shape to describe; state the components or delete the section`,
+      );
+    }
+    shapeRows = shape.rows.length;
+    for (const row of shape.rows) {
+      const label = `section 1.2 row at line ${row.line}`;
+      const sizes = stripEmphasis(row["规模"]);
+      const declaresAbsent = sizes.includes("不存在");
+      const evidence = backtickedTokens(row["真实状态"]);
+
+      if (stripEmphasis(row["组件"]).trim() === "") {
+        problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} names no component`);
+      }
+
+      // A row points at exactly one path, or declares the component absent. Both halves are claims:
+      // the first that a path exists under the repository root, the second that none does.
+      const paths = backtickedTokens(row["路径"]);
+      if (paths.length === 0 && !declaresAbsent) {
+        problems.push(
+          `${PARITY_DOCUMENT}:${row.line} ${label} names no backticked path and does not declare the component absent`,
+        );
+      }
+      if (paths.length > 1) {
+        problems.push(
+          `${PARITY_DOCUMENT}:${row.line} ${label} names ${paths.length} paths; exactly one is required, because every citation in the state cell resolves relative to it`,
+        );
+      }
+      const cratePath = paths.length === 1 ? paths[0] : null;
+      if (cratePath !== null && !citedPathExists(repoRoot, cratePath)) {
+        problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} cites \`${cratePath}\`, which does not exist`);
+      }
+      if (declaresAbsent && cratePath !== null) {
+        problems.push(
+          `${PARITY_DOCUMENT}:${row.line} ${label} declares the component absent yet still names \`${cratePath}\` as its path`,
+        );
+      }
+
+      // "可点证据" -- clickable evidence. A row that points at nothing is the failure this family is
+      // for, because it reads exactly like a row that points at something.
+      if (evidence.length === 0) {
+        problems.push(
+          `${PARITY_DOCUMENT}:${row.line} ${label} cites no backticked evidence; a row in a section headed 可点证据 must point at an artifact a reader can open`,
+        );
+      }
+
+      // Any token under a top-level repository directory is a path citation, in whichever cell it
+      // appears -- `apis/commands/*.json` in a state cell is as checkable as a crate in the path cell.
+      for (const column of SHAPE_COLUMNS) {
+        for (const token of backtickedTokens(row[column])) {
+          if (token === cratePath) continue;
+          if (!REPO_PATH_PREFIXES.some((prefix) => token.startsWith(`${prefix}/`))) continue;
+          if (!citedPathExists(repoRoot, token)) {
+            problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} cites \`${token}\`, which does not exist`);
+          }
+        }
+      }
+
+      const moduleMatch = MODULE_COUNT.exec(sizes);
+      if (moduleMatch) {
+        if (cratePath === null) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} declares ${moduleMatch[1]} 模块 but names no path to count`,
+          );
+        } else {
+          const sources = listRustSources(join(repoRoot, cratePath, "src"));
+          if (sources.length !== Number.parseInt(moduleMatch[1], 10)) {
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} declares ${moduleMatch[1]} 模块, but \`${cratePath}/src\` holds ${sources.length} Rust source file(s)`,
+            );
+          }
+        }
+      }
+
+      const lineMatch = LINE_COUNT.exec(sizes);
+      if (lineMatch) {
+        const declaredLines = Number.parseInt(lineMatch[1], 10);
+        const named = lineMatch[2] ?? null;
+        let target = null;
+        if (named !== null && cratePath !== null) {
+          target = join(repoRoot, cratePath, "src", named);
+        } else if (named === null && cratePath !== null) {
+          const sources = listRustSources(join(repoRoot, cratePath, "src"));
+          if (sources.length === 1) target = sources[0];
+        }
+        if (target === null || !existsSync(target)) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} declares ${declaredLines} 行 but names no single resolvable Rust source file to count`,
+          );
+        } else {
+          const actual = countSourceLines(target);
+          if (actual !== declaredLines) {
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} declares ${declaredLines} 行, but the file it names holds ${actual} line(s)`,
+            );
+          }
+        }
+      }
+
+      for (const token of evidence) {
+        const anchor = LINE_ANCHOR.exec(token);
+        if (!anchor) continue;
+        shapeAnchors += 1;
+        const relative = anchor[1];
+        const line = Number.parseInt(anchor[2], 10);
+        // A bare file name belongs to the row's own crate; anything with a slash is root-relative.
+        const absolute =
+          relative.includes("/") || cratePath === null
+            ? join(repoRoot, relative)
+            : join(repoRoot, cratePath, "src", relative);
+        if (!existsSync(absolute)) {
+          problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} cites \`${token}\`, which resolves to no file`);
+          continue;
+        }
+        const total = countSourceLines(absolute);
+        if (line < 1 || line > total) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} cites \`${token}\`, but \`${relative}\` has ${total} line(s)`,
+          );
+          continue;
+        }
+        const window = readFileSync(absolute, "utf8")
+          .split(/\r?\n/u)
+          .slice(line - 1, line + ANCHOR_WINDOW)
+          .join(" ")
+          .replace(/\s+/gu, " ");
+        const attributed = evidence.filter((candidate) => candidate !== token);
+        if (
+          attributed.length > 0 &&
+          !attributed.some((candidate) => window.includes(candidate.replace(/\s+/gu, " ")))
+        ) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} cites \`${token}\`, but nothing the row attributes to it is visible at \`${relative}:${line}\``,
+          );
+        }
+      }
+
+      if (declaresAbsent) {
+        const named = evidence.filter((token) => !LINE_ANCHOR.test(token));
+        const types = named.filter((token) => TYPE_NAME.test(token));
+        const words = named.filter((token) => BARE_WORD.test(token));
+        if (types.length === 0 && words.length === 0) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} declares the component absent but names nothing absent; cite the identifier or the crate name that must not exist, so the claim can be re-derived from the tree`,
+          );
+        }
+        for (const token of types) {
+          const occurrence = findRustOccurrence(repoRoot, token);
+          if (occurrence !== null) {
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} declares \`${token}\` absent, but it appears in ${occurrence}`,
+            );
+          }
+        }
+        for (const token of words) {
+          const crate = findCrateNamed(repoRoot, token);
+          if (crate !== null) {
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} declares no \`${token}\` implementation, but crates/${crate} exists`,
+            );
+          }
+        }
+      }
+      // A bolded negative phrase is a claim as well, and the rows that carry one name the constructs
+      // they say are missing: `**无 `Pausing/Paused/Recovering`**` stops being true the moment the
+      // enum grows one, and that particular row is the implementation half of the section 3.2 blocker
+      // about the PRD state machine. So every identifier named inside such a phrase must be absent
+      // from the file the row anchors -- the claim is about *that* construct in *that* file -- falling
+      // back to the crate's `src/` when the row anchors nothing. Free-form negatives ("零生产实现",
+      // "零命令") name nothing to look for and are instead grounded by their anchors: `fn main() {}`
+      // sitting at `main.rs:3` is what makes "zero commands" checkable, not the phrase itself.
+      for (const phrase of row["真实状态"].matchAll(/\*\*([^*]+)\*\*/gu)) {
+        if (!/(?:无|零|不存在)/u.test(phrase[1])) continue;
+        const named = backtickedTokens(phrase[1])
+          .flatMap((token) => token.split("/"))
+          .map((token) => token.trim())
+          .filter((token) => token !== "" && !token.includes("*"));
+        if (named.length === 0) continue;
+        const anchorFiles = evidence
+          .map((token) => LINE_ANCHOR.exec(token))
+          .filter((anchor) => anchor !== null)
+          .map((anchor) =>
+            anchor[1].includes("/") || cratePath === null
+              ? join(repoRoot, anchor[1])
+              : join(repoRoot, cratePath, "src", anchor[1]),
+          );
+        const scope =
+          anchorFiles.length > 0
+            ? anchorFiles
+            : cratePath === null
+              ? []
+              : listRustSources(join(repoRoot, cratePath, "src"));
+        for (const identifier of named) {
+          for (const file of scope) {
+            if (!existsSync(file)) continue;
+            if (!readFileSync(file, "utf8").includes(identifier)) continue;
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} names \`${identifier}\` inside a negative phrase, but it occurs in ${repositoryPath(repoRoot, file)}`,
+            );
+          }
+        }
+      }
     }
   }
 
@@ -1243,6 +1702,8 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
     claimCount: claims?.rows.length ?? 0,
     coveredTests,
     workspaceTests,
+    shapeRows,
+    shapeAnchors,
     totals: census.total ?? summed,
     problems,
   };
@@ -1258,6 +1719,7 @@ export function formatE2bParityMatrixReport(assessment) {
     `residual gaps: ${assessment.gapCount}`,
     `zero-requirement claims: ${assessment.claimCount}`,
     `implementation coverage: ${assessment.coveredTests} of ${assessment.workspaceTests} workspace test(s) accounted for`,
+    `shape evidence: ${assessment.shapeRows} component row(s), ${assessment.shapeAnchors} line-numbered anchor(s) resolved`,
   ];
   if (assessment.totals) {
     lines.push(

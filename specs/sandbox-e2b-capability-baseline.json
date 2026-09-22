@@ -4122,11 +4122,11 @@
   "testInventory": {
     "suiteGlob": "tests/contract/*.test.mjs",
     "files": 40,
-    "tests": 533,
+    "tests": 556,
     "auditSuites": [
       {
         "file": "tests/contract/e2b-parity-matrix-tool.contract.test.mjs",
-        "tests": 68
+        "tests": 91
       },
       {
         "file": "tests/contract/sandbox-e2b-field-parity-tool.contract.test.mjs",
