@@ -1,0 +1,4146 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.sandbox.e2b-capability-baseline",
+  "baselineProduct": "E2B",
+  "docsRoot": "https://docs.e2b.dev",
+  "authority": "https://docs.e2b.dev/openapi-public.yaml",
+  "docsIndex": "https://docs.e2b.dev/llms.txt",
+  "capturedAt": "2026-09-22T09:36:31Z",
+  "captureNote": "Derived inventory of the E2B public capability surface, captured from the URLs in sources[]. Only identifiers (operationIds, paths, schema field names, SDK method names, CLI command grammar, page section headings) are recorded; E2B page bodies are not vendored. Each source records the sha256 of the bytes actually fetched, so a re-capture can prove whether the baseline moved. The hashes are statements, not offline-verifiable digests: re-verification requires the re-capture command below.",
+  "recaptureCommand": "curl -sS -o target/e2b-baseline/openapi-public.yaml https://docs.e2b.dev/openapi-public.yaml && curl -sS -o target/e2b-baseline/llms.txt https://docs.e2b.dev/llms.txt && then re-fetch every sources[].url into target/e2b-baseline/<capturedFile> and compare sha256.",
+  "ratchet": {
+    "maxIndexOnlyRows": 0,
+    "indexOnlyRows": [],
+    "note": "Every row is backed by at least one captured artifact, so no row may be marked baseline-incomplete. Raising this ceiling requires a recorded reason; the gate fails on a regression."
+  },
+  "operationCoverage": {
+    "sourceId": "e2b-openapi-public",
+    "documentedOperations": 71,
+    "operations": [
+      "deleteSandbox",
+      "deleteSecret",
+      "deleteTemplate",
+      "deleteTemplatesTags",
+      "deleteVolume",
+      "downloadFile",
+      "filesystem.Filesystem.CreateWatcher",
+      "filesystem.Filesystem.GetWatcherEvents",
+      "filesystem.Filesystem.ListDir",
+      "filesystem.Filesystem.MakeDir",
+      "filesystem.Filesystem.Move",
+      "filesystem.Filesystem.Remove",
+      "filesystem.Filesystem.RemoveWatcher",
+      "filesystem.Filesystem.Stat",
+      "filesystem.Filesystem.WatchDir",
+      "getEnvVars",
+      "getHealth",
+      "getMetrics",
+      "getSandbox",
+      "getSandboxLogs",
+      "getSandboxLogsV2",
+      "getSandboxMetrics",
+      "getSecret",
+      "getTeamMetrics",
+      "getTeamMetricsMax",
+      "getTemplate",
+      "getTemplateBuildLogs",
+      "getTemplateBuildStatus",
+      "getTemplateFile",
+      "getTemplateTags",
+      "getTemplatesAlias",
+      "getVolume",
+      "listSandboxes",
+      "listSandboxesMetrics",
+      "listSandboxesV2",
+      "listSecrets",
+      "listSnapshots",
+      "listTeams",
+      "listTemplates",
+      "listTemplatesV2",
+      "listVolumes",
+      "patchTemplate",
+      "patchTemplateV2",
+      "postSandboxConnect",
+      "postSandboxFork",
+      "postSandboxPause",
+      "postSandboxRefreshes",
+      "postSandboxResume",
+      "postSandboxSnapshots",
+      "postSandboxTimeout",
+      "postSandboxes",
+      "postSecret",
+      "postSecrets",
+      "postTemplate",
+      "postTemplateBuild",
+      "postTemplateBuildV2",
+      "postTemplates",
+      "postTemplatesTags",
+      "postTemplatesV2",
+      "postTemplatesV3",
+      "postVolumes",
+      "process.Process.CloseStdin",
+      "process.Process.Connect",
+      "process.Process.List",
+      "process.Process.SendInput",
+      "process.Process.SendSignal",
+      "process.Process.Start",
+      "process.Process.StreamInput",
+      "process.Process.Update",
+      "putSandboxNetwork",
+      "uploadFile"
+    ],
+    "unjudged": {
+      "getHealth": "Control-plane liveness probe. No matrix row judges it: E2B does not market a health endpoint as a sandbox capability, and this repository's equivalent surface is Service Host readiness (REQ-2026-0009), which is outside the sandbox capability rows."
+    },
+    "note": "Every operation in the captured OpenAPI document is either cited by an operationId in some matrix row, or listed in `unjudged` with the reason no row judges it. 70 of 71 are cited; the single exception is the control-plane liveness probe, which is not a sandbox capability. A future row that judges an operation must cite it here, and the corresponding `unjudged` entry must then be deleted: the involution is enforced both ways."
+  },
+  "categories": [
+    {
+      "id": "sandbox-lifecycle",
+      "documentSection": "2.1",
+      "documentHeading": "Sandbox 生命周期",
+      "rowCount": 11,
+      "rows": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "id": "persistence",
+      "documentSection": "2.2",
+      "documentHeading": "持久化（Pause / Resume）",
+      "rowCount": 8,
+      "rows": [
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "id": "snapshot-and-fork",
+      "documentSection": "2.3",
+      "documentHeading": "Snapshot 与 Fork",
+      "rowCount": 5,
+      "rows": [
+        20,
+        21,
+        22,
+        23,
+        24
+      ]
+    },
+    {
+      "id": "template",
+      "documentSection": "2.4",
+      "documentHeading": "Template",
+      "rowCount": 9,
+      "rows": [
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33
+      ]
+    },
+    {
+      "id": "filesystem",
+      "documentSection": "2.5",
+      "documentHeading": "Filesystem",
+      "rowCount": 7,
+      "rows": [
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40
+      ]
+    },
+    {
+      "id": "volumes",
+      "documentSection": "2.6",
+      "documentHeading": "Volumes",
+      "rowCount": 4,
+      "rows": [
+        41,
+        42,
+        43,
+        44
+      ]
+    },
+    {
+      "id": "commands-and-process",
+      "documentSection": "2.7",
+      "documentHeading": "Commands 与 Process",
+      "rowCount": 5,
+      "rows": [
+        45,
+        46,
+        47,
+        48,
+        49
+      ]
+    },
+    {
+      "id": "pty",
+      "documentSection": "2.8",
+      "documentHeading": "PTY",
+      "rowCount": 1,
+      "rows": [
+        50
+      ]
+    },
+    {
+      "id": "code-interpreter",
+      "documentSection": "2.9",
+      "documentHeading": "Code Interpreter",
+      "rowCount": 3,
+      "rows": [
+        51,
+        52,
+        53
+      ]
+    },
+    {
+      "id": "network",
+      "documentSection": "2.10",
+      "documentHeading": "Network",
+      "rowCount": 8,
+      "rows": [
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ]
+    },
+    {
+      "id": "secrets-and-iam",
+      "documentSection": "2.11",
+      "documentHeading": "Secrets 与 IAM",
+      "rowCount": 3,
+      "rows": [
+        62,
+        63,
+        64
+      ]
+    },
+    {
+      "id": "metrics-and-telemetry",
+      "documentSection": "2.12",
+      "documentHeading": "Metrics 与 Telemetry",
+      "rowCount": 3,
+      "rows": [
+        65,
+        66,
+        67
+      ]
+    },
+    {
+      "id": "cli",
+      "documentSection": "2.13",
+      "documentHeading": "CLI",
+      "rowCount": 1,
+      "rows": [
+        68
+      ]
+    },
+    {
+      "id": "sdk",
+      "documentSection": "2.14",
+      "documentHeading": "SDK",
+      "rowCount": 4,
+      "rows": [
+        69,
+        70,
+        71,
+        72
+      ]
+    },
+    {
+      "id": "mcp-gateway",
+      "documentSection": "2.15",
+      "documentHeading": "MCP Gateway",
+      "rowCount": 1,
+      "rows": [
+        73
+      ]
+    },
+    {
+      "id": "platform-and-deployment",
+      "documentSection": "2.16",
+      "documentHeading": "平台与部署",
+      "rowCount": 4,
+      "rows": [
+        74,
+        75,
+        76,
+        77
+      ]
+    },
+    {
+      "id": "agent-framework-integration",
+      "documentSection": "2.17",
+      "documentHeading": "Agent 框架集成",
+      "rowCount": 1,
+      "rows": [
+        78
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "e2b-agents-claude-code",
+      "url": "https://docs.e2b.dev/agents/claude-code.md",
+      "kind": "doc-page",
+      "bytes": 15542,
+      "sha256": "c23722efff1bd8b5c200af5fcc51979821fe03834edbf1e3e697c107ca2536ff",
+      "capturedFile": "agents_claude-code.md"
+    },
+    {
+      "id": "e2b-billing",
+      "url": "https://docs.e2b.dev/billing.md",
+      "kind": "doc-page",
+      "bytes": 7615,
+      "sha256": "72454364381934917651cf6771a82d28f8733eae4357befe89e9b69b0192a03e",
+      "capturedFile": "billing.md"
+    },
+    {
+      "id": "e2b-byoc",
+      "url": "https://docs.e2b.dev/byoc.md",
+      "kind": "doc-page",
+      "bytes": 7646,
+      "sha256": "c4de5f9e884c17cd131913f9e33388db93a6ba673e49e8b321917db415321120",
+      "capturedFile": "byoc.md"
+    },
+    {
+      "id": "e2b-cli",
+      "url": "https://docs.e2b.dev/cli.md",
+      "kind": "doc-page",
+      "bytes": 708,
+      "sha256": "d80b06731da7c0ac125998b73b602f328353b94f2bc3f588096dcef510c9c9ab",
+      "capturedFile": "cli.md"
+    },
+    {
+      "id": "e2b-code-interpreting-analyze-data-with-ai",
+      "url": "https://docs.e2b.dev/code-interpreting/analyze-data-with-ai.md",
+      "kind": "doc-page",
+      "bytes": 21694,
+      "sha256": "83b38b0f86aec87bc06c73851e603d5019303ca682ea216c3764356ab47cec57",
+      "capturedFile": "code-interpreting_analyze-data-with-ai.md"
+    },
+    {
+      "id": "e2b-code-interpreting-contexts",
+      "url": "https://docs.e2b.dev/code-interpreting/contexts.md",
+      "kind": "doc-page",
+      "bytes": 4886,
+      "sha256": "8792f2001d4f453089da7e2ea4064350990d7b6b27b16be6a7f5e2e1aabd3b57",
+      "capturedFile": "code-interpreting_contexts.md"
+    },
+    {
+      "id": "e2b-code-interpreting-create-charts-visualizations",
+      "url": "https://docs.e2b.dev/code-interpreting/create-charts-visualizations.md",
+      "kind": "doc-page",
+      "bytes": 589,
+      "sha256": "2306b251e34c08df88c48c34a446cc661a4ac51391de2c8e39542e5bb6f7a69e",
+      "capturedFile": "code-interpreting_create-charts-visualizations.md"
+    },
+    {
+      "id": "e2b-code-interpreting-customize-template",
+      "url": "https://docs.e2b.dev/code-interpreting/customize-template.md",
+      "kind": "doc-page",
+      "bytes": 5474,
+      "sha256": "919413be4c406c3c8fb77eec5d7b33913b4120af6ea5c549bc1af2ad18599515",
+      "capturedFile": "code-interpreting_customize-template.md"
+    },
+    {
+      "id": "e2b-code-interpreting-streaming",
+      "url": "https://docs.e2b.dev/code-interpreting/streaming.md",
+      "kind": "doc-page",
+      "bytes": 4252,
+      "sha256": "8100595cc6fbb4c3a163bd2fbb241d331f347c2683312c18bf1ccb0697758645",
+      "capturedFile": "code-interpreting_streaming.md"
+    },
+    {
+      "id": "e2b-code-interpreting-supported-languages",
+      "url": "https://docs.e2b.dev/code-interpreting/supported-languages.md",
+      "kind": "doc-page",
+      "bytes": 762,
+      "sha256": "5be41d945b643fbf995519f557dd8787f2e07f9872343c8aebde43cd104fa131",
+      "capturedFile": "code-interpreting_supported-languages.md"
+    },
+    {
+      "id": "e2b-commands",
+      "url": "https://docs.e2b.dev/commands.md",
+      "kind": "doc-page",
+      "bytes": 790,
+      "sha256": "8413ba2523a58daa0f62692d9d45752cfc2267ae299a2485f7b0f831bcc04cfb",
+      "capturedFile": "commands.md"
+    },
+    {
+      "id": "e2b-commands-background",
+      "url": "https://docs.e2b.dev/commands/background.md",
+      "kind": "doc-page",
+      "bytes": 5928,
+      "sha256": "5bd9135feb4bbe6b9b2b9c4f77beb779bfb8445711f5628de6789be9c42dff65",
+      "capturedFile": "commands_background.md"
+    },
+    {
+      "id": "e2b-commands-streaming",
+      "url": "https://docs.e2b.dev/commands/streaming.md",
+      "kind": "doc-page",
+      "bytes": 1163,
+      "sha256": "d5831caca351f2be62069897c5e94b9abb53da8952e6d058900c89bcc769fb6c",
+      "capturedFile": "commands_streaming.md"
+    },
+    {
+      "id": "e2b-docs-index",
+      "url": "https://docs.e2b.dev/llms.txt",
+      "kind": "index",
+      "bytes": 33167,
+      "sha256": "88725aeb33f69cdf474efb11b5c2c8510f967214e682016ff21bf0fad237dc73",
+      "capturedFile": "llms.txt"
+    },
+    {
+      "id": "e2b-faq-build-limits",
+      "url": "https://docs.e2b.dev/faq/build-limits.md",
+      "kind": "doc-page",
+      "bytes": 7317,
+      "sha256": "b2922821e55117b61845e0ee54d27854dbaf7ce541e4dcb038ad5127e59942ed",
+      "capturedFile": "faq_build-limits.md"
+    },
+    {
+      "id": "e2b-faq-eu-region",
+      "url": "https://docs.e2b.dev/faq/eu-region.md",
+      "kind": "doc-page",
+      "bytes": 550,
+      "sha256": "941c55454ba37f525ef9f366220c07c0ae2b820b3c396a87ced774d7f690d167",
+      "capturedFile": "faq_eu-region.md"
+    },
+    {
+      "id": "e2b-faq-gpu-support",
+      "url": "https://docs.e2b.dev/faq/gpu-support.md",
+      "kind": "doc-page",
+      "bytes": 970,
+      "sha256": "0bb47c9a433d736535bc024d3e277f4e08138f4f67ac466ad33c5343f399e7bd",
+      "capturedFile": "faq_gpu-support.md"
+    },
+    {
+      "id": "e2b-faq-increase-concurrency",
+      "url": "https://docs.e2b.dev/faq/increase-concurrency.md",
+      "kind": "doc-page",
+      "bytes": 1777,
+      "sha256": "6a3b9ef9afd8e4c3e54e61f3a08d93f44a29639b34370d0cfa24dabbf62192dd",
+      "capturedFile": "faq_increase-concurrency.md"
+    },
+    {
+      "id": "e2b-faq-paused-sandboxes-concurrency",
+      "url": "https://docs.e2b.dev/faq/paused-sandboxes-concurrency.md",
+      "kind": "doc-page",
+      "bytes": 1271,
+      "sha256": "fd02e96c360287156a9c6cc445884b154c0ec4a3599ff8dfea4bcd734cb8b377",
+      "capturedFile": "faq_paused-sandboxes-concurrency.md"
+    },
+    {
+      "id": "e2b-faq-sandbox-lifetime",
+      "url": "https://docs.e2b.dev/faq/sandbox-lifetime.md",
+      "kind": "doc-page",
+      "bytes": 4069,
+      "sha256": "76bc852506ea56033ef699646c4821610c951fb9c38739fca2d21e49b303be58",
+      "capturedFile": "faq_sandbox-lifetime.md"
+    },
+    {
+      "id": "e2b-faq-security-and-compliance",
+      "url": "https://docs.e2b.dev/faq/security-and-compliance.md",
+      "kind": "doc-page",
+      "bytes": 3055,
+      "sha256": "b213a0770f7efeb20fa3dcd13e093c0981402f7729c0a2ac5f888c1d2c0a6381",
+      "capturedFile": "faq_security-and-compliance.md"
+    },
+    {
+      "id": "e2b-filesystem",
+      "url": "https://docs.e2b.dev/filesystem.md",
+      "kind": "doc-page",
+      "bytes": 707,
+      "sha256": "910576cfc8f711448e7d0745cd6401ac324c9be68621d8129a64bca8be8cf628",
+      "capturedFile": "filesystem.md"
+    },
+    {
+      "id": "e2b-filesystem-download",
+      "url": "https://docs.e2b.dev/filesystem/download.md",
+      "kind": "doc-page",
+      "bytes": 2750,
+      "sha256": "5067dd857112c41827db719bfb564e07003751861caf0e3397c2be5a8fa82857",
+      "capturedFile": "filesystem_download.md"
+    },
+    {
+      "id": "e2b-filesystem-info",
+      "url": "https://docs.e2b.dev/filesystem/info.md",
+      "kind": "doc-page",
+      "bytes": 3236,
+      "sha256": "5d27059494699328f105c179e9b2dbae244cf64866964d55a450b963f6d196b5",
+      "capturedFile": "filesystem_info.md"
+    },
+    {
+      "id": "e2b-filesystem-metadata",
+      "url": "https://docs.e2b.dev/filesystem/metadata.md",
+      "kind": "doc-page",
+      "bytes": 3689,
+      "sha256": "390904e49d9c02c0f3cfd88d76d87152ab973346e83a482c0d042a29c1f7c37b",
+      "capturedFile": "filesystem_metadata.md"
+    },
+    {
+      "id": "e2b-filesystem-read-write",
+      "url": "https://docs.e2b.dev/filesystem/read-write.md",
+      "kind": "doc-page",
+      "bytes": 2102,
+      "sha256": "d2a75ad004dbf8044456910d8d3322b70bb813fefef413a60e22c0f2299fd0f8",
+      "capturedFile": "filesystem_read-write.md"
+    },
+    {
+      "id": "e2b-filesystem-upload",
+      "url": "https://docs.e2b.dev/filesystem/upload.md",
+      "kind": "doc-page",
+      "bytes": 5318,
+      "sha256": "579aafdc963b4fe43ae94221c59f13fc156fd517f0fbb4b10c23bc1835eeb3d4",
+      "capturedFile": "filesystem_upload.md"
+    },
+    {
+      "id": "e2b-filesystem-watch",
+      "url": "https://docs.e2b.dev/filesystem/watch.md",
+      "kind": "doc-page",
+      "bytes": 7070,
+      "sha256": "1cc94db15e17ba61bc0e21c20f3cca0e2acbc7cf9f2813215542e86411f683d3",
+      "capturedFile": "filesystem_watch.md"
+    },
+    {
+      "id": "e2b-iam-workload-identity",
+      "url": "https://docs.e2b.dev/iam/workload-identity.md",
+      "kind": "doc-page",
+      "bytes": 9342,
+      "sha256": "e3d821ff4cfb4f8cb010f31c916ddb5fd7e4e20e516d8bcaac9132fe45c05c72",
+      "capturedFile": "iam_workload-identity.md"
+    },
+    {
+      "id": "e2b-mcp-gateway",
+      "url": "https://docs.e2b.dev/mcp-gateway.md",
+      "kind": "doc-page",
+      "bytes": 4627,
+      "sha256": "18d147e830a800b51d7888fa388b84e099b54b5cf2c7ec36a57f58f8a5847244",
+      "capturedFile": "mcp-gateway.md"
+    },
+    {
+      "id": "e2b-mcp-gateway-available-servers",
+      "url": "https://docs.e2b.dev/mcp-gateway/available-servers.md",
+      "kind": "doc-page",
+      "bytes": 101255,
+      "sha256": "7b08dec0556e3efce83add66e416249657bac3439b0550fd1853cb086b4ac14c",
+      "capturedFile": "mcp-gateway_available-servers.md"
+    },
+    {
+      "id": "e2b-mcp-gateway-custom-servers",
+      "url": "https://docs.e2b.dev/mcp-gateway/custom-servers.md",
+      "kind": "doc-page",
+      "bytes": 2634,
+      "sha256": "43f7cf89590cf6529e28a03fd5d695e1fdfcddcf8a4a4753c084512c19c74a7e",
+      "capturedFile": "mcp-gateway_custom-servers.md"
+    },
+    {
+      "id": "e2b-migration-v2",
+      "url": "https://docs.e2b.dev/migration/v2.md",
+      "kind": "doc-page",
+      "bytes": 4974,
+      "sha256": "6fae79955abcd14d8a2d4350445d2511c50ed0693ed13f42e8e29036f7718b33",
+      "capturedFile": "migration_v2.md"
+    },
+    {
+      "id": "e2b-network-byop",
+      "url": "https://docs.e2b.dev/network/byop.md",
+      "kind": "doc-page",
+      "bytes": 10788,
+      "sha256": "b3aa2aa836d40f23fdb3bf2a1fc188bc8e60bf928449f424284e0c20d6c3f9d0",
+      "capturedFile": "network_byop.md"
+    },
+    {
+      "id": "e2b-network-custom-domain",
+      "url": "https://docs.e2b.dev/network/custom-domain.md",
+      "kind": "doc-page",
+      "bytes": 6101,
+      "sha256": "563819e8d7aa757a1a228a3a03ff1ddf456dc90938c77bcf337b458d2d997e78",
+      "capturedFile": "network_custom-domain.md"
+    },
+    {
+      "id": "e2b-network-internet-access",
+      "url": "https://docs.e2b.dev/network/internet-access.md",
+      "kind": "doc-page",
+      "bytes": 18921,
+      "sha256": "247b54ee1e30f528bb4955cfb3438f6897fa537e0e56d9a4409ff4e3d9b0f4c9",
+      "capturedFile": "network_internet-access.md"
+    },
+    {
+      "id": "e2b-network-ip-tunneling",
+      "url": "https://docs.e2b.dev/network/ip-tunneling.md",
+      "kind": "doc-page",
+      "bytes": 17672,
+      "sha256": "35a29efd5e430ee78cba4416f1bde0cd61dc74c7342fd60e95604b928b638e78",
+      "capturedFile": "network_ip-tunneling.md"
+    },
+    {
+      "id": "e2b-network-public-url",
+      "url": "https://docs.e2b.dev/network/public-url.md",
+      "kind": "doc-page",
+      "bytes": 9458,
+      "sha256": "51efc21e04ae07cffae59fee0a5af10045c9d05d796f278b63de61b459953fb1",
+      "capturedFile": "network_public-url.md"
+    },
+    {
+      "id": "e2b-network-restrict-public-access",
+      "url": "https://docs.e2b.dev/network/restrict-public-access.md",
+      "kind": "doc-page",
+      "bytes": 4313,
+      "sha256": "2f1c661557124d34fad6ff8c843b4dcf45121cc22a4dfb4a313f5eb477c3aed2",
+      "capturedFile": "network_restrict-public-access.md"
+    },
+    {
+      "id": "e2b-openapi-public",
+      "url": "https://docs.e2b.dev/openapi-public.yaml",
+      "kind": "openapi",
+      "bytes": 166293,
+      "sha256": "84d2bfe140d38295d963efcde6586933d3a81b0774828c2f7d4ebda76915dea7",
+      "capturedFile": "openapi-public.yaml"
+    },
+    {
+      "id": "e2b-projects",
+      "url": "https://docs.e2b.dev/projects.md",
+      "kind": "doc-page",
+      "bytes": 2476,
+      "sha256": "48b4d60466e475ede8ece052fed0d8b9e788e29c3cc7a5166557f35a58a433df",
+      "capturedFile": "projects.md"
+    },
+    {
+      "id": "e2b-quickstart-upload-download-files",
+      "url": "https://docs.e2b.dev/quickstart/upload-download-files.md",
+      "kind": "doc-page",
+      "bytes": 5525,
+      "sha256": "38cfa2d0ea54333d8b0bac7dea25ef9ecc1fae95ee87bc75b3117a5477f7ce30",
+      "capturedFile": "quickstart_upload-download-files.md"
+    },
+    {
+      "id": "e2b-sandbox",
+      "url": "https://docs.e2b.dev/sandbox.md",
+      "kind": "doc-page",
+      "bytes": 5098,
+      "sha256": "005ff892d3034ac0b35c1645c98916001bece06408a39e956bb0f4d9e27e6d3d",
+      "capturedFile": "sandbox.md"
+    },
+    {
+      "id": "e2b-sandbox-auto-resume",
+      "url": "https://docs.e2b.dev/sandbox/auto-resume.md",
+      "kind": "doc-page",
+      "bytes": 9302,
+      "sha256": "552741abec6d973edd0ef3f02979175ae43146efd41ed108c268be1f41db9158",
+      "capturedFile": "sandbox_auto-resume.md"
+    },
+    {
+      "id": "e2b-sandbox-connect",
+      "url": "https://docs.e2b.dev/sandbox/connect.md",
+      "kind": "doc-page",
+      "bytes": 2586,
+      "sha256": "26b7a85a61c42bc14eddba9a1e83ade76677cae3340503a020880e38d694774a",
+      "capturedFile": "sandbox_connect.md"
+    },
+    {
+      "id": "e2b-sandbox-environment-variables",
+      "url": "https://docs.e2b.dev/sandbox/environment-variables.md",
+      "kind": "doc-page",
+      "bytes": 4446,
+      "sha256": "282add2ba3e103bf81a58be3c48aced00cf57cbf7b4904205ec7894b66ec9f83",
+      "capturedFile": "sandbox_environment-variables.md"
+    },
+    {
+      "id": "e2b-sandbox-filesystem-only-snapshots",
+      "url": "https://docs.e2b.dev/sandbox/filesystem-only-snapshots.md",
+      "kind": "doc-page",
+      "bytes": 9022,
+      "sha256": "99250e199a7292d8fb1ebfc0c121521554df0ee336e424e3491c65b973a34c29",
+      "capturedFile": "sandbox_filesystem-only-snapshots.md"
+    },
+    {
+      "id": "e2b-sandbox-fork",
+      "url": "https://docs.e2b.dev/sandbox/fork.md",
+      "kind": "doc-page",
+      "bytes": 7146,
+      "sha256": "d02358f30a4c5df0b30fd94406b60d3ffe358a6adbbc4b8228f24c6796651811",
+      "capturedFile": "sandbox_fork.md"
+    },
+    {
+      "id": "e2b-sandbox-git-integration",
+      "url": "https://docs.e2b.dev/sandbox/git-integration.md",
+      "kind": "doc-page",
+      "bytes": 13314,
+      "sha256": "ebe251a7eb64cbbb321f2799a2cf63da7e3184559ab921162600ffb204a370e6",
+      "capturedFile": "sandbox_git-integration.md"
+    },
+    {
+      "id": "e2b-sandbox-lifecycle-events-api",
+      "url": "https://docs.e2b.dev/sandbox/lifecycle-events-api.md",
+      "kind": "doc-page",
+      "bytes": 6381,
+      "sha256": "be54dd6ad7cf6c1acc4dff11086a2dcce4f52e8f461e691a8fb51a539052e650",
+      "capturedFile": "sandbox_lifecycle-events-api.md"
+    },
+    {
+      "id": "e2b-sandbox-lifecycle-events-webhooks",
+      "url": "https://docs.e2b.dev/sandbox/lifecycle-events-webhooks.md",
+      "kind": "doc-page",
+      "bytes": 12758,
+      "sha256": "4a4d67a432c0321a8a5c00fa3272d683a0d0bf451afb075741201d4f2323ebbd",
+      "capturedFile": "sandbox_lifecycle-events-webhooks.md"
+    },
+    {
+      "id": "e2b-sandbox-list",
+      "url": "https://docs.e2b.dev/sandbox/list.md",
+      "kind": "doc-page",
+      "bytes": 12774,
+      "sha256": "9d3d023072f12002e1824f2d1b52d7e34f9d8cf2b70425a3a75da6a694f2d6f9",
+      "capturedFile": "sandbox_list.md"
+    },
+    {
+      "id": "e2b-sandbox-metadata",
+      "url": "https://docs.e2b.dev/sandbox/metadata.md",
+      "kind": "doc-page",
+      "bytes": 1791,
+      "sha256": "6a0ec5055fcc8d3d5648151acf808284225e643437d63492e06f0139e3112edd",
+      "capturedFile": "sandbox_metadata.md"
+    },
+    {
+      "id": "e2b-sandbox-metrics",
+      "url": "https://docs.e2b.dev/sandbox/metrics.md",
+      "kind": "doc-page",
+      "bytes": 3779,
+      "sha256": "519320fa46441ef15f9d3d421ae00aecb0136899a3fe3c25e87f7dce7047d2d3",
+      "capturedFile": "sandbox_metrics.md"
+    },
+    {
+      "id": "e2b-sandbox-otel-telemetry-export",
+      "url": "https://docs.e2b.dev/sandbox/otel-telemetry-export.md",
+      "kind": "doc-page",
+      "bytes": 3491,
+      "sha256": "a75bf896cb223c52008592cedb29cd0baac42beba31dda801896c0a91996c4b5",
+      "capturedFile": "sandbox_otel-telemetry-export.md"
+    },
+    {
+      "id": "e2b-sandbox-persistence",
+      "url": "https://docs.e2b.dev/sandbox/persistence.md",
+      "kind": "doc-page",
+      "bytes": 14899,
+      "sha256": "d735b9dfc08b5c4c8978c6d75eb2af994ac754f56bedbacff4b05efaf51ceb43",
+      "capturedFile": "sandbox_persistence.md"
+    },
+    {
+      "id": "e2b-sandbox-pty",
+      "url": "https://docs.e2b.dev/sandbox/pty.md",
+      "kind": "doc-page",
+      "bytes": 11529,
+      "sha256": "015864909fedc99da058c494c708ae1c1e4577befde8b8853bf434b258e27ef7",
+      "capturedFile": "sandbox_pty.md"
+    },
+    {
+      "id": "e2b-sandbox-resume-without-memory",
+      "url": "https://docs.e2b.dev/sandbox/resume-without-memory.md",
+      "kind": "doc-page",
+      "bytes": 8035,
+      "sha256": "860af218e9a67ccc8e0905ba6d3c897de7b4eff0b5e1e0311ff461df60f1bc4a",
+      "capturedFile": "sandbox_resume-without-memory.md"
+    },
+    {
+      "id": "e2b-sandbox-secured-access",
+      "url": "https://docs.e2b.dev/sandbox/secured-access.md",
+      "kind": "doc-page",
+      "bytes": 2745,
+      "sha256": "431c171607b8415b4da7901b64d9b986a81610aa86b7b4a8ac3b7effe2afad4a",
+      "capturedFile": "sandbox_secured-access.md"
+    },
+    {
+      "id": "e2b-sandbox-snapshots",
+      "url": "https://docs.e2b.dev/sandbox/snapshots.md",
+      "kind": "doc-page",
+      "bytes": 9601,
+      "sha256": "ff8e3469e58c65c70276e4a4e1ca84f5367264b75155aa51cf137b75cb546f7c",
+      "capturedFile": "sandbox_snapshots.md"
+    },
+    {
+      "id": "e2b-sandbox-ssh-access",
+      "url": "https://docs.e2b.dev/sandbox/ssh-access.md",
+      "kind": "doc-page",
+      "bytes": 6589,
+      "sha256": "f1a90f79d54160b61088b2b0c841e1669e1cfda43a0a499914100f7d89abcaee",
+      "capturedFile": "sandbox_ssh-access.md"
+    },
+    {
+      "id": "e2b-sdk-reference-cli-v2-16-1-sandbox",
+      "url": "https://docs.e2b.dev/sdk-reference/cli/v2.16.1/sandbox.md",
+      "kind": "doc-page",
+      "bytes": 6019,
+      "sha256": "edc721ba499eddcf7dc4b3805df29539a7bfad6cb39fd1b997bbdc8f2c56d0ee",
+      "capturedFile": "sdk-reference_cli_v2.16.1_sandbox.md"
+    },
+    {
+      "id": "e2b-sdk-reference-cli-v2-16-1-template",
+      "url": "https://docs.e2b.dev/sdk-reference/cli/v2.16.1/template.md",
+      "kind": "doc-page",
+      "bytes": 6693,
+      "sha256": "103903919102330253e3671d1ecdf942609a0844c92c26229fc5af7a37ba25ef",
+      "capturedFile": "sdk-reference_cli_v2.16.1_template.md"
+    },
+    {
+      "id": "e2b-sdk-reference-code-interpreter-js-sdk-v2-7-0-sandbox",
+      "url": "https://docs.e2b.dev/sdk-reference/code-interpreter-js-sdk/v2.7.0/sandbox.md",
+      "kind": "doc-page",
+      "bytes": 8061,
+      "sha256": "b311ff16805a5d069d3245ca2eaaa2655ac3191831af9cb5e2f55344fed94e28",
+      "capturedFile": "sdk-reference_code-interpreter-js-sdk_v2.7.0_sandbox.md"
+    },
+    {
+      "id": "e2b-sdk-reference-desktop-python-sdk-v2-4-2-desktop",
+      "url": "https://docs.e2b.dev/sdk-reference/desktop-python-sdk/v2.4.2/desktop.md",
+      "kind": "doc-page",
+      "bytes": 7046,
+      "sha256": "b77b7bf429a5723c9e2809682ae9e32c90b8b0b8a12b829d41a632e328365e8c",
+      "capturedFile": "sdk-reference_desktop-python-sdk_v2.4.2_desktop.md"
+    },
+    {
+      "id": "e2b-sdk-reference-js-sdk-v2-38-2-errors",
+      "url": "https://docs.e2b.dev/sdk-reference/js-sdk/v2.38.2/errors.md",
+      "kind": "doc-page",
+      "bytes": 7396,
+      "sha256": "13a5f399a5c63a87f6210fc6e0dc2262bdddef66888529b03af65c4627f85d55",
+      "capturedFile": "sdk-reference_js-sdk_v2.38.2_errors.md"
+    },
+    {
+      "id": "e2b-sdk-reference-js-sdk-v2-38-2-sandbox",
+      "url": "https://docs.e2b.dev/sdk-reference/js-sdk/v2.38.2/sandbox.md",
+      "kind": "doc-page",
+      "bytes": 29749,
+      "sha256": "1dc54e49c0f506ef2c2afcddf1bd22a74051cf2a59fa524defd29fba82fd5a10",
+      "capturedFile": "sdk-reference_js-sdk_v2.38.2_sandbox.md"
+    },
+    {
+      "id": "e2b-sdk-reference-js-sdk-v2-38-2-sandbox-commands",
+      "url": "https://docs.e2b.dev/sdk-reference/js-sdk/v2.38.2/sandbox-commands.md",
+      "kind": "doc-page",
+      "bytes": 17610,
+      "sha256": "66f022ebcf295c26618782613b810aaa18ecb11e0d01e40acdbec5eaf5f0c9e9",
+      "capturedFile": "sdk-reference_js-sdk_v2.38.2_sandbox-commands.md"
+    },
+    {
+      "id": "e2b-sdk-reference-js-sdk-v2-38-2-sandbox-filesystem",
+      "url": "https://docs.e2b.dev/sdk-reference/js-sdk/v2.38.2/sandbox-filesystem.md",
+      "kind": "doc-page",
+      "bytes": 25495,
+      "sha256": "86a823cc266f15cd2cf6fa4ef2c28aab4de772a98251de546ed82baaa0bc4159",
+      "capturedFile": "sdk-reference_js-sdk_v2.38.2_sandbox-filesystem.md"
+    },
+    {
+      "id": "e2b-sdk-reference-js-sdk-v2-38-2-template",
+      "url": "https://docs.e2b.dev/sdk-reference/js-sdk/v2.38.2/template.md",
+      "kind": "doc-page",
+      "bytes": 77480,
+      "sha256": "8909d4209de4b97590e7dda8a67f06d8e2bf18109fbe5ddac00cc84e3202c4b1",
+      "capturedFile": "sdk-reference_js-sdk_v2.38.2_template.md"
+    },
+    {
+      "id": "e2b-sdk-reference-js-sdk-v2-38-2-volume",
+      "url": "https://docs.e2b.dev/sdk-reference/js-sdk/v2.38.2/volume.md",
+      "kind": "doc-page",
+      "bytes": 22993,
+      "sha256": "c21b08d3ddf389fcd3898ecea0dff87ffc69418f25f730a8dbf7debea87f0cb5",
+      "capturedFile": "sdk-reference_js-sdk_v2.38.2_volume.md"
+    },
+    {
+      "id": "e2b-sdk-reference-python-sdk-v2-37-1-sandbox-async",
+      "url": "https://docs.e2b.dev/sdk-reference/python-sdk/v2.37.1/sandbox/async.md",
+      "kind": "doc-page",
+      "bytes": 74641,
+      "sha256": "d6d24aa5f1ed50d18e0ab0530185698292d9fec4ff42ca89f4fd4645d8861676",
+      "capturedFile": "sdk-reference_python-sdk_v2.37.1_sandbox_async.md"
+    },
+    {
+      "id": "e2b-secrets",
+      "url": "https://docs.e2b.dev/secrets.md",
+      "kind": "doc-page",
+      "bytes": 1738,
+      "sha256": "d35c698a5547f119d599a04e293f36e88443c49594ad01f08a7a85906bd6eb66",
+      "capturedFile": "secrets.md"
+    },
+    {
+      "id": "e2b-secrets-create",
+      "url": "https://docs.e2b.dev/secrets/create.md",
+      "kind": "doc-page",
+      "bytes": 1845,
+      "sha256": "4d0836afb8e07d126e4eb15d6fe080be841e222af34b51a452b6cb34c1013ec6",
+      "capturedFile": "secrets_create.md"
+    },
+    {
+      "id": "e2b-secrets-delete",
+      "url": "https://docs.e2b.dev/secrets/delete.md",
+      "kind": "doc-page",
+      "bytes": 1497,
+      "sha256": "862fbaa5a35bc2e8cd170c6b126dc732a66ea795fe7a7ef629e73d6e24da5e0c",
+      "capturedFile": "secrets_delete.md"
+    },
+    {
+      "id": "e2b-secrets-inject",
+      "url": "https://docs.e2b.dev/secrets/inject.md",
+      "kind": "doc-page",
+      "bytes": 4870,
+      "sha256": "fa83cc4ddc996bb8ba540aa099e1421c6c14028a63e29a56bd53d6139a217b87",
+      "capturedFile": "secrets_inject.md"
+    },
+    {
+      "id": "e2b-secrets-limits",
+      "url": "https://docs.e2b.dev/secrets/limits.md",
+      "kind": "doc-page",
+      "bytes": 1332,
+      "sha256": "49200b0d9da570193f27c842cc80a11eb008151ee785c31ae096082b6da7ed6f",
+      "capturedFile": "secrets_limits.md"
+    },
+    {
+      "id": "e2b-secrets-list",
+      "url": "https://docs.e2b.dev/secrets/list.md",
+      "kind": "doc-page",
+      "bytes": 2731,
+      "sha256": "56fa6684ce12681c532d8b0843335f5f8fe167c9b6b511ad323f79d11fae177a",
+      "capturedFile": "secrets_list.md"
+    },
+    {
+      "id": "e2b-secrets-rotate",
+      "url": "https://docs.e2b.dev/secrets/rotate.md",
+      "kind": "doc-page",
+      "bytes": 1550,
+      "sha256": "0c8e52b725765a2069a85b98684b462ca1c58c503722d2952c7a307215f059ab",
+      "capturedFile": "secrets_rotate.md"
+    },
+    {
+      "id": "e2b-storage-cloud-buckets",
+      "url": "https://docs.e2b.dev/storage/cloud-buckets.md",
+      "kind": "doc-page",
+      "bytes": 7852,
+      "sha256": "2cee49bf5b9910b2363d9b69b865f73113e211015f8487f8b630ac5bd3ef17fd",
+      "capturedFile": "storage_cloud-buckets.md"
+    },
+    {
+      "id": "e2b-template-base-image",
+      "url": "https://docs.e2b.dev/template/base-image.md",
+      "kind": "doc-page",
+      "bytes": 9197,
+      "sha256": "43c756efb47015b9fbb01c524e3576feab022f5a2ea2366fd0c92c712706afae",
+      "capturedFile": "template_base-image.md"
+    },
+    {
+      "id": "e2b-template-build",
+      "url": "https://docs.e2b.dev/template/build.md",
+      "kind": "doc-page",
+      "bytes": 6094,
+      "sha256": "173877aa5bfbc46eea23d11774ed51653c70e31a0d3298489e4874324c5a057e",
+      "capturedFile": "template_build.md"
+    },
+    {
+      "id": "e2b-template-caching",
+      "url": "https://docs.e2b.dev/template/caching.md",
+      "kind": "doc-page",
+      "bytes": 4309,
+      "sha256": "0e1c7275763e3374639563bf9d72af40bf985771fd2b029bdbc398bd469a882f",
+      "capturedFile": "template_caching.md"
+    },
+    {
+      "id": "e2b-template-defining-template",
+      "url": "https://docs.e2b.dev/template/defining-template.md",
+      "kind": "doc-page",
+      "bytes": 8766,
+      "sha256": "0c073e1060ff853289c1ce2ef4821d8edac834f513defbd8112e1340517a5296",
+      "capturedFile": "template_defining-template.md"
+    },
+    {
+      "id": "e2b-template-examples-docker",
+      "url": "https://docs.e2b.dev/template/examples/docker.md",
+      "kind": "doc-page",
+      "bytes": 8197,
+      "sha256": "4d8ede714f50ad130d3bd84e48f27fe0541ec1779bf1da53f387afa1c4f6b4dc",
+      "capturedFile": "template_examples_docker.md"
+    },
+    {
+      "id": "e2b-template-how-it-works",
+      "url": "https://docs.e2b.dev/template/how-it-works.md",
+      "kind": "doc-page",
+      "bytes": 2443,
+      "sha256": "ccfc4ced66146d1c2bb48e0e0e6645a7a05b262db3b6c9940ac3f8b1cb9aa648",
+      "capturedFile": "template_how-it-works.md"
+    },
+    {
+      "id": "e2b-template-logging",
+      "url": "https://docs.e2b.dev/template/logging.md",
+      "kind": "doc-page",
+      "bytes": 4639,
+      "sha256": "19455caec05de8c2bdad85066ec32c18fda163999bf009bfe6d72b4fc06422f1",
+      "capturedFile": "template_logging.md"
+    },
+    {
+      "id": "e2b-template-names",
+      "url": "https://docs.e2b.dev/template/names.md",
+      "kind": "doc-page",
+      "bytes": 5348,
+      "sha256": "f01da7bacbac5582bc07fd037c62e142985311a444964b664b2466805d78c9ff",
+      "capturedFile": "template_names.md"
+    },
+    {
+      "id": "e2b-template-private-registries",
+      "url": "https://docs.e2b.dev/template/private-registries.md",
+      "kind": "doc-page",
+      "bytes": 2204,
+      "sha256": "c62fcfb33b5b2a3665ce11e714358001b1cf10d3b20caf43128511a5a064fe60",
+      "capturedFile": "template_private-registries.md"
+    },
+    {
+      "id": "e2b-template-start-ready-command",
+      "url": "https://docs.e2b.dev/template/start-ready-command.md",
+      "kind": "doc-page",
+      "bytes": 8393,
+      "sha256": "cdd6147c2eb6b0f1759261bb41603abb7763c3c2a2a2c1ceb9099ba69b6c2f40",
+      "capturedFile": "template_start-ready-command.md"
+    },
+    {
+      "id": "e2b-template-tags",
+      "url": "https://docs.e2b.dev/template/tags.md",
+      "kind": "doc-page",
+      "bytes": 9560,
+      "sha256": "f239651160b340e751fada7d2a325f16683c3df019f8a71f2d42af4ee1ec6356",
+      "capturedFile": "template_tags.md"
+    },
+    {
+      "id": "e2b-template-user-and-workdir",
+      "url": "https://docs.e2b.dev/template/user-and-workdir.md",
+      "kind": "doc-page",
+      "bytes": 2577,
+      "sha256": "cc9168f9cc0120ac77828dba7ca562105a8b6b76a1852f024f54f586a60d6fd6",
+      "capturedFile": "template_user-and-workdir.md"
+    },
+    {
+      "id": "e2b-volumes",
+      "url": "https://docs.e2b.dev/volumes.md",
+      "kind": "doc-page",
+      "bytes": 2669,
+      "sha256": "859c322286e1e55eee257427947cad39f5f9bc3658ec01c0c1628abb479924ae",
+      "capturedFile": "volumes.md"
+    },
+    {
+      "id": "e2b-volumes-download",
+      "url": "https://docs.e2b.dev/volumes/download.md",
+      "kind": "doc-page",
+      "bytes": 1103,
+      "sha256": "6a18452835da947763679e40278df8144956b5ab5bbd150436adc0eb5bcbee4a",
+      "capturedFile": "volumes_download.md"
+    },
+    {
+      "id": "e2b-volumes-info",
+      "url": "https://docs.e2b.dev/volumes/info.md",
+      "kind": "doc-page",
+      "bytes": 5049,
+      "sha256": "86022d1efdaf78c6f1e0cbcd200f43d440dc51cfd4445c3f7205ddccf77347f9",
+      "capturedFile": "volumes_info.md"
+    },
+    {
+      "id": "e2b-volumes-manage",
+      "url": "https://docs.e2b.dev/volumes/manage.md",
+      "kind": "doc-page",
+      "bytes": 3073,
+      "sha256": "db3cf1ac12d0dbc35592a67a93451deebe1707641550c29dd0226ed0b5f48bda",
+      "capturedFile": "volumes_manage.md"
+    },
+    {
+      "id": "e2b-volumes-migrate",
+      "url": "https://docs.e2b.dev/volumes/migrate.md",
+      "kind": "doc-page",
+      "bytes": 6235,
+      "sha256": "1073bb16fba56db2cd3be72052e661461a99383b73d1be69b56c2e28796c1bb4",
+      "capturedFile": "volumes_migrate.md"
+    },
+    {
+      "id": "e2b-volumes-mount",
+      "url": "https://docs.e2b.dev/volumes/mount.md",
+      "kind": "doc-page",
+      "bytes": 1683,
+      "sha256": "16640edb65a336407b0c57a3c54f2a6f5741f1aef90a301d0a3b3bba37cfb5df",
+      "capturedFile": "volumes_mount.md"
+    },
+    {
+      "id": "e2b-volumes-read-write",
+      "url": "https://docs.e2b.dev/volumes/read-write.md",
+      "kind": "doc-page",
+      "bytes": 4065,
+      "sha256": "84608df864f33f3422108159c478e37f6c6717fc7aef6b053343b0df45180187",
+      "capturedFile": "volumes_read-write.md"
+    },
+    {
+      "id": "e2b-volumes-upload",
+      "url": "https://docs.e2b.dev/volumes/upload.md",
+      "kind": "doc-page",
+      "bytes": 2256,
+      "sha256": "140834bf73610a42fbbfa70c120fc61a28b738b40aadc74ac059256d33d61146",
+      "capturedFile": "volumes_upload.md"
+    },
+    {
+      "id": "e2b-workspaces",
+      "url": "https://docs.e2b.dev/workspaces.md",
+      "kind": "doc-page",
+      "bytes": 4504,
+      "sha256": "192419e3d9158f7d1bc675314c3e0f49f3b90df4ba554290fec279e560dfa0fb",
+      "capturedFile": "workspaces.md"
+    }
+  ],
+  "rows": [
+    {
+      "row": 1,
+      "category": "sandbox-lifecycle",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-sandbox",
+        "e2b-sandbox-environment-variables",
+        "e2b-sandbox-metadata"
+      ],
+      "e2bFields": [
+        "POST /sandboxes [postSandboxes]",
+        "Sandbox.create()",
+        "Sandbox.list()",
+        "commands.run()",
+        "getInfo",
+        "sandbox.getInfo()",
+        "sandbox.kill()",
+        "sandbox.runCode()",
+        "sandbox.setTimeout()",
+        "setTimeout",
+        "GET /envs [getEnvVars]"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "1. Global environment variables",
+        "2. Setting environment variables when running code",
+        "3. Setting environment variables when running commands",
+        "Change sandbox timeout during runtime",
+        "Default environment variables",
+        "Environment variables",
+        "Filtering sandboxes by metadata",
+        "Knowing if you are inside a sandbox",
+        "Retrieve sandbox information",
+        "Sandbox lifecycle",
+        "Sandbox metadata",
+        "Setting environment variables",
+        "Shutdown sandbox"
+      ]
+    },
+    {
+      "row": 2,
+      "category": "sandbox-lifecycle",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-sandbox-connect"
+      ],
+      "e2bFields": [
+        "POST /sandboxes/{sandboxID}/connect [postSandboxConnect]",
+        "Sandbox.connect()",
+        "Sandbox.create()",
+        "Sandbox.list()",
+        "commands.run()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "1. Get the sandbox ID",
+        "2. Connect to the sandbox",
+        "Connect to running sandbox"
+      ]
+    },
+    {
+      "row": 3,
+      "category": "sandbox-lifecycle",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-sandbox"
+      ],
+      "e2bFields": [
+        "POST /sandboxes/{sandboxID}/refreshes [postSandboxRefreshes]",
+        "POST /sandboxes/{sandboxID}/timeout [postSandboxTimeout]",
+        "Sandbox.create()",
+        "getInfo",
+        "sandbox.getInfo()",
+        "sandbox.kill()",
+        "sandbox.setTimeout()",
+        "setTimeout"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Change sandbox timeout during runtime",
+        "Retrieve sandbox information",
+        "Sandbox lifecycle",
+        "Shutdown sandbox"
+      ]
+    },
+    {
+      "row": 4,
+      "category": "sandbox-lifecycle",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-sandbox-metadata"
+      ],
+      "e2bFields": [
+        "GET /sandboxes/{sandboxID} [getSandbox]",
+        "Sandbox.create()",
+        "Sandbox.list()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Filtering sandboxes by metadata",
+        "Sandbox metadata"
+      ]
+    },
+    {
+      "row": 5,
+      "category": "sandbox-lifecycle",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "DELETE /sandboxes/{sandboxID} [deleteSandbox]"
+      ],
+      "previouslyIndexOnly": false
+    },
+    {
+      "row": 6,
+      "category": "sandbox-lifecycle",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-sandbox-list"
+      ],
+      "e2bFields": [
+        "GET /sandboxes [listSandboxes]",
+        "GET /v2/sandboxes [listSandboxesV2]",
+        "Sandbox.connect()",
+        "Sandbox.create()",
+        "Sandbox.list()",
+        "hasNext",
+        "nextToken",
+        "sandboxes.extend()",
+        "sandboxes.push()",
+        "userId"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Advanced pagination",
+        "Filtering sandboxes",
+        "List sandboxes",
+        "Listing sandboxes",
+        "Old SDK (v1.x.y)",
+        "Sorting sandboxes"
+      ]
+    },
+    {
+      "row": 7,
+      "category": "sandbox-lifecycle",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-sandbox-lifecycle-events-api"
+      ],
+      "e2bFields": [
+        "GET /sandboxes/{sandboxID}/logs [getSandboxLogs]",
+        "GET /v2/sandboxes/{sandboxID}/logs [getSandboxLogsV2]",
+        "Sandbox.create()",
+        "orderAsc"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Monitor sandbox lifecycle events",
+        "Retention"
+      ]
+    },
+    {
+      "row": 8,
+      "category": "sandbox-lifecycle",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sandbox-lifecycle-events-webhooks"
+      ],
+      "e2bFields": [
+        "sandbox.lifecycle.checkpointed",
+        "sandbox.lifecycle.created",
+        "sandbox.lifecycle.killed",
+        "sandbox.lifecycle.paused",
+        "sandbox.lifecycle.resumed",
+        "sandbox.lifecycle.updated"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bFacts": [
+        "Available event types",
+        "Delete webhook",
+        "Delivery and retries",
+        "Get webhook configuration",
+        "List webhooks",
+        "Register webhook",
+        "Sandbox lifecycle webhooks",
+        "Update webhook configuration",
+        "Webhook management",
+        "Webhook payload",
+        "Webhook request headers",
+        "Webhook verification"
+      ]
+    },
+    {
+      "row": 9,
+      "category": "sandbox-lifecycle",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sandbox-auto-resume"
+      ],
+      "e2bFields": [
+        "Sandbox.connect()",
+        "Sandbox.create()",
+        "autoResume",
+        "commands.run()",
+        "files.read()",
+        "files.write()",
+        "keepMemory",
+        "lifecycle.autoResume",
+        "onTimeout",
+        "sandbox.getHost()",
+        "sandbox.getInfo()",
+        "sandbox.pause()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Auto-resume on request",
+        "Cleanup",
+        "Configure",
+        "Example: Web server with auto-resume",
+        "Lifecycle options",
+        "SDK example: pause, then read a file",
+        "Timeout after auto-resume",
+        "What counts as activity"
+      ]
+    },
+    {
+      "row": 10,
+      "category": "sandbox-lifecycle",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sandbox-ssh-access"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "Template.build()"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "How it works",
+        "Quickstart",
+        "SSH access"
+      ]
+    },
+    {
+      "row": 11,
+      "category": "sandbox-lifecycle",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sandbox-secured-access"
+      ],
+      "e2bFields": [
+        "Sandbox.create()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import",
+        "e2b template list"
+      ],
+      "e2bFacts": [
+        "Access sandbox API directly",
+        "Disable secure access",
+        "Migration path",
+        "Secured access",
+        "Supported versions"
+      ]
+    },
+    {
+      "row": 12,
+      "category": "persistence",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-sandbox-persistence"
+      ],
+      "e2bFields": [
+        "POST /sandboxes/{sandboxID}/pause [postSandboxPause]",
+        "Sandbox.connect()",
+        "Sandbox.create()",
+        "Sandbox.kill()",
+        "Sandbox.list",
+        "Sandbox.list()",
+        "onTimeout",
+        "sandbox.connect()",
+        "sandbox.kill()",
+        "sandbox.pause()",
+        "sandboxes.extend()",
+        "sandboxes.push()",
+        "sbx.connect()",
+        "sbx.kill()",
+        "sbx.pause()",
+        "statusCode"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Auto-pause",
+        "Changing sandbox's state",
+        "Continuous runtime limits",
+        "Limitations",
+        "Listing paused sandboxes",
+        "Network",
+        "Pause and resume performance",
+        "Paused sandbox retention",
+        "Pausing sandbox",
+        "Removing paused sandboxes",
+        "Resuming sandbox",
+        "Sandbox persistence",
+        "Sandbox state transitions",
+        "Sandbox's timeout",
+        "State descriptions",
+        "When a pause is refused"
+      ]
+    },
+    {
+      "row": 13,
+      "category": "persistence",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sandbox-filesystem-only-snapshots"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "commands.run()",
+        "files.read()",
+        "files.write()",
+        "keepMemory",
+        "onTimeout",
+        "sbx.connect()",
+        "sbx.pause()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Auto-pause filesystem-only",
+        "Filesystem-only snapshots",
+        "Full vs. filesystem-only",
+        "Pause filesystem-only",
+        "Picking up envd updates",
+        "Related",
+        "Type safety and validation",
+        "What changes on resume"
+      ]
+    },
+    {
+      "row": 14,
+      "category": "persistence",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-sandbox-connect",
+        "e2b-sandbox-persistence"
+      ],
+      "e2bFields": [
+        "POST /sandboxes/{sandboxID}/resume [postSandboxResume]",
+        "Sandbox.connect()",
+        "Sandbox.create()",
+        "Sandbox.kill()",
+        "Sandbox.list",
+        "Sandbox.list()",
+        "commands.run()",
+        "onTimeout",
+        "sandbox.connect()",
+        "sandbox.kill()",
+        "sandbox.pause()",
+        "sandboxes.extend()",
+        "sandboxes.push()",
+        "sbx.connect()",
+        "sbx.kill()",
+        "sbx.pause()",
+        "statusCode"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "1. Get the sandbox ID",
+        "2. Connect to the sandbox",
+        "Auto-pause",
+        "Changing sandbox's state",
+        "Connect to running sandbox",
+        "Continuous runtime limits",
+        "Limitations",
+        "Listing paused sandboxes",
+        "Network",
+        "Pause and resume performance",
+        "Paused sandbox retention",
+        "Pausing sandbox",
+        "Removing paused sandboxes",
+        "Resuming sandbox",
+        "Sandbox persistence",
+        "Sandbox state transitions",
+        "Sandbox's timeout",
+        "State descriptions",
+        "When a pause is refused"
+      ]
+    },
+    {
+      "row": 15,
+      "category": "persistence",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sandbox-resume-without-memory"
+      ],
+      "e2bFields": [
+        "Sandbox.connect()",
+        "files.read()",
+        "onResume",
+        "sbx.pause()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "If the reboot fails",
+        "Keep a snapshot afterwards",
+        "Only a paused sandbox is rebooted",
+        "Reboot on resume",
+        "Related",
+        "Restore vs. reboot",
+        "Self-hosted deployments",
+        "What you get on disk",
+        "When to reboot instead of restoring"
+      ]
+    },
+    {
+      "row": 16,
+      "category": "persistence",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-faq-paused-sandboxes-concurrency",
+        "e2b-faq-sandbox-lifetime",
+        "e2b-sandbox-persistence"
+      ],
+      "e2bFields": [
+        "Sandbox.connect()",
+        "Sandbox.create()",
+        "Sandbox.kill()",
+        "Sandbox.list",
+        "Sandbox.list()",
+        "autoResume",
+        "onTimeout",
+        "sandbox.connect()",
+        "sandbox.kill()",
+        "sandbox.pause()",
+        "sandboxes.extend()",
+        "sandboxes.push()",
+        "sbx.connect()",
+        "sbx.kill()",
+        "sbx.pause()",
+        "statusCode",
+        "timeoutMs"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Auto-pause",
+        "Changing sandbox's state",
+        "Continuous runtime limits",
+        "Do paused sandboxes count toward the concurrency limit?",
+        "How long does a sandbox live?",
+        "Limitations",
+        "Listing paused sandboxes",
+        "Network",
+        "Pause and resume performance",
+        "Paused sandbox retention",
+        "Paused sandboxes do not expire",
+        "Pausing sandbox",
+        "Related",
+        "Removing paused sandboxes",
+        "Resuming sandbox",
+        "Sandbox persistence",
+        "Sandbox state transitions",
+        "Sandbox's timeout",
+        "State descriptions",
+        "What happens when the timeout expires",
+        "When a pause is refused"
+      ]
+    },
+    {
+      "row": 17,
+      "category": "persistence",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sandbox"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "getInfo",
+        "sandbox.getInfo()",
+        "sandbox.kill()",
+        "sandbox.setTimeout()",
+        "setTimeout"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Change sandbox timeout during runtime",
+        "Retrieve sandbox information",
+        "Sandbox lifecycle",
+        "Shutdown sandbox"
+      ]
+    },
+    {
+      "row": 18,
+      "category": "persistence",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sandbox-persistence"
+      ],
+      "e2bFields": [
+        "Sandbox.connect()",
+        "Sandbox.create()",
+        "Sandbox.kill()",
+        "Sandbox.list",
+        "Sandbox.list()",
+        "onTimeout",
+        "sandbox.connect()",
+        "sandbox.kill()",
+        "sandbox.pause()",
+        "sandboxes.extend()",
+        "sandboxes.push()",
+        "sbx.connect()",
+        "sbx.kill()",
+        "sbx.pause()",
+        "statusCode"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Auto-pause",
+        "Changing sandbox's state",
+        "Continuous runtime limits",
+        "Limitations",
+        "Listing paused sandboxes",
+        "Network",
+        "Pause and resume performance",
+        "Paused sandbox retention",
+        "Pausing sandbox",
+        "Removing paused sandboxes",
+        "Resuming sandbox",
+        "Sandbox persistence",
+        "Sandbox state transitions",
+        "Sandbox's timeout",
+        "State descriptions",
+        "When a pause is refused"
+      ]
+    },
+    {
+      "row": 19,
+      "category": "persistence",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sandbox-persistence"
+      ],
+      "e2bFields": [
+        "Sandbox.connect()",
+        "Sandbox.create()",
+        "Sandbox.kill()",
+        "Sandbox.list",
+        "Sandbox.list()",
+        "onTimeout",
+        "sandbox.connect()",
+        "sandbox.kill()",
+        "sandbox.pause()",
+        "sandboxes.extend()",
+        "sandboxes.push()",
+        "sbx.connect()",
+        "sbx.kill()",
+        "sbx.pause()",
+        "statusCode"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Auto-pause",
+        "Changing sandbox's state",
+        "Continuous runtime limits",
+        "Limitations",
+        "Listing paused sandboxes",
+        "Network",
+        "Pause and resume performance",
+        "Paused sandbox retention",
+        "Pausing sandbox",
+        "Removing paused sandboxes",
+        "Resuming sandbox",
+        "Sandbox persistence",
+        "Sandbox state transitions",
+        "Sandbox's timeout",
+        "State descriptions",
+        "When a pause is refused"
+      ]
+    },
+    {
+      "row": 20,
+      "category": "snapshot-and-fork",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-sandbox-snapshots"
+      ],
+      "e2bFields": [
+        "POST /sandboxes/{sandboxID}/snapshots [postSandboxSnapshots]",
+        "Sandbox.create()",
+        "Sandbox.createSnapshot()",
+        "Sandbox.deleteSnapshot()",
+        "Sandbox.listSnapshots()",
+        "sandbox.createSnapshot()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import",
+        "e2b template list"
+      ],
+      "e2bFacts": [
+        "Create a sandbox from a snapshot",
+        "Create a snapshot",
+        "Delete a snapshot",
+        "Filter by sandbox",
+        "List snapshots",
+        "Performance",
+        "Prerequisites",
+        "Sandbox snapshots",
+        "Snapshot flow",
+        "Snapshots vs. Pause/Resume",
+        "Snapshots vs. Templates",
+        "Use cases"
+      ]
+    },
+    {
+      "row": 21,
+      "category": "snapshot-and-fork",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-sandbox-snapshots"
+      ],
+      "e2bFields": [
+        "POST /sandboxes [postSandboxes]",
+        "Sandbox.create()",
+        "Sandbox.createSnapshot()",
+        "Sandbox.deleteSnapshot()",
+        "Sandbox.listSnapshots()",
+        "sandbox.createSnapshot()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import",
+        "e2b template list"
+      ],
+      "e2bFacts": [
+        "Create a sandbox from a snapshot",
+        "Create a snapshot",
+        "Delete a snapshot",
+        "Filter by sandbox",
+        "List snapshots",
+        "Performance",
+        "Prerequisites",
+        "Sandbox snapshots",
+        "Snapshot flow",
+        "Snapshots vs. Pause/Resume",
+        "Snapshots vs. Templates",
+        "Use cases"
+      ]
+    },
+    {
+      "row": 22,
+      "category": "snapshot-and-fork",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-sandbox-snapshots"
+      ],
+      "e2bFields": [
+        "GET /snapshots [listSnapshots]",
+        "Sandbox.create()",
+        "Sandbox.createSnapshot()",
+        "Sandbox.deleteSnapshot()",
+        "Sandbox.listSnapshots()",
+        "sandbox.createSnapshot()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import",
+        "e2b template list"
+      ],
+      "e2bFacts": [
+        "Create a sandbox from a snapshot",
+        "Create a snapshot",
+        "Delete a snapshot",
+        "Filter by sandbox",
+        "List snapshots",
+        "Performance",
+        "Prerequisites",
+        "Sandbox snapshots",
+        "Snapshot flow",
+        "Snapshots vs. Pause/Resume",
+        "Snapshots vs. Templates",
+        "Use cases"
+      ]
+    },
+    {
+      "row": 23,
+      "category": "snapshot-and-fork",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-sandbox-fork"
+      ],
+      "e2bFields": [
+        "POST /sandboxes/{sandboxID}/fork [postSandboxFork]",
+        "Sandbox.create()",
+        "Sandbox.fork()",
+        "commands.run()",
+        "files.write()",
+        "sandbox.fork()",
+        "timeoutMs"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import",
+        "e2b sandbox fork"
+      ],
+      "e2bFacts": [
+        "Create multiple forks",
+        "Fork a sandbox",
+        "Fork flow",
+        "Fork timeout",
+        "Forking vs. Snapshots",
+        "Handle failed forks",
+        "Sandbox forking"
+      ]
+    },
+    {
+      "row": 24,
+      "category": "snapshot-and-fork",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sandbox-fork",
+        "e2b-sandbox-snapshots"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "Sandbox.createSnapshot()",
+        "Sandbox.deleteSnapshot()",
+        "Sandbox.fork()",
+        "Sandbox.listSnapshots()",
+        "commands.run()",
+        "files.write()",
+        "sandbox.createSnapshot()",
+        "sandbox.fork()",
+        "timeoutMs"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import",
+        "e2b sandbox fork",
+        "e2b template list"
+      ],
+      "e2bFacts": [
+        "Create a sandbox from a snapshot",
+        "Create a snapshot",
+        "Create multiple forks",
+        "Delete a snapshot",
+        "Filter by sandbox",
+        "Fork a sandbox",
+        "Fork flow",
+        "Fork timeout",
+        "Forking vs. Snapshots",
+        "Handle failed forks",
+        "List snapshots",
+        "Performance",
+        "Prerequisites",
+        "Sandbox forking",
+        "Sandbox snapshots",
+        "Snapshot flow",
+        "Snapshots vs. Pause/Resume",
+        "Snapshots vs. Templates",
+        "Use cases"
+      ]
+    },
+    {
+      "row": 25,
+      "category": "template",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-template-defining-template",
+        "e2b-template-how-it-works"
+      ],
+      "e2bFields": [
+        "template.aptInstall()",
+        "template.bunInstall()",
+        "template.copy()",
+        "template.copyItems()",
+        "template.gitClone()",
+        "template.makeDir()",
+        "template.makeSymlink()",
+        "template.npmInstall()",
+        "template.pipInstall()",
+        "template.remove()",
+        "template.rename()",
+        "template.runCmd()",
+        "template.setEnvs()",
+        "template.setUser()",
+        "template.setWorkdir()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bFacts": [
+        "Caching",
+        "Copying files",
+        "Default user and workdir",
+        "Defining template",
+        "Environment variables",
+        "File operations",
+        "General overview",
+        "Git operations",
+        "How it works",
+        "Installing packages",
+        "Kernel",
+        "Method chaining",
+        "Running commands",
+        "User and workdir"
+      ]
+    },
+    {
+      "row": 26,
+      "category": "template",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-cli",
+        "e2b-sdk-reference-cli-v2-16-1-template"
+      ],
+      "e2bFields": [
+        "DELETE /templates/{templateID} [deleteTemplate]",
+        "GET /templates/{templateID} [getTemplate]",
+        "GET /templates/{templateID}/builds/{buildID}/logs [getTemplateBuildLogs]",
+        "GET /templates/{templateID}/builds/{buildID}/status [getTemplateBuildStatus]",
+        "GET /templates/{templateID}/files/{hash} [getTemplateFile]",
+        "GET /templates [listTemplates]",
+        "GET /v2/templates [listTemplatesV2]",
+        "PATCH /templates/{templateID} [patchTemplate]",
+        "PATCH /v2/templates/{templateID} [patchTemplateV2]",
+        "POST /templates/{templateID} [postTemplate]",
+        "POST /templates/{templateID}/builds/{buildID} [postTemplateBuild]",
+        "POST /v2/templates/{templateID}/builds/{buildID} [postTemplateBuildV2]",
+        "POST /templates [postTemplates]",
+        "POST /v2/templates [postTemplatesV2]",
+        "POST /v3/templates [postTemplatesV3]"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b template",
+        "e2b template build",
+        "e2b template create",
+        "e2b template delete",
+        "e2b template init",
+        "e2b template list",
+        "e2b template migrate",
+        "e2b template publish",
+        "e2b template unpublish"
+      ],
+      "e2bFacts": [
+        "E2B CLI",
+        "Installation",
+        "Options",
+        "Template",
+        "Usage",
+        "e2b template",
+        "e2b template build",
+        "e2b template create",
+        "e2b template delete",
+        "e2b template init",
+        "e2b template list",
+        "e2b template migrate",
+        "e2b template publish",
+        "e2b template unpublish"
+      ]
+    },
+    {
+      "row": 27,
+      "category": "template",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-template-start-ready-command"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "commands.run()",
+        "runCmd",
+        "setReadyCmd",
+        "setStartCmd",
+        "template.setReadyCmd()",
+        "template.setStartCmd()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import",
+        "e2b import wait"
+      ],
+      "e2bFacts": [
+        "Ready command",
+        "Ready command helpers",
+        "Start & ready commands",
+        "Start command",
+        "setReadyCmd / set_ready_cmd",
+        "setStartCmd / set_start_cmd"
+      ]
+    },
+    {
+      "row": 28,
+      "category": "template",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-template-caching"
+      ],
+      "e2bFields": [
+        "Template.build",
+        "Template.build()",
+        "forceUpload",
+        "skipCache"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bFacts": [
+        "Caching",
+        "Files caching",
+        "Invalidation",
+        "Optimize build times",
+        "Partial",
+        "Use case for caching",
+        "Whole template"
+      ]
+    },
+    {
+      "row": 29,
+      "category": "template",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-template-names",
+        "e2b-template-tags"
+      ],
+      "e2bFields": [
+        "DELETE /templates/tags [deleteTemplatesTags]",
+        "GET /templates/{templateID}/tags [getTemplateTags]",
+        "POST /templates/tags [postTemplatesTags]",
+        "Sandbox.create()",
+        "Template.assignTags()",
+        "Template.build()",
+        "Template.exists()",
+        "Template.getTags()",
+        "Template.removeTags()",
+        "GET /templates/aliases/{alias} [getTemplatesAlias]"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Assign tags",
+        "Best practices",
+        "Building with tags",
+        "Checking name availability",
+        "Common use cases",
+        "Development and production environments",
+        "Environment tags",
+        "Latest and stable tags",
+        "List tags",
+        "Managing tags",
+        "Multiple tags",
+        "Multiple template variants",
+        "Name format",
+        "Project-local naming",
+        "Referencing a specific build",
+        "Remove tags",
+        "Semantic versioning",
+        "Single tag",
+        "Tag format",
+        "Template names",
+        "Template tags & versioning",
+        "The default tag",
+        "Use cases",
+        "What is a template name?"
+      ]
+    },
+    {
+      "row": 30,
+      "category": "template",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-template-base-image",
+        "e2b-template-private-registries"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "cpuCount",
+        "fileIgnorePatterns",
+        "memoryMB",
+        "template.fromAlpineImage()",
+        "template.fromArchImage()",
+        "template.fromBaseImage()",
+        "template.fromBunImage()",
+        "template.fromDebianImage()",
+        "template.fromFedoraImage()",
+        "template.fromImage()",
+        "template.fromNodeImage()",
+        "template.fromPythonImage()",
+        "template.fromTemplate()",
+        "template.fromUbuntuImage()"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bFacts": [
+        "AWS ECR",
+        "Base image",
+        "Build from existing template",
+        "Creating template",
+        "Custom base image",
+        "Default E2B base image",
+        "Default resources",
+        "Defining base image",
+        "Dockerfile instructions support",
+        "GCP Artifact Registry",
+        "General registry",
+        "NixOS base image",
+        "Parsing existing Dockerfiles",
+        "Predefined base images",
+        "Private registries"
+      ]
+    },
+    {
+      "row": 31,
+      "category": "template",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-billing",
+        "e2b-faq-build-limits"
+      ],
+      "e2bFields": [
+        "Template.build()",
+        "cpuCount",
+        "fromImage",
+        "fromTemplate",
+        "memoryMB",
+        "runCmd",
+        "sbx.kill()",
+        "sbx.pause()",
+        "waitForPort"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Billing & limits",
+        "Build timeouts",
+        "Compute costs",
+        "Customizing compute resources",
+        "FAQ",
+        "Limits tied to your plan",
+        "Monitoring usage",
+        "Plans",
+        "Usage-based pricing",
+        "What each failure looks like",
+        "What is not limited",
+        "What limits apply to my template builds?"
+      ]
+    },
+    {
+      "row": 32,
+      "category": "template",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-template-defining-template",
+        "e2b-template-how-it-works"
+      ],
+      "e2bFields": [
+        "template.aptInstall()",
+        "template.bunInstall()",
+        "template.copy()",
+        "template.copyItems()",
+        "template.gitClone()",
+        "template.makeDir()",
+        "template.makeSymlink()",
+        "template.npmInstall()",
+        "template.pipInstall()",
+        "template.remove()",
+        "template.rename()",
+        "template.runCmd()",
+        "template.setEnvs()",
+        "template.setUser()",
+        "template.setWorkdir()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bFacts": [
+        "Caching",
+        "Copying files",
+        "Default user and workdir",
+        "Defining template",
+        "Environment variables",
+        "File operations",
+        "General overview",
+        "Git operations",
+        "How it works",
+        "Installing packages",
+        "Kernel",
+        "Method chaining",
+        "Running commands",
+        "User and workdir"
+      ]
+    },
+    {
+      "row": 33,
+      "category": "template",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-template-examples-docker"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "Template.build()",
+        "commands.run()",
+        "files.write()",
+        "sbx.kill()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Build",
+        "Docker",
+        "Docker Compose",
+        "Run",
+        "Template"
+      ]
+    },
+    {
+      "row": 34,
+      "category": "filesystem",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-filesystem-read-write",
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "GET /files [downloadFile]",
+        "Sandbox.create()",
+        "files.read()",
+        "files.write()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Read & write files",
+        "Reading files",
+        "Writing multiple files",
+        "Writing single files"
+      ]
+    },
+    {
+      "row": 35,
+      "category": "filesystem",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-filesystem-read-write",
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "POST /files [uploadFile]",
+        "Sandbox.create()",
+        "files.read()",
+        "files.write()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Read & write files",
+        "Reading files",
+        "Writing multiple files",
+        "Writing single files"
+      ]
+    },
+    {
+      "row": 36,
+      "category": "filesystem",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-filesystem-info",
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "POST /filesystem.Filesystem/Stat [filesystem.Filesystem.Stat]",
+        "Sandbox.create()",
+        "files.getInfo()",
+        "files.makeDir()",
+        "files.write()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Get information about a file or directory",
+        "Getting information about a directory",
+        "Getting information about a file"
+      ]
+    },
+    {
+      "row": 37,
+      "category": "filesystem",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-filesystem-metadata",
+        "e2b-filesystem-upload",
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "POST /files [uploadFile]",
+        "Sandbox.create()",
+        "files.append()",
+        "files.getInfo()",
+        "files.list()",
+        "files.read()",
+        "files.rename()",
+        "files.write()",
+        "files.writeFiles()",
+        "sandbox.uploadUrl()"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bClis": [
+        "e2b import",
+        "e2b template list"
+      ],
+      "e2bFacts": [
+        "Attach custom metadata to files",
+        "Limitations",
+        "Prerequisites",
+        "Reading metadata back",
+        "Upload data to sandbox",
+        "Upload directory / multiple files",
+        "Upload single file",
+        "Upload with pre-signed URL",
+        "Writing a file with metadata",
+        "Writing multiple files with metadata"
+      ]
+    },
+    {
+      "row": 38,
+      "category": "filesystem",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-filesystem-watch",
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "POST /filesystem.Filesystem/CreateWatcher [filesystem.Filesystem.CreateWatcher]",
+        "POST /filesystem.Filesystem/GetWatcherEvents [filesystem.Filesystem.GetWatcherEvents]",
+        "POST /filesystem.Filesystem/RemoveWatcher [filesystem.Filesystem.RemoveWatcher]",
+        "POST /filesystem.Filesystem/WatchDir [filesystem.Filesystem.WatchDir]",
+        "Sandbox.create()",
+        "allowNetworkMounts",
+        "files.watchDir()",
+        "files.write()",
+        "includeEntry"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Including entry information",
+        "Recursive watching",
+        "Watch sandbox directory for changes",
+        "Watching network filesystem mounts"
+      ]
+    },
+    {
+      "row": 39,
+      "category": "filesystem",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-filesystem-download",
+        "e2b-filesystem-upload",
+        "e2b-openapi-public",
+        "e2b-quickstart-upload-download-files"
+      ],
+      "e2bFields": [
+        "GET /files [downloadFile]",
+        "POST /files [uploadFile]",
+        "Sandbox.create()",
+        "files.append()",
+        "files.read()",
+        "files.write()",
+        "sandbox.downloadUrl()",
+        "sandbox.uploadUrl()"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Download data from sandbox",
+        "Download directory",
+        "Download file",
+        "Download multiple files",
+        "Download with pre-signed URL",
+        "Upload & downloads files",
+        "Upload data to sandbox",
+        "Upload directory",
+        "Upload directory / multiple files",
+        "Upload file",
+        "Upload multiple files",
+        "Upload single file",
+        "Upload with pre-signed URL"
+      ]
+    },
+    {
+      "row": 40,
+      "category": "filesystem",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "POST /filesystem.Filesystem/ListDir [filesystem.Filesystem.ListDir]",
+        "POST /filesystem.Filesystem/MakeDir [filesystem.Filesystem.MakeDir]",
+        "POST /filesystem.Filesystem/Move [filesystem.Filesystem.Move]",
+        "POST /filesystem.Filesystem/Remove [filesystem.Filesystem.Remove]"
+      ],
+      "previouslyIndexOnly": true
+    },
+    {
+      "row": 41,
+      "category": "volumes",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-volumes",
+        "e2b-volumes-manage"
+      ],
+      "e2bFields": [
+        "DELETE /volumes/{volumeID} [deleteVolume]",
+        "GET /volumes [listVolumes]",
+        "GET /volumes/{volumeID} [getVolume]",
+        "POST /volumes [postVolumes]",
+        "Sandbox.create()",
+        "Volume.connect()",
+        "Volume.create()",
+        "Volume.destroy()",
+        "Volume.getInfo()",
+        "Volume.list()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Connect to an existing volume",
+        "Create a volume",
+        "Destroy a volume",
+        "Example",
+        "Get volume info",
+        "Known limitations",
+        "List volumes",
+        "Managing volumes",
+        "Overview"
+      ]
+    },
+    {
+      "row": 42,
+      "category": "volumes",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-volumes-mount"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "Volume.create()",
+        "files.write()",
+        "volumeMounts"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Mounting volumes"
+      ]
+    },
+    {
+      "row": 43,
+      "category": "volumes",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-volumes-download",
+        "e2b-volumes-info",
+        "e2b-volumes-read-write",
+        "e2b-volumes-upload"
+      ],
+      "e2bFields": [
+        "Volume.create()",
+        "volume.exists()",
+        "volume.getInfo()",
+        "volume.list()",
+        "volume.makeDir()",
+        "volume.readFile()",
+        "volume.remove()",
+        "volume.updateMetadata()",
+        "volume.writeFile()"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Checking if a path exists",
+        "Creating directories",
+        "Download data from volume",
+        "Get information about a file or directory",
+        "Getting information about a directory",
+        "Getting information about a file",
+        "Listing directory contents",
+        "Read & write files",
+        "Reading files",
+        "Removing files or directories",
+        "Updating metadata",
+        "Upload data to volume",
+        "Upload directory / multiple files",
+        "Upload single file",
+        "Writing files"
+      ]
+    },
+    {
+      "row": 44,
+      "category": "volumes",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-volumes-migrate"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "Volume.connect()",
+        "Volume.create()",
+        "Volume.list()",
+        "commands.run()",
+        "sandbox.kill()",
+        "volumes.find()"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Migrating data between volumes",
+        "Prerequisites",
+        "The script",
+        "Usage"
+      ]
+    },
+    {
+      "row": 45,
+      "category": "commands-and-process",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-commands",
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "POST /process.Process/Start [process.Process.Start]",
+        "Sandbox.create()",
+        "commands.run()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Running commands in sandbox"
+      ]
+    },
+    {
+      "row": 46,
+      "category": "commands-and-process",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-commands-streaming",
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "POST /process.Process/Connect [process.Process.Connect]",
+        "Sandbox.create()",
+        "commands.run()",
+        "onStderr",
+        "onStdout"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Streaming command output"
+      ]
+    },
+    {
+      "row": 47,
+      "category": "commands-and-process",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-commands-background",
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "POST /process.Process/List [process.Process.List]",
+        "Sandbox.connect()",
+        "Sandbox.create()",
+        "commands.connect()",
+        "commands.kill()",
+        "commands.list()",
+        "commands.run()",
+        "files.read()",
+        "sandboxId",
+        "timeoutMs"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Reconnect to a background command",
+        "Running commands in background"
+      ]
+    },
+    {
+      "row": 48,
+      "category": "commands-and-process",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "POST /process.Process/CloseStdin [process.Process.CloseStdin]",
+        "POST /process.Process/SendInput [process.Process.SendInput]",
+        "POST /process.Process/StreamInput [process.Process.StreamInput]"
+      ],
+      "previouslyIndexOnly": true
+    },
+    {
+      "row": 49,
+      "category": "commands-and-process",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "POST /process.Process/SendSignal [process.Process.SendSignal]",
+        "POST /process.Process/Update [process.Process.Update]"
+      ],
+      "previouslyIndexOnly": true
+    },
+    {
+      "row": 50,
+      "category": "pty",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sandbox-pty"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "commands.run()",
+        "onData",
+        "sandbox.pty"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Create a PTY session",
+        "Disconnect and reconnect",
+        "Interactive terminal (PTY)",
+        "Interactive terminal (SSH-like)",
+        "Kill the PTY",
+        "Resize the terminal",
+        "Send input to PTY",
+        "Timeout",
+        "Wait for PTY to exit"
+      ]
+    },
+    {
+      "row": 51,
+      "category": "code-interpreter",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-code-interpreting-contexts"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "sandbox.createCodeContext()",
+        "sandbox.listCodeContexts()",
+        "sandbox.removeCodeContext()",
+        "sandbox.restartCodeContext()",
+        "sandbox.runCode()"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bFacts": [
+        "Code contexts",
+        "Create a new Code Context",
+        "List active Code Contexts",
+        "Remove a Code Context",
+        "Restart a Code Context"
+      ]
+    },
+    {
+      "row": 52,
+      "category": "code-interpreter",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-code-interpreting-supported-languages",
+        "e2b-sdk-reference-code-interpreter-js-sdk-v2-7-0-sandbox"
+      ],
+      "e2bFields": [
+        "Sandbox.create()"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bFacts": [
+        "Context",
+        "CreateCodeContextOpts",
+        "Interfaces",
+        "RunCodeLanguage",
+        "RunCodeOpts",
+        "Sandbox",
+        "Supported languages",
+        "Type Aliases",
+        "createCodeContext()",
+        "cwd?",
+        "envs?",
+        "language?",
+        "listCodeContexts()",
+        "onError()?",
+        "onResult()?",
+        "onStderr()?",
+        "onStdout()?",
+        "removeCodeContext()",
+        "requestTimeoutMs?",
+        "restartCodeContext()",
+        "runCode()",
+        "timeoutMs?"
+      ]
+    },
+    {
+      "row": 53,
+      "category": "code-interpreter",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-code-interpreting-analyze-data-with-ai",
+        "e2b-code-interpreting-create-charts-visualizations"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "dataset.csv",
+        "files.write()",
+        "process.exit()",
+        "runAIGeneratedCode",
+        "sbx.runCode()"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bFacts": [
+        "1. Install dependencies",
+        "10. Run the code",
+        "2. Set your API keys",
+        "3. Download example CSV file",
+        "4. Initialize the sandbox and upload the dataset to the sandbox",
+        "5. Prepare the method for running AI-generated code",
+        "6. Prepare the prompt and initialize Anthropic client",
+        "7. Connect the sandbox to the LLM with tool calling",
+        "8. Parse the LLM response and run the AI-generated code in the sandbox",
+        "9. Save the generated chart",
+        "Analyze data with AI",
+        "Create charts & visualizations",
+        "Example: Analyze CSV file with E2B and Claude 3.5 Sonnet",
+        "Full final code",
+        "Table of Contents"
+      ]
+    },
+    {
+      "row": 54,
+      "category": "network",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-network-internet-access",
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "POST /sandboxes [postSandboxes]",
+        "Sandbox.create()",
+        "Secret.fill",
+        "Secret.iamToken()",
+        "a.b.example.com",
+        "allowInternetAccess",
+        "allowOut",
+        "allowPublicTraffic",
+        "api.example.com",
+        "denyOut",
+        "example.com",
+        "httpsPorts",
+        "iam.tokens",
+        "maskRequestHost",
+        "network.denyOut",
+        "network.rules",
+        "sandbox.updateNetwork()",
+        "transform.headers",
+        "updateNetwork"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Allow and deny lists",
+        "Behavior of blocked TCP connections",
+        "Controlling internet access",
+        "Domain-based filtering",
+        "Fine-grained network control",
+        "Internet access",
+        "Per-host request transforms",
+        "Priority rules",
+        "Updating network settings on a running sandbox"
+      ]
+    },
+    {
+      "row": 55,
+      "category": "network",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-network-internet-access",
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "PUT /sandboxes/{sandboxID}/network [putSandboxNetwork]",
+        "Sandbox.create()",
+        "Secret.fill",
+        "Secret.iamToken()",
+        "a.b.example.com",
+        "allowInternetAccess",
+        "allowOut",
+        "allowPublicTraffic",
+        "api.example.com",
+        "denyOut",
+        "example.com",
+        "httpsPorts",
+        "iam.tokens",
+        "maskRequestHost",
+        "network.denyOut",
+        "network.rules",
+        "sandbox.updateNetwork()",
+        "transform.headers",
+        "updateNetwork"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Allow and deny lists",
+        "Behavior of blocked TCP connections",
+        "Controlling internet access",
+        "Domain-based filtering",
+        "Fine-grained network control",
+        "Internet access",
+        "Per-host request transforms",
+        "Priority rules",
+        "Updating network settings on a running sandbox"
+      ]
+    },
+    {
+      "row": 56,
+      "category": "network",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-network-internet-access",
+        "e2b-secrets-inject"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "Secret.create()",
+        "Secret.exists",
+        "Secret.fill",
+        "Secret.fill()",
+        "Secret.iamToken()",
+        "a.b.example.com",
+        "allowInternetAccess",
+        "allowOut",
+        "allowPublicTraffic",
+        "api.example.com",
+        "denyOut",
+        "example.com",
+        "httpsPorts",
+        "iam.tokens",
+        "maskRequestHost",
+        "network.denyOut",
+        "network.rules",
+        "sandbox.updateNetwork()",
+        "transform.headers",
+        "updateNetwork"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Allow and deny lists",
+        "Behavior of blocked TCP connections",
+        "Controlling internet access",
+        "Domain-based filtering",
+        "Fine-grained network control",
+        "Injecting secrets into requests",
+        "Internet access",
+        "Per-host request transforms",
+        "Priority rules",
+        "Resolution failures are silent for traffic",
+        "Updating network settings on a running sandbox"
+      ]
+    },
+    {
+      "row": 57,
+      "category": "network",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "PUT /sandboxes/{sandboxID}/network [putSandboxNetwork]"
+      ],
+      "previouslyIndexOnly": false
+    },
+    {
+      "row": 58,
+      "category": "network",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-network-public-url"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "commands.run()",
+        "files.write()",
+        "httpsPorts",
+        "maskRequestHost",
+        "process.kill()",
+        "sandbox.getHost()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Connecting to HTTPS servers inside the sandbox",
+        "Connecting to a server running inside the sandbox",
+        "Masking request host headers",
+        "Sandbox public URL"
+      ]
+    },
+    {
+      "row": 59,
+      "category": "network",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-network-restrict-public-access"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "allowInternetAccess",
+        "allowOut",
+        "allowPublicTraffic",
+        "commands.run()",
+        "denyOut",
+        "sandbox.getHost()",
+        "sandbox.trafficAccessToken"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Restricting public access",
+        "Restricting public access to sandbox URLs",
+        "Running a firewall inside the sandbox"
+      ]
+    },
+    {
+      "row": 60,
+      "category": "network",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-network-custom-domain"
+      ],
+      "e2bFields": [],
+      "previouslyIndexOnly": true,
+      "e2bFacts": [
+        "Custom domain",
+        "Domain setup",
+        "GCP VM setup",
+        "Prerequisites",
+        "Server setup",
+        "Testing the setup"
+      ]
+    },
+    {
+      "row": 61,
+      "category": "network",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-network-byop",
+        "e2b-network-ip-tunneling"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "Template.build()",
+        "allowOut",
+        "api.example.com",
+        "build.py",
+        "build.ts",
+        "commands.run()",
+        "denyOut",
+        "network.egressProxy",
+        "sandbox.getInfo()",
+        "sandbox.updateNetwork()",
+        "sbx.kill()",
+        "template.py",
+        "template.ts",
+        "updateNetwork"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Bring your own proxy",
+        "Configuring a proxy",
+        "Errors",
+        "Fields",
+        "GCP VM setup",
+        "How it works",
+        "Proxy tunneling",
+        "Reading the current configuration",
+        "Self-hosted deployments",
+        "Setting up proxy tunneling",
+        "Shadowsocks client setup (sandbox)",
+        "Shadowsocks server setup (VM)",
+        "Updating a running sandbox",
+        "Using the proxies"
+      ]
+    },
+    {
+      "row": 62,
+      "category": "secrets-and-iam",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-secrets",
+        "e2b-secrets-create",
+        "e2b-secrets-delete",
+        "e2b-secrets-list",
+        "e2b-secrets-rotate"
+      ],
+      "e2bFields": [
+        "DELETE /secrets/{secretID} [deleteSecret]",
+        "GET /secrets [listSecrets]",
+        "GET /secrets/{secretID} [getSecret]",
+        "POST /secrets [postSecrets]",
+        "POST /secrets/{secretID} [postSecret]",
+        "Secret.create",
+        "Secret.create()",
+        "Secret.destroy",
+        "Secret.destroy()",
+        "Secret.exists",
+        "Secret.exists()",
+        "Secret.getInfo",
+        "Secret.getInfo()",
+        "Secret.list",
+        "Secret.list()",
+        "Secret.update",
+        "Secret.update()",
+        "getInfo",
+        "secrets.map()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Create a secret",
+        "Deleting secrets",
+        "Listing secrets",
+        "Overview",
+        "Rotating secrets",
+        "Secret names"
+      ]
+    },
+    {
+      "row": 63,
+      "category": "secrets-and-iam",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-secrets-inject"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "Secret.create()",
+        "Secret.exists",
+        "Secret.fill",
+        "Secret.fill()",
+        "allowOut",
+        "denyOut"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Injecting secrets into requests",
+        "Resolution failures are silent for traffic"
+      ]
+    },
+    {
+      "row": 64,
+      "category": "secrets-and-iam",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-iam-workload-identity"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "Secret.iamToken()",
+        "iam.tokens",
+        "sts.amazonaws.com",
+        "tokenType"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Configure",
+        "Configure AWS IAM",
+        "Federate with external services",
+        "Inject tokens into egress requests",
+        "Limits",
+        "Token definitions",
+        "Workload identity"
+      ]
+    },
+    {
+      "row": 65,
+      "category": "metrics-and-telemetry",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public",
+        "e2b-sandbox-metrics"
+      ],
+      "e2bFields": [
+        "GET /sandboxes/metrics [listSandboxesMetrics]",
+        "GET /sandboxes/{sandboxID}/metrics [getSandboxMetrics]",
+        "Sandbox.create()",
+        "Sandbox.getMetrics()",
+        "sbx.getMetrics()",
+        "GET /metrics [getMetrics]"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import",
+        "e2b sandbox metrics"
+      ],
+      "e2bFacts": [
+        "Getting sandbox metrics",
+        "Getting sandbox metrics using the CLI",
+        "Getting sandbox metrics using the SDKs",
+        "Sandbox metrics"
+      ]
+    },
+    {
+      "row": 66,
+      "category": "metrics-and-telemetry",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-openapi-public"
+      ],
+      "e2bFields": [
+        "GET /teams [listTeams]",
+        "GET /teams/{teamID}/metrics [getTeamMetrics]",
+        "GET /teams/{teamID}/metrics/max [getTeamMetricsMax]"
+      ],
+      "previouslyIndexOnly": true
+    },
+    {
+      "row": 67,
+      "category": "metrics-and-telemetry",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sandbox-otel-telemetry-export"
+      ],
+      "e2bFields": [
+        "e2b.sandbox.cpu.total",
+        "e2b.sandbox.cpu.used",
+        "e2b.sandbox.disk.total",
+        "e2b.sandbox.disk.used",
+        "e2b.sandbox.ram.cache",
+        "e2b.sandbox.ram.total",
+        "e2b.sandbox.ram.used",
+        "e2b.team.sandbox.created",
+        "e2b.team.sandbox.running"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bFacts": [
+        "Confirm telemetry delivery",
+        "Delivery behavior",
+        "Exported telemetry",
+        "Logs",
+        "Metrics",
+        "OTel telemetry export",
+        "Setup"
+      ]
+    },
+    {
+      "row": 68,
+      "category": "cli",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-cli",
+        "e2b-sdk-reference-cli-v2-16-1-sandbox",
+        "e2b-sdk-reference-cli-v2-16-1-template"
+      ],
+      "e2bFields": [],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b sandbox",
+        "e2b sandbox connect",
+        "e2b sandbox create",
+        "e2b sandbox exec",
+        "e2b sandbox info",
+        "e2b sandbox kill",
+        "e2b sandbox list",
+        "e2b sandbox logs",
+        "e2b sandbox metrics",
+        "e2b sandbox pause",
+        "e2b sandbox resume",
+        "e2b sandbox spawn",
+        "e2b template",
+        "e2b template build",
+        "e2b template create",
+        "e2b template delete",
+        "e2b template init",
+        "e2b template list",
+        "e2b template migrate",
+        "e2b template publish",
+        "e2b template unpublish"
+      ],
+      "e2bFacts": [
+        "E2B CLI",
+        "Installation",
+        "Options",
+        "Sandbox",
+        "Template",
+        "Usage",
+        "e2b sandbox",
+        "e2b sandbox connect",
+        "e2b sandbox create",
+        "e2b sandbox exec",
+        "e2b sandbox info",
+        "e2b sandbox kill",
+        "e2b sandbox list",
+        "e2b sandbox logs",
+        "e2b sandbox metrics",
+        "e2b sandbox pause",
+        "e2b sandbox resume",
+        "e2b sandbox spawn",
+        "e2b template",
+        "e2b template build",
+        "e2b template create",
+        "e2b template delete",
+        "e2b template init",
+        "e2b template list",
+        "e2b template migrate",
+        "e2b template publish",
+        "e2b template unpublish"
+      ]
+    },
+    {
+      "row": 69,
+      "category": "sdk",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sdk-reference-js-sdk-v2-38-2-sandbox",
+        "e2b-sdk-reference-python-sdk-v2-37-1-sandbox-async"
+      ],
+      "e2bFields": [
+        "Promise.allSettled",
+        "Sandbox.connect()",
+        "Sandbox.create()",
+        "Sandbox.fork()",
+        "commands.list()",
+        "commands.run()",
+        "ctx.rules",
+        "files.write()",
+        "github.com",
+        "httpx.ReadTimeout",
+        "keepMemory",
+        "logging.Logger",
+        "network.rules",
+        "nextToken",
+        "opts.keepMemory",
+        "paginator.hasNext",
+        "pull.rebase",
+        "query.state",
+        "sandbox.betaPause()",
+        "sandbox.commands.connect",
+        "sandbox.connect()",
+        "sandbox.createSnapshot()",
+        "sandbox.fork()",
+        "sandbox.getHost()",
+        "sandbox.isRunning()",
+        "sandbox.kill()",
+        "sandbox.pause()",
+        "sandboxDomain",
+        "sandboxId",
+        "snapshotId",
+        "timeoutMs"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "AsyncCommandHandle",
+        "AsyncSandbox",
+        "AsyncSandboxPaginator",
+        "AsyncSnapshotPaginator",
+        "AsyncWatchHandle",
+        "Commands",
+        "Filesystem",
+        "Git",
+        "Interfaces",
+        "Pty",
+        "Sandbox",
+        "Sandbox async",
+        "SandboxApi",
+        "SandboxUrlOpts",
+        "\\_\\_init\\_\\_",
+        "add",
+        "beta\\_pause",
+        "branches",
+        "checkout\\_branch",
+        "clone",
+        "close\\_stdin",
+        "commands",
+        "commit",
+        "configure\\_user",
+        "connect",
+        "connect()",
+        "create",
+        "create()",
+        "createSnapshot()",
+        "create\\_branch",
+        "create\\_snapshot",
+        "dangerously\\_authenticate",
+        "deleteSnapshot()",
+        "delete\\_branch",
+        "delete\\_snapshot",
+        "disconnect",
+        "downloadUrl()",
+        "error",
+        "exists",
+        "exit\\_code",
+        "files",
+        "fork",
+        "fork()",
+        "getHost()",
+        "getInfo()",
+        "getMcpToken()",
+        "getMcpUrl()",
+        "getMetrics()",
+        "get\\_config",
+        "get\\_info",
+        "get\\_mcp\\_token",
+        "get\\_metrics",
+        "git",
+        "init",
+        "isRunning()",
+        "is\\_running",
+        "kill",
+        "kill()",
+        "list",
+        "list()",
+        "listSnapshots()",
+        "list\\_snapshots",
+        "make\\_dir",
+        "next\\_items",
+        "pause",
+        "pause()",
+        "pid",
+        "pty",
+        "pull",
+        "push",
+        "read",
+        "remote\\_add",
+        "remote\\_get",
+        "remove",
+        "rename",
+        "reset",
+        "resize",
+        "restore",
+        "run",
+        "send\\_stdin",
+        "setTimeout()",
+        "set\\_config",
+        "set\\_timeout",
+        "status",
+        "stderr",
+        "stdout",
+        "stop",
+        "updateNetwork()",
+        "update\\_network",
+        "uploadUrl()",
+        "useSignatureExpiration?",
+        "user?",
+        "wait",
+        "watch\\_dir",
+        "write",
+        "write\\_files",
+        "~~betaPause()~~",
+        "~~getFullInfo()~~"
+      ]
+    },
+    {
+      "row": 70,
+      "category": "sdk",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sdk-reference-code-interpreter-js-sdk-v2-7-0-sandbox",
+        "e2b-sdk-reference-desktop-python-sdk-v2-4-2-desktop"
+      ],
+      "e2bFields": [
+        "Sandbox.create()"
+      ],
+      "previouslyIndexOnly": true,
+      "e2bFacts": [
+        "Context",
+        "CreateCodeContextOpts",
+        "Desktop",
+        "Interfaces",
+        "RunCodeLanguage",
+        "RunCodeOpts",
+        "Sandbox",
+        "Type Aliases",
+        "create",
+        "createCodeContext()",
+        "cwd?",
+        "double\\_click",
+        "drag",
+        "envs?",
+        "get\\_application\\_windows",
+        "get\\_current\\_window\\_id",
+        "get\\_cursor\\_position",
+        "get\\_screen\\_size",
+        "get\\_window\\_title",
+        "language?",
+        "launch",
+        "left\\_click",
+        "listCodeContexts()",
+        "middle\\_click",
+        "mouse\\_press",
+        "mouse\\_release",
+        "move\\_mouse",
+        "onError()?",
+        "onResult()?",
+        "onStderr()?",
+        "onStdout()?",
+        "open",
+        "press",
+        "removeCodeContext()",
+        "requestTimeoutMs?",
+        "restartCodeContext()",
+        "runCode()",
+        "screenshot",
+        "scroll",
+        "timeoutMs?",
+        "wait",
+        "write"
+      ]
+    },
+    {
+      "row": 71,
+      "category": "sdk",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sdk-reference-js-sdk-v2-38-2-errors"
+      ],
+      "e2bFields": [
+        "stackTrace"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bFacts": [
+        "AuthenticationError",
+        "BuildError",
+        "Errors",
+        "FileNotFoundError",
+        "FileUploadError",
+        "Functions",
+        "GitAuthError",
+        "GitUpstreamError",
+        "InvalidArgumentError",
+        "NotEnoughSpaceError",
+        "RateLimitError",
+        "SandboxError",
+        "SandboxNotFoundError",
+        "TemplateError",
+        "TimeoutError",
+        "VolumeError",
+        "formatSandboxTimeoutError()",
+        "~~NotFoundError~~"
+      ]
+    },
+    {
+      "row": 72,
+      "category": "sdk",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-sdk-reference-js-sdk-v2-38-2-sandbox",
+        "e2b-sdk-reference-python-sdk-v2-37-1-sandbox-async"
+      ],
+      "e2bFields": [
+        "Promise.allSettled",
+        "Sandbox.connect()",
+        "Sandbox.create()",
+        "Sandbox.fork()",
+        "commands.list()",
+        "commands.run()",
+        "ctx.rules",
+        "files.write()",
+        "github.com",
+        "httpx.ReadTimeout",
+        "keepMemory",
+        "logging.Logger",
+        "network.rules",
+        "nextToken",
+        "opts.keepMemory",
+        "paginator.hasNext",
+        "pull.rebase",
+        "query.state",
+        "sandbox.betaPause()",
+        "sandbox.commands.connect",
+        "sandbox.connect()",
+        "sandbox.createSnapshot()",
+        "sandbox.fork()",
+        "sandbox.getHost()",
+        "sandbox.isRunning()",
+        "sandbox.kill()",
+        "sandbox.pause()",
+        "sandboxDomain",
+        "sandboxId",
+        "snapshotId",
+        "timeoutMs"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "AsyncCommandHandle",
+        "AsyncSandbox",
+        "AsyncSandboxPaginator",
+        "AsyncSnapshotPaginator",
+        "AsyncWatchHandle",
+        "Commands",
+        "Filesystem",
+        "Git",
+        "Interfaces",
+        "Pty",
+        "Sandbox",
+        "Sandbox async",
+        "SandboxApi",
+        "SandboxUrlOpts",
+        "\\_\\_init\\_\\_",
+        "add",
+        "beta\\_pause",
+        "branches",
+        "checkout\\_branch",
+        "clone",
+        "close\\_stdin",
+        "commands",
+        "commit",
+        "configure\\_user",
+        "connect",
+        "connect()",
+        "create",
+        "create()",
+        "createSnapshot()",
+        "create\\_branch",
+        "create\\_snapshot",
+        "dangerously\\_authenticate",
+        "deleteSnapshot()",
+        "delete\\_branch",
+        "delete\\_snapshot",
+        "disconnect",
+        "downloadUrl()",
+        "error",
+        "exists",
+        "exit\\_code",
+        "files",
+        "fork",
+        "fork()",
+        "getHost()",
+        "getInfo()",
+        "getMcpToken()",
+        "getMcpUrl()",
+        "getMetrics()",
+        "get\\_config",
+        "get\\_info",
+        "get\\_mcp\\_token",
+        "get\\_metrics",
+        "git",
+        "init",
+        "isRunning()",
+        "is\\_running",
+        "kill",
+        "kill()",
+        "list",
+        "list()",
+        "listSnapshots()",
+        "list\\_snapshots",
+        "make\\_dir",
+        "next\\_items",
+        "pause",
+        "pause()",
+        "pid",
+        "pty",
+        "pull",
+        "push",
+        "read",
+        "remote\\_add",
+        "remote\\_get",
+        "remove",
+        "rename",
+        "reset",
+        "resize",
+        "restore",
+        "run",
+        "send\\_stdin",
+        "setTimeout()",
+        "set\\_config",
+        "set\\_timeout",
+        "status",
+        "stderr",
+        "stdout",
+        "stop",
+        "updateNetwork()",
+        "update\\_network",
+        "uploadUrl()",
+        "useSignatureExpiration?",
+        "user?",
+        "wait",
+        "watch\\_dir",
+        "write",
+        "write\\_files",
+        "~~betaPause()~~",
+        "~~getFullInfo()~~"
+      ]
+    },
+    {
+      "row": 73,
+      "category": "mcp-gateway",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-mcp-gateway",
+        "e2b-mcp-gateway-available-servers",
+        "e2b-mcp-gateway-custom-servers"
+      ],
+      "e2bFields": [
+        "Sandbox.create()",
+        "commands.run()",
+        "installCmd",
+        "runCmd",
+        "sbx.getMcpToken()",
+        "sbx.getMcpUrl()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b connect",
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "AWS CDK",
+        "AWS Core",
+        "AWS Diagram",
+        "AWS Documentation",
+        "AWS KB Retrieval (Archived)",
+        "AWS Terraform",
+        "Airbnb Search",
+        "Airtable",
+        "Api-gateway",
+        "Apify",
+        "ArXiv",
+        "Astra DB",
+        "Astro Docs",
+        "Atlan",
+        "Atlas Docs",
+        "Atlassian",
+        "Audiense Insights",
+        "Available servers",
+        "Azure",
+        "Azure Kubernetes Service (AKS)",
+        "Beagle security",
+        "Bitrefill",
+        "Blazing-fast, asynchronous for seamless filesystem operations.",
+        "Box",
+        "Brave Search",
+        "Browserbase",
+        "Buildkite",
+        "CData Connect Cloud",
+        "Camunda BPM process engine",
+        "CharmHealth",
+        "Chroma",
+        "CircleCI",
+        "Close",
+        "Cloud Run MCP",
+        "Cloudflare Docs",
+        "CockroachDB",
+        "Configuration",
+        "Context7",
+        "Couchbase",
+        "Custom servers",
+        "Dappier",
+        "Dappier Remote",
+        "Dart AI",
+        "Databutton",
+        "DeepWiki",
+        "Descope",
+        "Desktop Commander",
+        "DevHub CMS",
+        "Discord",
+        "Docker Hub",
+        "Documentation",
+        "Dodo Payments",
+        "DreamFactory",
+        "DuckDuckGo",
+        "Dynatrace",
+        "E2B",
+        "EduBase",
+        "Effect MCP",
+        "Elasticsearch",
+        "Elevenlabs MCP",
+        "EverArt (Archived)",
+        "Exa",
+        "ExecuteAutomation Playwright MCP",
+        "Explorium B2B Data",
+        "Fetch (Reference)",
+        "Fibery",
+        "Filesystem (Reference)",
+        "Find-A-Domain",
+        "Firecrawl",
+        "Firewalla",
+        "FlexPrice",
+        "Git (Reference)",
+        "GitHub (Archived)",
+        "GitHub Chat",
+        "GitHub Official",
+        "GitLab (Archived)",
+        "GitMCP",
+        "Gmail",
+        "Google Maps (Archived)",
+        "Google Maps Comprehensive MCP",
+        "Grafana",
+        "Gyazo",
+        "Hackernews mcp",
+        "Hackle",
+        "Handwriting OCR",
+        "Hashicorp Terraform",
+        "Heroku",
+        "Hostinger API",
+        "Hoverfly",
+        "How it works",
+        "HubSpot",
+        "Hugging Face",
+        "Humanitarian Data Exchange",
+        "Hummingbot MCP: Trading Agent",
+        "Husqvarna Automower",
+        "Hyperbrowser",
+        "Hyperspell",
+        "Iaptic",
+        "Inspektor Gadget",
+        "Javadocs",
+        "JetBrains",
+        "Kafka Schema Registry MCP",
+        "Kagi search",
+        "Keboola",
+        "Kong Konnect",
+        "Kubectl",
+        "Kubernetes",
+        "LINE",
+        "LLM Text",
+        "Lara Translate",
+        "LinkedIn",
+        "MCP Database Server",
+        "Maestro",
+        "Manifold",
+        "Mapbox",
+        "Mapbox Developer",
+        "Markdownify",
+        "Markitdown",
+        "Maven Tools",
+        "Mcp reddit",
+        "Memory (Reference)",
+        "Mercado Libre",
+        "Mercado Pago",
+        "Metabase MCP",
+        "Minecraft Wiki",
+        "MongoDB",
+        "MultiversX",
+        "NPM Sentinel",
+        "Nasdaq Data Link",
+        "Needle",
+        "Neo4j Cloud Aura Api",
+        "Neo4j Cypher",
+        "Neo4j Data Modeling",
+        "Neo4j Memory",
+        "Neon",
+        "Node.js Sandbox",
+        "Notion",
+        "Novita",
+        "ONLYOFFICE DocSpace",
+        "OSP Marketing Tools",
+        "Obsidian",
+        "Official ClickHouse",
+        "Okta",
+        "OpenAPI Schema",
+        "OpenAPI Toolkit for MCP",
+        "OpenMesh",
+        "OpenZeppelin Cairo Contracts",
+        "OpenZeppelin Solidity Contracts",
+        "OpenZeppelin Stellar Contracts",
+        "OpenZeppelin Stylus Contracts",
+        "Openweather",
+        "Opik",
+        "Opine",
+        "Oracle Database",
+        "Overview",
+        "Oxylabs",
+        "Paper Search",
+        "Perplexity",
+        "Pinecone Assistant",
+        "Plugged.in MCP Proxy",
+        "Polar Signals",
+        "PomoDash",
+        "PostgreSQL readonly (Archived)",
+        "Postman",
+        "Pref Editor",
+        "Program Integrity Alliance",
+        "Prometheus",
+        "Puppeteer (Archived)",
+        "Python Interpreter",
+        "Python Refactoring Assistant",
+        "QuantConnect",
+        "RISKEN",
+        "Ramparts MCP Security Scanner",
+        "Razorpay",
+        "Redis",
+        "Redis Cloud",
+        "Ref - up-to-date docs",
+        "Remote MCP",
+        "Render",
+        "Root.io Vulnerability Remediation MCP",
+        "Rube",
+        "SQLite (Archived)",
+        "SchemaCrawler AI",
+        "Schogini MCP Image Border",
+        "ScrapeGraph",
+        "Scrapezy",
+        "Securenote.link",
+        "Semgrep",
+        "Send emails",
+        "Sentry (Archived)",
+        "Sequa.AI",
+        "Sequential Thinking (Reference)",
+        "Shodan",
+        "Short.io",
+        "SimpleCheckList",
+        "Singlestore",
+        "Slack (Archived)",
+        "SmartBear",
+        "SonarQube",
+        "StackGen",
+        "StackHawk",
+        "Stripe",
+        "Supadata",
+        "Suzieq MCP",
+        "Task orchestrator",
+        "Tavily",
+        "Teamwork",
+        "Telnyx",
+        "Tembo",
+        "Text-to-GraphQL",
+        "The official for Cylera.",
+        "Tigris Data",
+        "Time (Reference)",
+        "Triplewhale",
+        "Troubleshooting",
+        "Unreal Engine",
+        "Using a custom MCP server",
+        "VeyraX",
+        "Vizro",
+        "Vuln nist",
+        "Wayfound MCP",
+        "Webflow",
+        "Wikipedia",
+        "WiseVision ROS2",
+        "WolframAlpha",
+        "YouTube transcripts",
+        "Zerodha Kite Connect",
+        "ast-grep",
+        "glif.app",
+        "omi-mcp"
+      ]
+    },
+    {
+      "row": 74,
+      "category": "platform-and-deployment",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-byoc"
+      ],
+      "e2bFields": [],
+      "previouslyIndexOnly": false,
+      "e2bFacts": [
+        "Architecture",
+        "BYOC (Bring Your Own Cloud)",
+        "BYOC cluster components",
+        "BYOC is not self-hosting",
+        "FAQ",
+        "Glossary",
+        "Onboarding"
+      ]
+    },
+    {
+      "row": 75,
+      "category": "platform-and-deployment",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-faq-eu-region"
+      ],
+      "e2bFields": [],
+      "previouslyIndexOnly": false,
+      "e2bFacts": [
+        "Can I run sandboxes in the EU?"
+      ]
+    },
+    {
+      "row": 76,
+      "category": "platform-and-deployment",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-billing",
+        "e2b-faq-build-limits",
+        "e2b-faq-increase-concurrency"
+      ],
+      "e2bFields": [
+        "Template.build()",
+        "cpuCount",
+        "fromImage",
+        "fromTemplate",
+        "memoryMB",
+        "runCmd",
+        "sbx.kill()",
+        "sbx.pause()",
+        "waitForPort"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Billing & limits",
+        "Build timeouts",
+        "Compute costs",
+        "Customizing compute resources",
+        "FAQ",
+        "How do I increase my concurrency limit?",
+        "Limits tied to your plan",
+        "Monitoring usage",
+        "Plans",
+        "Usage-based pricing",
+        "What each failure looks like",
+        "What is not limited",
+        "What limits apply to my template builds?"
+      ]
+    },
+    {
+      "row": 77,
+      "category": "platform-and-deployment",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-faq-security-and-compliance"
+      ],
+      "e2bFields": [],
+      "previouslyIndexOnly": false,
+      "e2bFacts": [
+        "How sandboxes are isolated",
+        "Is E2B SOC 2 compliant?",
+        "Things the Trust Center does not cover",
+        "What the Trust Center serves",
+        "Where sandboxes run"
+      ]
+    },
+    {
+      "row": 78,
+      "category": "agent-framework-integration",
+      "baselineStatus": "verified-fields",
+      "sourceIds": [
+        "e2b-agents-claude-code"
+      ],
+      "e2bFields": [
+        "CLAUDE.md",
+        "Sandbox.create()",
+        "Template.build()",
+        "allowInternetAccess",
+        "commands.run()",
+        "files.write()",
+        "git.clone()",
+        "sandbox.getMcpToken()",
+        "sandbox.getMcpUrl()",
+        "sandbox.kill()"
+      ],
+      "previouslyIndexOnly": false,
+      "e2bClis": [
+        "e2b import"
+      ],
+      "e2bFacts": [
+        "Build a custom template",
+        "CLI",
+        "Claude Code",
+        "Connect MCP tools",
+        "Custom system prompt",
+        "Example: work on a cloned repository",
+        "Related guides",
+        "Resume a session",
+        "Run headless",
+        "Streaming output",
+        "Structured output"
+      ]
+    }
+  ],
+  "testInventory": {
+    "suiteGlob": "tests/contract/*.test.mjs",
+    "files": 40,
+    "tests": 515,
+    "auditSuites": [
+      {
+        "file": "tests/contract/e2b-parity-matrix-tool.contract.test.mjs",
+        "tests": 50
+      },
+      {
+        "file": "tests/contract/sandbox-e2b-field-parity-tool.contract.test.mjs",
+        "tests": 29
+      }
+    ],
+    "rustWorkspace": {
+      "command": "cargo test --workspace",
+      "passed": 67,
+      "failed": 0,
+      "ignored": 1,
+      "measuredAt": "2026-09-22T10:01:21Z",
+      "note": "The Rust side cannot be recomputed from source the way the contract suite can: the number only exists after a build and a run, so this is a measurement recorded next to the command that produced it, in the same sense as the source sha256 values. `cargo test --workspace` was run twice while writing this record and reported 67 passed / 0 failed / 1 ignored both times; the ignored test is the one that declares it needs an external PostgreSQL."
+    },
+    "note": "The contract suite's declared size, recomputed from the files. The audit document quotes these numbers in its test-coverage section, so a stale reading there is a documentation falsehood: this record fails the gate when either side moves without the other. `rustWorkspace` is a measurement, not a recomputation, and is compared against the document rather than the source."
+  }
+}

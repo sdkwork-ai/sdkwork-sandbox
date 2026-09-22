@@ -22,8 +22,9 @@ Specs: `REQUIREMENTS_SPEC.md`, `DOCUMENTATION_SPEC.md`, `QUALITY_GATE_SPEC.md`, 
 | 索引快照 | `https://docs.e2b.dev/llms.txt`（全站页面索引，2026-09-22 抓取） |
 | 索引覆盖 | 约 260 个页面路径，含 sandbox / template / filesystem / volumes / network / secrets / iam / commands / cli / sdk-reference / code-interpreting / mcp-gateway / agents / api-reference / byoc / faq |
 | 引用 SDK 版本 | JS/TS `v2.38.2`、Python `v2.37.1`、Code Interpreter JS `v2.7.0` / Python `v2.9.0`、Desktop JS `v2.3.1` / Python `v2.4.2`、CLI `v2.16.1` |
-| 字段级抓取深度 | 索引全量 + 8 个子页：`sandbox`、`sandbox/persistence`、`sandbox/snapshots`、`template/quickstart`、`filesystem/read-write`、`commands`、`network/internet-access`、`sandbox/metrics` |
-| 基准完整性 | **不全**。`volumes`、`secrets`、`iam/workload-identity`、`sandbox/pty`、`sandbox/fork`、`sandbox/connect`、`code-interpreting/*`、`mcp-gateway/*`、`cli/*`、`byoc` 等约 250 页未逐页抓取。这些分类的行只按索引标题口径判定，字段名未逐字核对，一律标注 `基准仅索引`。 |
+| 字段级抓取深度 | 索引全量 + 99 个文档页 + 公开 OpenAPI 文档（`openapi-public.yaml`，57 paths / 71 operations）。最初只抓 8 个子页（`sandbox`、`sandbox/persistence`、`sandbox/snapshots`、`template/quickstart`、`filesystem/read-write`、`commands`、`network/internet-access`、`sandbox/metrics`）——那是最初的抽样，不是当前深度 |
+| 基准完整性 | **全量逐页取证**。78 行由 `specs/sandbox-e2b-capability-baseline.json` 承载：101 个来源（openapi 1 · 索引 1 · 文档页 99）各自记录 url、抓取时间、字节数与 sha256；逐行给出 operationId 与 schema 字段名、SDK 方法名、CLI 命令式或页面小节标题。字段名不再只按索引标题口径判定。快照时间 `2026-09-22T09:36:31Z`；重抓命令见该清单的 `recaptureCommand`。 |
+| 操作面覆盖 | 71 个 operation 中 **70 个**被某条矩阵行以 operationId 引用，仅 **1 个**（`getHealth`，控制面存活探针）登记为"本审计未枚举"并给出理由。逐操作记账在该清单的 `operationCoverage`，**双向互斥**：既未引用也未登记 = 红，既引用又登记为未判定 = 也红。见第 4 节。 |
 
 ### 0.2 四级状态口径
 
@@ -47,12 +48,12 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | 路径 | E2B 的形态 | 本仓现状 |
 | --- | --- | --- |
 | 快速创建 | `Sandbox.create()` 一次调用返回一个可执行命令的 Linux VM；配合 Template 的 start command，沙箱创建时进程**已在运行**，首命令零等待 | 无 HTTP/RPC 入口、无 CLI、无真实 Provider。`SandboxSessionLifecyclePort` 只是领域服务方法，调用方无处可调 |
-| 快速部署环境 | `Template.build()` 预构建镜像 + 构建缓存 + `fromTemplate()` 层复用 + tags 版本化；模板即部署单元 | `Template` 在本仓**零承载**——无 `REQ-*`、无 `ADR`、无契约、无组件、无缓存。这是"快速部署"的全部基础设施 |
+| 快速部署环境 | `Template.build()` 预构建镜像 + 构建缓存 + `fromTemplate()` 层复用 + tags 版本化；模板即部署单元 | `Template` 在本仓**零承载**——无 `REQ-*`、无 `ADR`、无契约、无组件、无缓存。这是"快速部署"的全部基础设施〔§3.4/1〕 |
 
 具体到三个数字：
 
 - E2B 的能力集合共 **78 项**（本分片逐行展开），本仓 ✅ **0**、🟡 **16**、❌ **60**、⛔ **2**。
-- 27 份 `REQ-*` 中 **0 份 `ready`**（5 `accepted` / 22 `draft`）；27 份 `ADR` **全部 `proposed`**；16 份机器契约 **全部 `implementationAuthorized: false`**。
+- 27 份 `REQ-*` 中 **0 份 `ready`**（5 `accepted` / 22 `draft`）；27 份 `ADR` **全部 `proposed`**；机器契约里**没有任何一份**授权实现：23 份 `*.contract.json` 中 22 份显式声明 `implementationAuthorized: false`，第 23 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约（`apis/commands/sandbox-command-contract.json`、`apis/async/sandbox-observability-catalog.json`）同为 `false`。
 - 8 份契约声明的 **127 个证据 id** 中，只有 **2 个**有 host-precondition 半产出，**125 个**仍被真实 runner 或人工评审完全阻塞。
 
 因此本仓对用户画像的承诺（`PRD.md` 第 2 节"AI Agent 应用开发者：用少量代码获得一个可执行代码、可读写文件、可访问网络、可持久化的独立运行环境"）**当前为零兑现**。
@@ -98,22 +99,22 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 
 ## 2. 逐项对照
 
-`基准仅索引` 表示该行只依据 `llms.txt` 的页面标题口径判定，未逐字核对字段名。
+每行的 `基准已取证 …` 引用指向 `specs/sandbox-e2b-capability-baseline.json` 的同一行号，那里给出该行 E2B 侧取自哪个来源、抽取到哪些标识符。`基准仅索引` 是**已退役的标记**：它曾表示该行只依据 `llms.txt` 的页面标题口径判定、未逐字核对字段名。全部分类现已逐页取证，该标记不得在本分节中再出现。
 
 ### 2.1 Sandbox 生命周期
 
 | # | E2B 能力 | 本仓对应 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
-| 1 | `Sandbox.create()`（template / `envs` / `metadata` / `timeoutMs` / `network` 参数） | `SandboxSessionLifecyclePort::create_sandbox_session`（`port.rs:10`）+ 4 张 PG 表 | 🟡 | 领域服务候选；无 Provider 实现、无入口。E2B 的 `metadata` 在本仓**无对应字段** |
+| 1 | `Sandbox.create()`（template / `envs` / `metadata` / `timeoutMs` / `network` 参数） | `SandboxSessionLifecyclePort::create_sandbox_session`（`port.rs:10`）+ 4 张 PG 表 | 🟡 | 领域服务候选；无 Provider 实现、无入口。E2B 的 `metadata` 在本仓**无对应字段**。基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 1 行（11 项，含 `GET /envs [getEnvVars]`） |
 | 2 | `Sandbox.connect()`（暂停自动恢复；TTL 只延长不缩短） | 无 | ❌ | — |
 | 3 | `setTimeout()` / `keepAlive`（运行中改 TTL） | 无 | ❌ | 本仓只有 **Lease** 过期时间（`repository.rs:57`），语义是生命周期控制权租约，不是沙箱 TTL，别混为一谈 |
 | 4 | `getInfo()`（`templateId`/`name`/`metadata`/`startedAt`/`endAt`） | 无 | ❌ | `get_sandbox_session` 只返回领域聚合，无查询 API，无 metadata |
 | 5 | `kill()` | `destroy_sandbox_session` → `Destroyed` 终态 | 🟡 | 领域候选；无入口 |
 | 6 | `Sandbox.list()`（`state`/filter + paginator） | 无 | ❌ | — |
 | 7 | Lifecycle events API（事件流） | `apis/async/sandbox-events.asyncapi.json` + `sandbox-event-catalog.json` 契约 | 🟡 | 仅契约，无 runtime exporter/worker |
-| 8 | Lifecycle webhooks | 无 | ❌ | 基准仅索引 |
-| 9 | Auto-resume on request | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 9 节；无 `REQ-*` |
-| 10 | SSH access（WebSocket 代理） | 无 | ❌ | 基准仅索引 |
+| 8 | Lifecycle webhooks | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 8 行（18 项） |
+| 9 | Auto-resume on request | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 9 节；无 `REQ-*`〔§3.4/5〕 |
+| 10 | SSH access（WebSocket 代理） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 10 行（6 项） |
 | 11 | Secured access / 访问令牌门控 | 无 | ❌ | 本仓有 `SandboxFencingToken`，对象是控制权竞争而非访问面，形态不同 |
 
 ### 2.2 持久化（Pause / Resume）
@@ -136,7 +137,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | 20 | `createSnapshot()`（含内存与文件系统；原沙箱短暂暂停后继续，ID 不变） | 无产品级能力 | ❌ | 仅有 Workspace Checkpoint 与 Firecracker Snapshot 的 Gate 0 候选（`REQ-2026-0021`、`REQ-2026-0008`） |
 | 21 | `Sandbox.create(snapshotId)`（从快照派生沙箱） | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 5 节 |
 | 22 | `listSnapshots()` / `deleteSnapshot()` | 无 | ❌ | — |
-| 23 | `fork`（一次调用在原地快照并派生 N 个沙箱） | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 6 节；无 `REQ-*`、无 `ADR`、一致性语义未定 |
+| 23 | `fork`（一次调用在原地快照并派生 N 个沙箱） | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 6 节；无 `REQ-*`、无 `ADR`、一致性语义未定〔§3.4/4〕 |
 | 24 | Snapshot 与原沙箱并行运行、一个快照派生多个 | 无 | ❌ | — |
 
 ### 2.4 Template
@@ -145,14 +146,14 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 
 | # | E2B 能力 | 本仓对应 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
-| 25 | 声明式 Template 定义（`Template().fromBaseImage()` / `fromTemplate()` / `copy()` / `setEnvs()` / `setStartCmd()`） | **无任何承载** | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 4 节；`REQ-*` 为零 |
-| 26 | `e2b template init` / `build` / `deploy` | 无 CLI | ❌ | `crates/sdkwork-sandbox-cli/src/main.rs:3` = `fn main() {}` |
+| 25 | 声明式 Template 定义（`Template().fromBaseImage()` / `fromTemplate()` / `copy()` / `setEnvs()` / `setStartCmd()`） | **无任何承载** | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 4 节；`REQ-*` 为零〔§3.4/1〕 |
+| 26 | `e2b template init` / `build` / `deploy` | 无 CLI | ❌ | `crates/sdkwork-sandbox-cli/src/main.rs:3` = `fn main() {}`。基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 26 行（15 项：Templates REST 建 / 查 / 改 / 删 + 构建流水线与构建产物） |
 | 27 | Start / Ready command（沙箱创建时长驻进程**已在运行**，首命令零等待） | 无 | ❌ | — |
-| 28 | 构建缓存与层级复用（`fromTemplate()` 复用已缓存基础层） | 无 | ❌ | PRD 第 4 节要求 Template 缓存 Hot/Warm/Cold + 淘汰策略；无 `REQ-*` |
-| 29 | Template tags / versioning / names | 无 | ❌ | — |
-| 30 | Base image / 私有 registry 接入 | 无 | ❌ | 基准仅索引 |
+| 28 | 构建缓存与层级复用（`fromTemplate()` 复用已缓存基础层） | 无 | ❌ | PRD 第 4 节要求 Template 缓存 Hot/Warm/Cold + 淘汰策略；无 `REQ-*`〔§3.4/2〕 |
+| 29 | Template tags / versioning / names | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 29 行（10 项：tags 端点 + `GET /templates/aliases/{alias} [getTemplatesAlias]`，alias 即版本化命名机制） |
+| 30 | Base image / 私有 registry 接入 | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 30 行（30 项） |
 | 31 | 构建限额（1 h / 8 vCPU / 8 GiB / 10 GiB / 20 并发） | 无 | ❌ | — |
-| 32 | 以 Dockerfile 或构建脚本作为**构建输入** | 无（产品要求已写） | 🟡 | [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 4 节已写"构建输入允许使用 Dockerfile 或构建脚本"；无 `REQ-*` |
+| 32 | 以 Dockerfile 或构建脚本作为**构建输入** | 无（产品要求已写） | 🟡 | [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 4 节已写"构建输入允许使用 Dockerfile 或构建脚本"；无 `REQ-*`〔§3.4/3〕 |
 | 33 | 以 Docker 作为运行时依赖或隔离边界 | 明确不做 | ⛔ | `PRD.md` 非目标原话："不把 Docker 作为运行时依赖或隔离边界；Docker 只允许作为 Template 的构建输入格式" |
 
 ### 2.5 Filesystem
@@ -162,10 +163,10 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 | 34 | `files.read()` 单文件读取 | 无 | ❌ | `REQ-2026-0007` 只有命令契约，无文件系统端口 |
 | 35 | `files.write()` / `writeFiles()` 批量写入 | 无 | ❌ | — |
 | 36 | `files.getInfo()` / stat / 存在性 | 无 | ❌ | — |
-| 37 | 文件自定义 metadata（上传时 `X-Metadata-<key>` → xattr） | 无 | ❌ | 基准仅索引 |
-| 38 | `files.watch()` / `WatchDir` 变更流 | 无 | ❌ | 基准仅索引 |
-| 39 | upload / download（含目录、`X-Metadata-` 头） | 无 | ❌ | 基准仅索引 |
-| 40 | `listDir` / `makeDir` / `move` / `remove` | 无 | ❌ | 基准仅索引 |
+| 37 | 文件自定义 metadata（上传时 `X-Metadata-<key>` → xattr） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 37 行（22 项） |
+| 38 | `files.watch()` / `WatchDir` 变更流 | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 38 行（14 项） |
+| 39 | upload / download（含目录、`X-Metadata-` 头） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 39 行（22 项） |
+| 40 | `listDir` / `makeDir` / `move` / `remove` | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 40 行（4 项） |
 
 ### 2.6 Volumes
 
@@ -173,8 +174,8 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 | --- | --- | --- | --- | --- |
 | 41 | Volume 创建 / 列举 / 检视 / 销毁（独立于沙箱生命周期的持久存储） | `REQ-2026-0013` Workspace Block Device（draft） | 🟡 | 形态不同：本仓的字节权威在 Drive / 批准的 Volume Authority，语义权威在 `sdkwork-agents`，Sandbox 不拥有 Volume |
 | 42 | 创建沙箱时把 Volume 挂载到自定义路径 | `REQ-2026-0004` Agents Workspace Attachment（accepted） | 🟡 | 只有 Attachment 边界；无挂载参数面、无入口 |
-| 43 | Volume 内读写 / 上传 / 下载 | 无 | ❌ | 基准仅索引 |
-| 44 | Volume 间迁移（挂载两个 Volume + rsync） | 无 | ❌ | 基准仅索引 |
+| 43 | Volume 内读写 / 上传 / 下载 | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 43 行（25 项） |
+| 44 | Volume 间迁移（挂载两个 Volume + rsync） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 44 行（12 项） |
 
 ### 2.7 Commands 与 Process
 
@@ -183,8 +184,8 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 | 45 | `commands.run()`（`envs` / `cwd` / `user` / `timeoutMs`） | `apis/commands/sandbox-command-contract.json`（`implementationAuthorized: false`） | 🟡 | 仅契约：全仓无 `SandboxCommandExecutor`。契约的 `executionModes` 只有 `executable-argv`，`forbiddenExecutionModes` 显式禁止 `shell-string` |
 | 46 | 流式 stdout/stderr（`onStdout`/`onStderr`） | 无 | ❌ | — |
 | 47 | 后台进程（`background: true` + `commands.list` + `commands.kill`） | 无 | ❌ | — |
-| 48 | stdin 输入 / `CloseStdin` | 无 | ❌ | 基准仅索引 |
-| 49 | `SendSignal` / 进程 `Update` | 无 | ❌ | 基准仅索引 |
+| 48 | stdin 输入 / `CloseStdin` | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 48 行（3 项） |
+| 49 | `SendSignal` / 进程 `Update` | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 49 行（2 项） |
 
 ### 2.8 PTY
 
@@ -196,9 +197,9 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 
 | # | E2B 能力 | 本仓对应 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
-| 51 | `runCode()` / 代码上下文（`contexts`） | 无 | ❌ | 基准仅索引 |
-| 52 | 多语言执行（python / js / ts / r / java / bash） | 无 | ❌ | 基准仅索引 |
-| 53 | 图表与可视化预置库 | 无 | ❌ | 基准仅索引 |
+| 51 | `runCode()` / 代码上下文（`contexts`） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 51 行（11 项） |
+| 52 | 多语言执行（python / js / ts / r / java / bash） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 52 行（23 项） |
+| 53 | 图表与可视化预置库 | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 53 行（21 项） |
 
 ### 2.10 Network
 
@@ -206,28 +207,28 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 | --- | --- | --- | --- | --- |
 | 54 | 出网开/关（`allowInternetAccess`，默认开启） | `REQ-2026-0014` 的 `DenyAll` 门禁（draft） | 🟡 | 契约方向**相反**：本仓默认拒绝，E2B 默认允许。仅契约，无 network runtime |
 | 55 | allow / deny 列表（IP / CIDR / 域名 / 通配） | `specs/sandbox-firecracker-network-isolation.contract.json`（draft） | 🟡 | 仅契约 |
-| 56 | per-host rules / header 注入（`network.rules`，public beta） | 无 | ❌ | 基准仅索引 |
+| 56 | per-host rules / header 注入（`network.rules`，public beta） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 56 行（33 项） |
 | 57 | 运行中 `updateNetwork`（替换式，不合并） | 无 | ❌ | — |
-| 58 | 端口暴露（public URL / `getHost`） | 无 | ❌ | 产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 8 节；无 `REQ-*` |
-| 59 | 限制公开访问（`allowPublicTraffic` / `maskRequestHost` / `httpsPorts`） | 无 | ❌ | 基准仅索引 |
-| 60 | 自定义域名 | 无 | ❌ | 基准仅索引 |
-| 61 | 出网代理隧道 / BYOP SOCKS5 | 无 | ❌ | 基准仅索引 |
+| 58 | 端口暴露（public URL / `getHost`） | 无 | ❌ | 产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 8 节；无 `REQ-*`〔§3.4/6〕 |
+| 59 | 限制公开访问（`allowPublicTraffic` / `maskRequestHost` / `httpsPorts`） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 59 行（12 项） |
+| 60 | 自定义域名 | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 60 行（6 项） |
+| 61 | 出网代理隧道 / BYOP SOCKS5 | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 61 行（30 项） |
 
 ### 2.11 Secrets 与 IAM
 
 | # | E2B 能力 | 本仓对应 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
 | 62 | Secret 存储（create / update / delete / list / rotate；**无读值面**） | `REQ-2026-0025` value-free opaque grant（draft） | 🟡 | 仅契约，无 Secret Authority |
-| 63 | 出网代理注入 Secret（值不进沙箱） | 无 | ❌ | 基准仅索引 |
-| 64 | Workload identity（JWT-SVID 短期令牌） | 无 | ❌ | 基准仅索引 |
+| 63 | 出网代理注入 Secret（值不进沙箱） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 63 行（10 项） |
+| 64 | Workload identity（JWT-SVID 短期令牌） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 64 行（13 项） |
 
 ### 2.12 Metrics 与 Telemetry
 
 | # | E2B 能力 | 本仓对应 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
-| 65 | `getMetrics()`（`cpuUsedPct` / `cpuCount` / `memUsed` / `memTotal` / `diskUsed` / `diskTotal`，5 s 采样） | `apis/async/sandbox-observability-catalog.json`（32 个指标契约） | 🟡 | 仅契约，无 runtime。且该契约与 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 13 节的指标族名**三向不相交**（3 直接对应 / 3 部分对应 / 9 无对应），两个清单之间无门禁比对 |
-| 66 | Team 级 metrics | 无 | ❌ | 基准仅索引 |
-| 67 | OTel telemetry export | 无 | ❌ | 基准仅索引 |
+| 65 | `getMetrics()`（`cpuUsedPct` / `cpuCount` / `memUsed` / `memTotal` / `diskUsed` / `diskTotal`，5 s 采样） | `apis/async/sandbox-observability-catalog.json`（32 个指标契约） | 🟡 | 仅契约，无 runtime。且该契约与 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 13 节的指标族名**三向不相交**（3 直接对应 / 3 部分对应 / 9 无对应），两个清单之间无门禁比对。基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 65 行（6 项，含聚合端点 `GET /metrics [getMetrics]`） |
+| 66 | Team 级 metrics | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 66 行（3 项） |
+| 67 | OTel telemetry export | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 67 行（16 项） |
 
 ### 2.13 CLI
 
@@ -240,7 +241,7 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 | # | E2B 能力 | 本仓对应 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
 | 69 | 官方 JS/TS + Python SDK（同步/异步） | `sdks/` 目录 | ❌ | 只有 README，零生成产物；`apis/` 无权威 OpenAPI，`ROUTE_CRATE_COUNT: 0` |
-| 70 | Code Interpreter SDK / Desktop SDK | 无 | ❌ | 基准仅索引 |
+| 70 | Code Interpreter SDK / Desktop SDK | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 70 行（43 项） |
 | 71 | 分页器与错误类型族（`ServiceBusyError` 等） | 无 | ❌ | — |
 | 72 | 多语言同语义 SDK 的生成链 | `PRD.md` 目标已写 | ❌ | `PRD.md` 目标列出"Rust、TypeScript、Python 三语言同语义 SDK 消费面，由权威契约生成，不手写方言"；但 `apis/` 无权威 OpenAPI，`sdks/` 零生成产物 |
 
@@ -285,27 +286,30 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 cargo test --workspace
 ```
 
-`63 passed / 1 ignored`（1 ignored 是声明需要外部 PostgreSQL 的测试）。契约测试：
+`67 passed / 1 ignored`（另 0 failed；1 ignored 是声明需要外部 PostgreSQL 的测试）。契约测试：
 
 ```bash
 node --test tests/contract/*.test.mjs
 ```
 
-`406 pass / 0 fail`（含本轮新增的 22 个）。
+`515 pass / 0 fail`（其中 E2B 矩阵门禁 50 个、E2B 基准门禁 29 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而套件与工作区早已是 515 与 67——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
 
 ### 3.2 覆盖空档
 
 按"先高价值后低价值"的优先级：
 
-| 优先级 | 空档 | 说明 |
-| --- | --- | --- |
-| 1 | **已实现面没有任何消费点测试** | 5 个 SPI 测试全部落在谓词/构造器上。`allocate`/`start`/`stop`/`destroy` 的**真实 Provider 调用序列**没有任何实现可测——因为 Provider 不存在。这是本仓最深的空档 |
-| 2 | **PRD 状态机 ⊋ 实现状态机** | [PRD-capabilities.md](../../product/prd/PRD-capabilities.md) 第 3 节的规范状态机含 `Pausing / Paused / Recovering`，实现枚举（`model.rs:13`）没有这三个，且 PRD 该处**没有任何"未实现/目标态"标记**。REQ-2026-0002 的 scope 其实只管 create/start/stop/destroy，所以是 PRD 图缺标记，不是实现缺状态 |
-| 3 | **指标契约与指标族名不相交** | `apis/async/sandbox-observability-catalog.json`（32 指标）与 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 13 节（15 指标族）名字集完全不相交，9 个族无任何对应。且 PRD 的 `*_latency` 命名违反 `OBSERVABILITY_SPEC.md` 第 57 节"Duration 指标名必须含单位，通常 `_duration_seconds`"。**无门禁比对两份清单** |
-| 4 | **`PRD-capabilities.md` 第 11 节与 E2B 基准之间仍无门禁** | 本分片的 78 行已由 `tools/check-sandbox-e2b-parity-matrix.mjs` 自我校验（词表 / 编号 / 分类对应 / 普查算术 / 引用解析 / 登记），但第 11 节那 34 行到 E2B 的映射仍只存在于散文，会随基准演进而静默腐化 |
-| 5 | **"快速创建/快速部署"的性能断言全为零测试** | [TECH-performance-and-capacity.md](TECH-performance-and-capacity.md) 与 `PRD.md` 第 6 节的 500 ms 热分配、恢复时延、Template 缓存命中率等指标，既无参考硬件也无 Benchmark 套件（`REQ-*` 为零） |
+| 优先级 | 空档 | 性质 | 取证 | 说明 |
+| --- | --- | --- | --- | --- |
+| 1 | **已实现面没有任何消费点测试** | 治理阻塞 | `REQ-2026-0003` `REQ-2026-0008` | 5 个 SPI 测试全部落在谓词与构造器上，`allocate`/`start`/`stop`/`destroy` 的**真实 Provider 调用序列**没有任何实现可测——因为 Provider 不存在。两条能授权它的需求（安全本地 Provider、Firecracker Provider）都还是 `draft`，`AGENTS.md` 未放行，所以这不是"没写用例"而是"没有可写用例的实现"。本仓最深的空档 |
+| 2 | **PRD 状态机 ⊋ 实现状态机** | 缺门禁 | `docs/product/prd/PRD-capabilities.md` `crates/sdkwork-intelligence-sandbox-service/src/model.rs` | PRD 第 3 节的规范状态机含 `Pausing`/`Paused`/`Recovering`，实现枚举只有 8 态且无这三个，而 PRD 该处没有任何"未实现/目标态"标记。两份产物都在树里，只是**没有任何门禁把它们放在一起读**；补标记或补门禁都行，缺的是"有人读"这件事本身 |
+| 3 | **指标契约与指标族名不相交** | 缺门禁 | `apis/async/sandbox-observability-catalog.json` `docs/product/prd/PRD-sandbox-surfaces.md` | 前者的 32 个指标与后者第 13 节的 15 个指标族名字集完全不相交，9 个族无任何对应；且 PRD 的 `*_latency` 命名违反 `OBSERVABILITY_SPEC.md` 第 57 节"Duration 指标名必须含单位，通常 `_duration_seconds`"。两份清单都在树里，**无门禁比对** |
+| 4 | **`PRD-capabilities.md` 第 11 节与 E2B 基准之间仍无门禁** | 缺门禁 | `docs/product/prd/PRD-capabilities.md` `specs/sandbox-e2b-capability-baseline.json` | 本分片的 78 行已由 `tools/check-sandbox-e2b-parity-matrix.mjs` 自我校验（词表、编号与形状、分类对应、普查算术、引用解析、登记、空档），但第 11 节那 34 行到 E2B 的映射仍只存在于散文，会随基准演进而静默腐化 |
+| 5 | **PRD 第 8 节把"Benchmark 套件与容量基线"标为无需求承载，该结论已被推翻** | 缺门禁 | `docs/product/prd/PRD.md` `docs/product/requirements/REQ-2026-0019-sandbox-runtime-pool-and-fast-allocation.md` | PRD 第 8 节仍写着该行"无需求承载；无参考硬件定义"，而 `REQ-2026-0019`（runtime pool 与 fast allocation）已经存在，其 Goals 第 4 条正是"在公开参考环境和固定工作负载中证明 Pool Claim 到 Sandbox Running Ready 的 p50/p95/p99；产品目标为 p95 小于 500 ms"。散文里的"无需求"是一句会过期的断言，**没有门禁把 PRD 第 8 节的 `REQ-*` 断言与需求目录对账** |
+| 6 | **500 ms 热分配目标没有测量者，三份性能文档互不 join** | 治理阻塞 | `REQ-2026-0019` | 目标（`PRD.md` 第 6 节）说的是"公开参考环境中 Pool 到 Workspace 绑定 p95 小于 500 ms"；基线（`docs/architecture/tech/TECH-performance-baseline.md`）自述**发布门禁资格：不合格**，且其第 0.2 条明确"分子（编排）已测、分母（真实沙箱启动）不存在"，测的是编排地板；容量分片（`docs/architecture/tech/TECH-performance-and-capacity.md`）声明"全部数值都是工程目标"。三份文件各说各话、无人同时读它们。而 500 ms 对应的 Pool 路径由 `REQ-2026-0019` 承载且仍是 `draft`，所以**这里连可测的实现都还没有**，只能先作为阻塞登记 |
 
-**本轮没有新增实现用例**，因为没有获批的实现可测：16 份机器契约全部 `implementationAuthorized: false`，8 类未授权能力被 `PRD.md` 第 8 节明文列入"尚无任何 `REQ-*` 承载"。在实现授权到位前写"用例"只能写成断言契约文本，属于假门禁。
+**本表此前有一行是假的，这正是新增门禁的由来。** 原第 5 行写作「"快速创建/快速部署"的性能断言全为零测试」，性质一栏写着"既无参考硬件也无 Benchmark 套件，且该目标没有任何需求承载"——**这句有一半不成立**：`REQ-2026-0019` 承载的正是这个目标，`tools/bench-sandbox-lifecycle.mjs` 与两平台原始样本也都在树里（样本落在 gitignore 的 `target/` 下，是证据不是缓存）。一张"缺什么"的清单如果不可被目录列举推翻，它就会越写越旧。所以本节改成带性质的表，并由门禁按性质**反向核验**：`缺产物` 点名的路径必须**不存在**、`缺门禁` 点名的路径必须**存在**、`治理阻塞` 必须点名一份**记录在案且尚未 `ready`** 的需求——三者问的都是"这句话能不能被证伪"，不是措辞问题。
+
+**本轮没有新增实现用例**，因为没有获批的实现可测——机器契约里**没有任何一份**授权实现：23 份 `*.contract.json` 中 22 份显式声明 `implementationAuthorized: false`，第 23 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约（`apis/commands/sandbox-command-contract.json`、`apis/async/sandbox-observability-catalog.json`）同为 `false`；8 类未授权能力被 `PRD.md` 第 8 节明文列入"尚无需求承载"。在实现授权到位前写"用例"只能写成断言契约文本，属于假门禁。
 
 ### 3.3 本轮新增的门禁与用例（含变异结果）
 
@@ -313,8 +317,10 @@ node --test tests/contract/*.test.mjs
 
 | 新增物 | 内容 | 用例数 | 变异自证 |
 | --- | --- | --- | --- |
-| `tools/check-sandbox-e2b-parity-matrix.mjs` | 6 条规则族：词表 / 编号与形状 / 分类对应 / 普查算术 / 引用解析 / 登记 | — | 见下 |
-| `tests/contract/e2b-parity-matrix-tool.contract.test.mjs` | 22 个用例，每个规则族各有一条能变红的反面用例 | 22 | 22/22 pass |
+| `tools/check-sandbox-e2b-parity-matrix.mjs` | 8 条规则族：词表 / 编号与形状 / 状态 / 分类对应 / 普查算术 / 引用解析与登记 / 空档与取证 / 零需求断言登记 | — | 见下 |
+| `tests/contract/e2b-parity-matrix-tool.contract.test.mjs` | 50 个用例，每个规则族各有一条能变红的反面用例（空档族 12 条、零需求族 13 条） | 50 | 50/50 pass、逐族置空 8/8 转红 |
+| `tools/check-sandbox-e2b-field-parity.mjs` | 10 条规则族：基准形状 / 逐来源 provenance / 逐行证据 / 分类对齐 / 与文档逐行 join / `基准仅索引` 棘轮 / operation 覆盖记账 / 登记 / 测试清单 / 自描述计数 | — | 见下 |
+| `tests/contract/sandbox-e2b-field-parity-tool.contract.test.mjs` | 29 个用例，10 条规则族各有一条能变红的反面用例，另加对照组与解析器回归 | 29 | 29/29 pass |
 
 变异自证（2026-09-22 实测，落盘改后跑，跑完还原并核验）：
 
@@ -326,6 +332,40 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 **门禁自身踩到并修掉的静默漏洞**：合计行写作 `| **合计** | **78** | … |`，初版解析器用 `^\d+$` 判行，星号使其不被识别为合计行 ⇒ 全部合计断言被跳过，门禁把**重算值**当作**已核对值**打印。这正是本仓最在意的那类缺陷（"看着通过、实际什么都没查"），已改为先剥离 Markdown 强调再解析，并加"没有合计行即失败"与"计数非数字即报告而非静默丢弃"两条规则锁住。
 
+**矩阵门禁的逐族耦合自证**：契约套件里"每个规则族有一条反面用例"只证明用例存在，不证明**是这条规则**在报。于是再逐族把该族自己的判据做最小置空（`if (x) {` → `if (false) {`，或删掉 push 点），要求"转红的恰好是本族的反面用例"。8 / 8 全部成立：本族各翻 1–9 条、**异族 0 条**、套件总数全程 50 不变、跑完 `Buffer.compare` 逐字节还原。变异报告落盘在 `target/matrix-mutation-proof.json`（`target/` 被 gitignore，是证据不是缓存）。
+
+**这次置空顺手抓到一个真缺陷**：把"矩阵小节数与 census 分类数必须一一对应"这条判据置空后，越界读取 `census.categories[index]` 让门禁**抛 TypeError** 而不是报告——静态门禁在畸形输入上崩溃时，读起来像工具坏了而不是文档坏了。已补一层"取不到就跳过"的兜底，再复跑，转红集合重新变成"恰好本族"。
+
+**基准门禁的耦合自证**：把 `add(rule, message)` 这个唯一的收敛点按规则族逐个置空，要求契约套件**逐族转红**，跑完用内存字节快照还原并核验逐字节相等。10 / 10 全部转红、还原 `Buffer.compare` 相等——也就是说十条规则族都不是死代码，每一条都有用例在真读它。
+
+**基准门禁自己踩到并修掉的两个错**：
+
+1. **自描述解析器的贪婪**。它要读"本门禁有几条规则族"，初版用 `(\w+)\s+rule famil`，于是根 `README.md` 里的 "the gate then holds seven rule families" 被读成 `holds`，门禁反过来指责文档"声明了一个无法识别的计数"——解析器把自己的贪婪算在文档头上。改成以计数词本身做锚（`seven|eight|nine|ten|…`）后两个形态都能读对。
+2. **测试清单的口径**。第九条要求文档声明的用例数必须为真，但"真值"从哪来：契约数能打开 `tests/contract/*.test.mjs` 逐文件重算，Rust 读数不能——它只在构建并跑完之后存在。于是两者用两种口径：契约数**重算**，Rust 读数与产生它的命令一起**落盘**再比对，和来源 sha256 同一种诚实模型（抓取时刻的陈述，不是可离线复算的摘要）。
+3. **自描述计数的"第一处即答案"**。第十条要在四处措辞里读"本门禁有几条规则族"，初版取文件里的**第一处**匹配。本轮给 `tools/README.md` 与门禁视图加了矩阵门禁（七条）的段落，位置都在基准门禁段**之前**，于是同一个文件里出现了两个不同的规则族数，门禁立刻把七算到了自己头上并报"declares 7, implements 10"。这不是文档写错，是解析器把"本文件里第一个数字"当成了"本门禁的数字"：一个表面同时描述两条门禁时，计数必须**按提及本门禁的位置定界**（取最后一段点名本门禁的块及其后一块），而**本门禁自己的源码**不需要定界（它不会把自己的数记到别人头上），所以那一面显式 `own: true` 退出定界。这件事本身就是第十条的加强版教训：**声明与归属要一起长大**。
+
+### 3.4 零需求断言
+
+本文档有十几处断言某个能力"背后没有需求"。这类句子的宾语是**需求目录**，所以它和 §3.2 一样可以被目录推翻：§3.2 第 5 行就这么写错过一次。因此本文档**只在这一节里**断言"没有需求承载"，正文每一处这类句子都必须标明依据哪一行（`〔§3.4/N〕`）。
+
+| # | 主题 | 关键词 | 说明 |
+| --- | --- | --- | --- |
+| 1 | 声明式 Template 定义与构建（`fromTemplate()` / `fromBaseImage()` / `copy()` / `setEnvs()` / `setStartCmd()`） | `template` `fromtemplate` `frombaseimage` `setstartcmd` | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 4 节。矩阵第 3、25 行与 §4 P0 都断言它无需求承载 |
+| 2 | Template 构建缓存与层级复用（Hot/Warm/Cold + 淘汰策略） | `cache` `layer` | 矩阵第 28 行；产品要求同上第 4 节 |
+| 3 | 以 Dockerfile 或构建脚本作为构建输入 | `dockerfile` | 矩阵第 32 行；PRD 该节已写"构建输入允许使用 Dockerfile 或构建脚本" |
+| 4 | Snapshot / Fork（含 `Sandbox.create(snapshotId)`） | `snapshot` `fork` | 矩阵第 23 行与 §4 P1；Fork 一致性语义未定 |
+| 5 | Auto-resume / Auto-pause（Idle 收敛） | `resume` `pause` `autopause` `auto-pause` | 矩阵第 9 行；产品要求见 PRD 该文件第 9 节 |
+| 6 | 端口暴露（public URL / `getHost`） | `port` `public` `gethost` | 矩阵第 58 行；产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 8 节 |
+| 7 | MCP 执行面与 Skills | `mcp` `skill` | §4 P2；本仓只有传输级描述 |
+
+这张表由 `tools/check-sandbox-e2b-parity-matrix.mjs` 的**第 8 条规则族**核验，判据三条：
+
+1. **只能从这里断言**。正文里每处"无需求承载"的句子必须带 `〔§3.4/N〕` 引用，且**每一行至少被引用一次**——两向记账，与基准门禁对 71 个 operation 的做法一致。没有引用的引用与没有引用的行**都会转红**。
+2. **关键词对着需求记录反证**。每个关键词都会去比对**每一条需求记录**的 id、文件名 slug 与 title；一旦命中，该行转红并点出是哪份记录。反证即验证：若以 `allocation` 登记"性能基准无需求承载"，门禁会因 `REQ-2026-0019-sandbox-runtime-pool-and-fast-allocation` 转红——**上一轮那个假断言正是这种形态**。
+3. **口径只取 id / slug / title，不取正文**，这是刻意收窄的。实测各记录的正文提到这些词时说的都是别的事（进程 `suspended` spawn、密钥轮换的 `Pause/Resume`、流式响应的 `resume cursor`、`runtime recovery`），把它们当作"承载"会让整张表因为错误的原因变红。口径窄，所以它写在这里，而不是留给读者猜。
+
+反过来，这条规则**不**判断"该能力是否真的没人承载"——那需要读正文语义。它把一句不可证伪的散文变成一句对着目录可反证的陈述，并让新增的同类句子无处可藏。
+
 ## 4. 缺口清单
 
 每条标注改动性质：**纯增量**（新增能力，不动既有模型）或**设计级**（需要新的权属模型、共享类型变更或跨仓契约，成本差一个数量级）。
@@ -336,7 +376,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 | --- | --- | --- |
 | 零运行入口（无 HTTP/RPC、无 CLI、无 Service Host wiring） | 设计级 | `ROUTE_CRATE_COUNT: 0`、`fn main() {}`、service-host 5 行。需要 `REQ-2026-0023`（internal control plane）与 `REQ-2026-0009`（service host）进入 `ready` |
 | 零真实 Provider（Local 只有 fake host boundary） | 设计级 | `REQ-2026-0003` 的 5 条 Readiness Blocker 全是人工评审/接受 |
-| 无 Template（含定义、构建、缓存、tags、start command） | **设计级** | E2B 快速创建与快速部署的**全部**依赖它。本仓零 `REQ-*`；与 Firecracker 制品元组的权威边界未定（见 `PRD.md` 第 9 节待决问题） |
+| 无 Template（含定义、构建、缓存、tags、start command） | **设计级** | E2B 快速创建与快速部署的**全部**依赖它。本仓零 `REQ-*`〔§3.4/1〕；与 Firecracker 制品元组的权威边界未定（见 `PRD.md` 第 9 节待决问题） |
 | 无 Command / Terminal / Filesystem 执行面 | 设计级 | `REQ-2026-0007`、`REQ-2026-0024` 仅契约且显式禁止物化 |
 
 ### P1 — 阻塞"创建得快"
@@ -344,7 +384,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 | 缺口 | 性质 | 说明 |
 | --- | --- | --- |
 | 无 Runtime Pool（`PreparedSlot` / `WarmMicroVmSlot` / fenced Claim） | 设计级 | `REQ-2026-0019`（draft）。无 Pool 则每次都是冷启动，"快"无从谈起 |
-| 无 Snapshot / Fork（含 `Sandbox.create(snapshotId)`） | 设计级 | 产品要求已写，`REQ-*` 为零；Fork 一致性语义未定 |
+| 无 Snapshot / Fork（含 `Sandbox.create(snapshotId)`） | 设计级 | 产品要求已写，`REQ-*` 为零〔§3.4/4〕；Fork 一致性语义未定 |
 | 无 Pause / Resume（含 fs-only 与 reboot-on-resume） | 设计级 | Provider trait 无 `pause`/`resume`；实现状态枚举无 `Paused` |
 | 无 Auto Pause / Auto Resume（Idle 收敛） | 纯增量 | 依赖可观测事实组合，而非单一定时器 |
 | 无构建缓存与层复用（`fromTemplate` 等价物） | 设计级 | 需要 Template + 三级存储分层 + 对等缓存协调 |
@@ -357,7 +397,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 | 无 Secret 注入与 Workload Identity | 设计级 | `REQ-2026-0025` 仅契约；值通道与 process projection 未批准 |
 | 无 Metrics / OTel / 事件 runtime | 纯增量 | 契约已有，缺 exporter/worker/migration |
 | 无 SDK 家族（Rust / TS / Python 同语义） | 设计级 | `apis/` 无权威 OpenAPI；需先有 internal-api 契约 |
-| 无 MCP 执行面与 Skills | 设计级 | 仅传输级描述，无 `REQ-*` |
+| 无 MCP 执行面与 Skills | 设计级 | 仅传输级描述，无 `REQ-*`〔§3.4/7〕 |
 
 ### P3 — 平台与集成
 
@@ -367,13 +407,36 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 | 无 Code Interpreter / Desktop / Browser 能力面 | 设计级 | PRD 非目标明确 Browser 与 Computer Use 不在第一阶段 |
 | 无性能基准套件与参考硬件基线 | 纯增量 | 所有性能数字都是工程目标，无测量则不能写入 Release Evidence |
 
+### 操作面覆盖记账（70 / 71）
+
+本节此前只回答"已枚举的 78 项对齐得怎么样"，不回答"E2B 的操作面是否枚举完整"。`specs/sandbox-e2b-capability-baseline.json` 的 `operationCoverage` 现在**逐操作**记账：捕获到的 71 个 OpenAPI operation 中，**70 个被某条矩阵行以 operationId 引用**，仅 1 个例外。
+
+这个数字是**查出来的，不是假设的**。首轮测量报出 19 个"无行判定"，其中 18 个其实是**记账错误**——它们本就属于某条行判定的能力，只是没有作为证据挂上去：
+
+| 曾报未判定的 operation | 实际归属行 | 说明 |
+| --- | --- | --- |
+| Templates REST 建 / 查 / 改 / 删 + 构建流水线 + 构建产物（15 个） | **行 26**（`e2b template init` / `build` / `deploy`） | 该行判定的正是 Template 的创建与构建生命周期：`postTemplates*`、`getTemplate`、`listTemplates*`、`patchTemplate*`、`deleteTemplate`、`postTemplateBuild*`、`getTemplateBuildStatus`、`getTemplateBuildLogs`、`getTemplateFile` 是这条能力的 REST 面 |
+| `getTemplatesAlias` | **行 29**（Template tags / versioning / names） | alias 就是版本化命名机制，与 tags 同属一行 |
+| `getEnvVars` | **行 1**（`Sandbox.create()` / 环境变量） | 环境变量能力的读取端点 |
+| `getMetrics` | **行 65**（`getMetrics()`） | 该行已判 `listSandboxesMetrics` / `getSandboxMetrics`，聚合端点同属一族 |
+
+剩余 1 个**确实没有行判定**，已在案登记：
+
+| 未判定的 operation | 为什么没有行覆盖它 |
+| --- | --- |
+| `getHealth`（`GET /health`） | 控制面存活探针。E2B 并不把它作为沙箱能力对外承诺；本仓的对应面是 Service Host readiness（`REQ-2026-0009`），不在"沙箱能力行"的范围内 |
+
+⚠️ **另一个教训：抽取口径写窄，赤字会凭空翻倍。** 首轮还用 `[A-Za-z0-9_]+` 抽 operationId，而 `filesystem.Filesystem.Stat`、`process.Process.Start` 这类 id **含点**，被静默丢弃 ⇒ 一度报出 **36** 个未覆盖，真值 19。任何"覆盖率 / 缺口数"结论，必须**先对抽取规则做正反例自检再报数**。
+
+`node tools/check-sandbox-e2b-field-parity.mjs` 的第七条规则要求这 71 个 operation **恰好被计入一次**：要么被某条行的 `e2bFields` 以 `[operationId]` 引用，要么在上表带非空理由登记。**两个方向都红**：既未被引用也未被登记 = 红；既被引用又登记为未判定 = 红。将来补写行引用某 operationId 时，对应的 `unjudged` 条目必须删除，否则门禁立刻转红。
+
 ### 解锁路径（唯一路径，且是人工决策）
 
 本仓不是"有些功能没做完"，而是**治理门禁未打开**。四条硬门禁互相依赖：
 
 1. 27 份 `REQ-*` 中 0 份 `ready`（5 `accepted` / 22 `draft`）→ 需逐份人工评审进 `ready`。
 2. 27 份 `ADR` 全部 `proposed` → 需 `accepted`。
-3. 16 份机器契约全部 `implementationAuthorized: false` → 需人工评审签字后翻转。
+3. 机器契约全部未授权（23 份 `*.contract.json` + 2 份 `apis/` 机器契约，全部 `implementationAuthorized: false` 或独立声明 `runtimeImplementationAuthorizationGranted: false`）→ 需人工评审签字后翻转。
 4. 8 份契约声明的 127 个证据 id 中 125 个无产出者 → 需真实 runner 与人工评审闭合。
 
 当前签字积压（机器读数）：28 份评审记录中 22 份为 `pending-human-review`，其中 **14 份被机器契约点名门控**。完整清单与 5 步签字程序见 [human-review-signoff-backlog.md](../../engineering/human-review-signoff-backlog.md)。
@@ -401,6 +464,8 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 ## 6. 复核方式
 
 ```bash
+node tools/check-sandbox-e2b-parity-matrix.mjs
+node tools/check-sandbox-e2b-field-parity.mjs
 node tools/check-sandbox-requirement-traceability.mjs
 node tools/check-sandbox-evidence-traceability.mjs
 node tools/check-sandbox-human-review-signoff.mjs
@@ -408,5 +473,7 @@ node tools/check-sandbox-commercial-readiness.mjs
 cargo test --workspace
 node --test tests/contract/*.test.mjs
 ```
+
+`check-sandbox-e2b-parity-matrix.mjs` 证明本文档**内部自洽**（标记词汇、行号与形状、状态格、census 分区、`REQ-*`/`ADR-*` 可解析，以及第 3.2 节每条空档的性质与取证方向）；`check-sandbox-e2b-field-parity.mjs` 证明本文档**确实读过基准**（78 行逐行的 E2B 字段级证据、来源 provenance、与本文档逐行 join、`基准仅索引` 棘轮、71 个 operation 的覆盖记账，以及本文档自己声明的用例数——契约数逐文件重算、Rust 读数与命令一起落盘后比对）。前者全绿时后者仍可能红——那正是"census 加得起来、却全压在页面标题上"的形态。反过来，后者无法保证前者：基准全绿而第 3.2 节写过一句不存在的"零需求承载"，就是本轮实际发生的事。
 
 全局标准在 `../sdkwork-specs/` 下保持权威，本分片只引用不复制。

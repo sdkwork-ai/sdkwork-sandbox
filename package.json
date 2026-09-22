@@ -15,6 +15,7 @@
     "specs:port-bindings:check": "node ../sdkwork-specs/tools/check-component-port-bindings.mjs --root . --strict",
     "requirement:traceability:check": "node tools/check-sandbox-requirement-traceability.mjs",
     "parity:matrix:check": "node tools/check-sandbox-e2b-parity-matrix.mjs",
+    "parity:fields:check": "node tools/check-sandbox-e2b-field-parity.mjs",
     "gate0:readiness:check": "node tools/check-sandbox-commercial-readiness.mjs",
     "gate0:evidence:check": "node tools/check-sandbox-evidence-traceability.mjs",
     "gate0:signoff:check": "node tools/check-sandbox-human-review-signoff.mjs",
@@ -46,7 +47,7 @@
     "_sdkwork:verify": "pnpm run test",
     "stop": "pnpm exec sdkwork-app stop",
     "_sdkwork:build": "cargo build --workspace --release",
-    "_sdkwork:check": "pnpm run cargo:paths:check && pnpm run cargo:deps:check && pnpm run docs:integrity:check && pnpm run portability:paths:check && pnpm run portability:shell:check && pnpm run portability:platform:check && pnpm run component:contracts:check && pnpm run specs:port-bindings:check && pnpm run requirement:traceability:check && pnpm run parity:matrix:check && pnpm run rust:fmt:check && pnpm run db:validate && pnpm run db:contract:check && pnpm run api:assembly:validate && pnpm run gate0:evidence:check && pnpm run gate0:signoff:check && pnpm run gate0:readiness:check && cargo check --workspace"
+    "_sdkwork:check": "pnpm run cargo:paths:check && pnpm run cargo:deps:check && pnpm run docs:integrity:check && pnpm run portability:paths:check && pnpm run portability:shell:check && pnpm run portability:platform:check && pnpm run component:contracts:check && pnpm run specs:port-bindings:check && pnpm run requirement:traceability:check && pnpm run parity:matrix:check && pnpm run parity:fields:check && pnpm run rust:fmt:check && pnpm run db:validate && pnpm run db:contract:check && pnpm run api:assembly:validate && pnpm run gate0:evidence:check && pnpm run gate0:signoff:check && pnpm run gate0:readiness:check && cargo check --workspace"
   },
   "devDependencies": {
     "@sdkwork/app-topology": "workspace:*"
