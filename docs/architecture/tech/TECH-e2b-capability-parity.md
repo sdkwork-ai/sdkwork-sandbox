@@ -53,7 +53,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 具体到三个数字：
 
 - E2B 的能力集合共 **78 项**（本分片逐行展开），本仓 ✅ **0**、🟡 **16**、❌ **60**、⛔ **2**。
-- 28 份 `REQ-*` 中 **0 份 `ready`**（5 `accepted` / 23 `draft`）；28 份 `ADR` **全部 `proposed`**；机器契约里**没有任何一份**授权实现：23 份 `*.contract.json` 中 22 份显式声明 `implementationAuthorized: false`，第 23 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约（`apis/commands/sandbox-command-contract.json`、`apis/async/sandbox-observability-catalog.json`）同为 `false`。
+- 28 份 `REQ-*` 中 **3 份 `ready`**（5 `accepted` / 20 `draft`）；28 份 `ADR` 中 25 份 `proposed`（3 份 `accepted`）；机器契约授权状态：23 份 `*.contract.json` 中 21 份显式声明 `implementationAuthorized: false`、**1 份已授权实现**——`specs/sandbox-local-provider-host-boundary.contract.json`（其人审 packet 已于 2026-09-24 由仓库所有者全部评审角色签署），第 23 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约（`apis/commands/sandbox-command-contract.json`、`apis/async/sandbox-observability-catalog.json`）同为 `false`。
 - 8 份契约声明的 **127 个证据 id** 中，只有 **2 个**有 host-precondition 半产出，**125 个**仍被真实 runner 或人工评审完全阻塞。
 
 因此本仓对用户画像的承诺（`PRD.md` 第 2 节"AI Agent 应用开发者：用少量代码获得一个可执行代码、可读写文件、可访问网络、可持久化的独立运行环境"）**当前为零兑现**。
@@ -324,12 +324,11 @@ node --test tests/contract/*.test.mjs
 
 | 优先级 | 空档 | 性质 | 取证 | 说明 |
 | --- | --- | --- | --- | --- |
-| 1 | **已实现面没有任何消费点测试** | 治理阻塞 | `REQ-2026-0003` `REQ-2026-0008` | 7 个 SPI 测试全部落在谓词与构造器上，`allocate`/`start`/`stop`/`destroy` 的**真实 Provider 调用序列**没有任何实现可测——因为 Provider 不存在。两条能授权它的需求（安全本地 Provider、Firecracker Provider）都还是 `draft`，`AGENTS.md` 未放行，所以这不是"没写用例"而是"没有可写用例的实现"。本仓最深的空档 |
-| 2 | **500 ms 热分配目标没有测量者，三份性能文档互不 join** | 治理阻塞 | `REQ-2026-0019` | 目标（`PRD.md` 第 6 节）说的是"公开参考环境中 Pool 到 Workspace 绑定 p95 小于 500 ms"；基线（`docs/architecture/tech/TECH-performance-baseline.md`）自述**发布门禁资格：不合格**，且其第 0.2 条明确"分子（编排）已测、分母（真实沙箱启动）不存在"，测的是编排地板；容量分片（`docs/architecture/tech/TECH-performance-and-capacity.md`）声明"全部数值都是工程目标"。三份文件各说各话、无人同时读它们。而 500 ms 对应的 Pool 路径由 `REQ-2026-0019` 承载且仍是 `draft`，所以**这里连可测的实现都还没有**，只能先作为阻塞登记 |
+| 1 | **500 ms 热分配目标没有测量者，三份性能文档互不 join** | 治理阻塞 | `REQ-2026-0019` | 目标（`PRD.md` 第 6 节）说的是"公开参考环境中 Pool 到 Workspace 绑定 p95 小于 500 ms"；基线（`docs/architecture/tech/TECH-performance-baseline.md`）自述**发布门禁资格：不合格**，且其第 0.2 条明确"分子（编排）已测、分母（真实沙箱启动）不存在"，测的是编排地板；容量分片（`docs/architecture/tech/TECH-performance-and-capacity.md`）声明"全部数值都是工程目标"。三份文件各说各话、无人同时读它们。而 500 ms 对应的 Pool 路径由 `REQ-2026-0019` 承载且仍是 `draft`，所以**这里连可测的实现都还没有**，只能先作为阻塞登记 |
 
 **本表此前有一行是假的，这正是新增门禁的由来。** 原第 5 行写作「"快速创建/快速部署"的性能断言全为零测试」，性质一栏写着"既无参考硬件也无 Benchmark 套件，且该目标没有任何需求承载"——**这句有一半不成立**：`REQ-2026-0019` 承载的正是这个目标，`tools/bench-sandbox-lifecycle.mjs` 与两平台原始样本也都在树里（样本落在 gitignore 的 `target/` 下，是证据不是缓存）。一张"缺什么"的清单如果不可被目录列举推翻，它就会越写越旧。所以本节改成带性质的表，并由门禁按性质**反向核验**：`缺产物` 点名的路径必须**不存在**、`缺门禁` 点名的路径必须**存在**、`治理阻塞` 必须点名一份**记录在案且尚未 `ready`** 的需求——三者问的都是"这句话能不能被证伪"，不是措辞问题。
 
-**五个空档已于本轮闭合并从本表移除**，各自的门禁落点：
+**六个空档已于本轮闭合并从本表移除**，各自的门禁落点：
 
 | 已闭合空档 | 门禁落点 | 闭合方式 |
 | --- | --- | --- |
@@ -338,10 +337,11 @@ node --test tests/contract/*.test.mjs
 | `PRD-capabilities.md` 第 11 节与 E2B 基准之间无门禁 | `tools/check-sandbox-e2b-field-parity.mjs` 第 8 条规则族（capability-matrix-join） | 基准 JSON 逐行携带 `capabilityMatrixRows`，78 行与 34 行双向记账（57 映射 / 21 登记无产品行；25 被判定 / 9 登记无基线行），审计文档自己的 34/78 标题句被解析比对 |
 | §5「我们比 E2B 强的地方」的 9 行优势断言没有门禁 | `tools/check-sandbox-e2b-parity-matrix.mjs` 第 11 条规则族（形状取证扩至 §5） | 每行证据格必须含至少一个**可反证**引用（仓库路径 / Rust 文件 / `REQ-*`/`ADR-*` 记录 / 在 crates 或 database 树中出现的裸标识符）；裸 Rust 文件名拒绝（改名即孤儿）；行锚必须在界内且**该行引用的其他物证至少一项在锚点窗口内可见**（与 §1.2 同一配对法）。上线首跑抓到 5 处真缺陷：两处行锚已漂移（`identity.rs:88`→实为 :97、`model.rs:24`→实为 :276）、两个裸文件名、一行证据格只有文档链接没有可反证 token，均已按真值改写 |
 | PRD 第 8 节等跨文档「无需求承载」断言只有计数、没有逐条归属 | `tools/check-sandbox-e2b-parity-matrix.mjs` 第 8 条规则族（§3.5 归属账） | 句型清单拓宽收编 `无独立 REQ-*`（普查 15→19 行、新增第 5 个文档），归属账把 19 行断言逐条判到封闭词表（口径句 / 确认无承载 / 已证伪见更正账）；门禁按文档核对归属行数与普查声明数相等、候选记录可解析、且每对（关键词，候选）词法不命中——新增需求记录一旦拥有某行关键词即转红，语义判定因此被账本化而不是散文化 |
+| 已实现面没有任何消费点测试（真实 Provider 调用序列） | `REQ-2026-0003`/`0007`/`0008` 的实现授权（2026-09-24 人审签署）+ `specs/sandbox-local-provider-host-boundary.contract.json` 翻转 | 阻塞解除：三条需求进入 `ready`、两条 ADR 进入 `accepted`、Host Boundary 契约授权实现。剩余部分不再是审计空档而是交付工作本身，由 roadmap 交付顺序与 `sandbox-provider-delivery-gates.contract.json`（其余 packet 签署后翻转）接管 |
 
 **本表此前有一行是假的，这正是新增门禁的由来。** 原第 5 行写作「"快速创建/快速部署"的性能断言全为零测试」，性质一栏写着"既无参考硬件也无 Benchmark 套件，且该目标没有任何需求承载"——**这句有一半不成立**：`REQ-2026-0019` 承载的正是这个目标，`tools/bench-sandbox-lifecycle.mjs` 与两平台原始样本也都在树里（样本落在 gitignore 的 `target/` 下，是证据不是缓存）。一张"缺什么"的清单如果不可被目录列举推翻，它就会越写越旧。所以本节改成带性质的表，并由门禁按性质**反向核验**：`缺产物` 点名的路径必须**不存在**、`缺门禁` 点名的路径必须**存在**、`治理阻塞` 必须点名一份**记录在案且尚未 `ready`** 的需求——三者问的都是"这句话能不能被证伪"，不是措辞问题。
 
-**本轮没有新增实现用例**，因为没有获批的实现可测——机器契约里**没有任何一份**授权实现：23 份 `*.contract.json` 中 22 份显式声明 `implementationAuthorized: false`，第 23 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约（`apis/commands/sandbox-command-contract.json`、`apis/async/sandbox-observability-catalog.json`）同为 `false`；8 类未授权能力被 `PRD.md` 第 8 节明文列入"尚无需求承载"。在实现授权到位前写"用例"只能写成断言契约文本，属于假门禁。
+**本轮没有新增实现用例**，因为没有获批的实现可测——2026-09-24 起授权状态开始翻转：机器契约里 `specs/sandbox-local-provider-host-boundary.contract.json` 已授权实现（对应 packet 已签署），其余 23 份 `*.contract.json` 中 21 份显式声明 `implementationAuthorized: false`，第 23 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约（`apis/commands/sandbox-command-contract.json`、`apis/async/sandbox-observability-catalog.json`）同为 `false`；8 类未授权能力被 `PRD.md` 第 8 节明文列入"尚无需求承载"。在实现授权到位前写"用例"只能写成断言契约文本，属于假门禁。
 
 ### 3.3 本轮新增的门禁与用例（含变异结果）
 
@@ -403,7 +403,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 **第十二条规则族：结论数字（§1.1 的每一个数字都变成可比对的断言）。** §1.1 标题是「直接回答」，是整份审计里**被评审引用得最多**的一段——它说的就是"能力集到底对齐没有"。这一段里的每个数字都是**别处某个数字的副本**：下一节的普查表、需求记录、决策记录、每份机器契约上的授权字段、证据注册表。此前没有任何东西把副本与原值放在一起，而这一段还会**自我重复**：那段"23 份 `*.contract.json` 中 22 份未授权"的话在 §1.1 与 §3.2 各出现一次，一处过期就会被引用两次。现在读的是**全文档的每一处**出现（不只是第一处），且 §1.1 赖以成立的五个数字必须出现在本节——数字悄悄消失留下的是一段"读起来仍像答案、其实什么都没断言"的文字。
 
 - **普查数字比对的是矩阵行本身**，不是 §1.3 的普查表：两个副本一起写错同一个数照样转红，拿副本比副本只能证明两个副本彼此一致。契约测试里就有这条：把 §1.3 合计行与 §1.1 同时改成 4，门禁仍报"矩阵里是 3"。
-- **需求与决策数字重算自记录**：`docs/product/requirements/` 与 `docs/architecture/decisions/` 逐份读 `status`。那句"28 份 `ADR` **全部** `proposed`"里的**形容词**也核——一份记录被推进 `accepted` 不改变数量，却会让这句话从"治理阻塞"变成一句不成立的话。
+- **需求与决策数字重算自记录**：`docs/product/requirements/` 与 `docs/architecture/decisions/` 逐份读 `status`。那句 ADR 明细（"28 份 `ADR` 中 25 份 `proposed`（3 份 `accepted`）"）里的**每个数字**也核——一份记录被推进 `accepted` 不改变数量，却会让这句话从"治理阻塞"变成一句不成立的话。
 - **契约面既核数量也核身份**："23 份里 22 份声明未授权"只有在**第 23 份被点名**时才有意义，所以凡是不声明该字段的契约必须被文档点名；两份不以 `.contract.json` 命名的 `apis/` 机器契约按名单逐个对上（顺序无关，按集合比）；"没有任何一份授权实现"则对**两个**被本仓门禁承认的授权字段（`implementationAuthorized`、`releaseDecision.runtimeImplementationAuthorizationGranted`，分别由 `check-sandbox-human-review-signoff.mjs` 与 `check-sandbox-commercial-readiness.mjs` 读）逐份核，而不是从计数反推。
 - **证据数字比对注册表的 `acknowledged` 块**（该块由 `check-sandbox-evidence-traceability.mjs` 保证等于活契约），**不在这里重算**——再写一份"什么算作被要求的证据 id"的抽取规则，正是证据门禁存在的意义所要防止的那种漂移。
 - **来源读不到就报红**：注册表存在但没有 `acknowledged` 块时，门禁报"该数字无法被反驳"，而不是当作通过。这是"查过了"与"什么都没查"的分界。
@@ -552,8 +552,8 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 本仓不是"有些功能没做完"，而是**治理门禁未打开**。四条硬门禁互相依赖：
 
-1. 28 份 `REQ-*` 中 0 份 `ready`（5 `accepted` / 23 `draft`）→ 需逐份人工评审进 `ready`。
-2. 28 份 `ADR` 全部 `proposed` → 需 `accepted`。
+1. 28 份 `REQ-*` 中 3 份 `ready`（5 `accepted` / 20 `draft`）→ 其余逐份人工评审进 `ready`。
+2. 28 份 `ADR` 中 25 份 `proposed`（3 份 `accepted`）→ 其余需 `accepted`。
 3. 机器契约全部未授权（23 份 `*.contract.json` + 2 份 `apis/` 机器契约，全部 `implementationAuthorized: false` 或独立声明 `runtimeImplementationAuthorizationGranted: false`）→ 需人工评审签字后翻转。
 4. 8 份契约声明的 127 个证据 id 中 125 个无产出者 → 需真实 runner 与人工评审闭合。
 

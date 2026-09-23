@@ -63,6 +63,9 @@ test("Sandbox Service Host gate dependencies resolve and remain closed at Gate 0
   assert.equal(resolution.sandbox_all_required_dependencies_must_be_ready, true);
 
   const sandbox_dependency_ids = new Set();
+  // 2026-09-24: the local host boundary contract flipped to authorized with its packet signed, so
+  // it is the one gate dependency no longer closed; every other dependency must remain closed.
+  const authorized_dependencies = new Set(["sandbox_local_host_boundary"]);
   for (const sandbox_dependency of contract.gateDependencies.contracts) {
     assert.match(sandbox_dependency.sandbox_dependency_id, /^sandbox_/u);
     assert.equal(sandbox_dependency_ids.has(sandbox_dependency.sandbox_dependency_id), false);
@@ -79,7 +82,11 @@ test("Sandbox Service Host gate dependencies resolve and remain closed at Gate 0
     const sandbox_authorization_field =
       sandbox_dependency.sandbox_implementation_authorization_field;
     if (sandbox_authorization_field !== null) {
-      assert.equal(sandbox_dependency_contract[sandbox_authorization_field], false);
+      if (authorized_dependencies.has(sandbox_dependency.sandbox_dependency_id)) {
+        assert.equal(sandbox_dependency_contract[sandbox_authorization_field], true);
+      } else {
+        assert.equal(sandbox_dependency_contract[sandbox_authorization_field], false);
+      }
     }
   }
 

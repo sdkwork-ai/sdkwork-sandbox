@@ -2,7 +2,7 @@
 id: REQ-2026-0003
 title: Deliver a constrained local sandbox provider
 owner: SDKWork Runtime Platform
-status: draft
+status: ready
 source: platform
 problem: Local development needs executable Sandbox capabilities, but an unrestricted host process adapter would bypass workspace containment, cleanup, resource, credential, and network policy.
 goals:
@@ -79,3 +79,7 @@ Decision: [ADR-20260728: Local Provider Assurance And Host Boundaries](../../arc
 ## Verification Plan
 
 Implementation verification will include focused provider tests, cross-platform path/process tests, Provider Conformance, Cargo/Clippy, strict component binding, security review evidence, and a manual limitation review. Exact commands will be frozen when the Requirement becomes `ready`.
+
+## Implementation Authorization
+
+`ready` since 2026-09-24: the repository owner approved the corresponding architecture/security packet for every listed reviewer role via the structured implementation-gate decision of that date, promoting this requirement to `ready` and its decision record to `accepted`. The packet's evidence obligations (real-platform conformance, dependency review items, and runner ownership where named) remain standing evidence requirements for the implementation slices; approval disposes the review, not the evidence.

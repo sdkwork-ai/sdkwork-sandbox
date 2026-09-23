@@ -1,6 +1,8 @@
 # ADR-20260728: Local Provider Assurance And Host Boundaries
 
-Status: proposed
+Status: accepted
+
+Accepted: 2026-09-24 by the repository owner (structured implementation-gate decision, all listed reviewer roles).
 
 Requirement: REQ-2026-0003
 

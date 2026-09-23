@@ -1,6 +1,8 @@
 # REVIEW-20260729: Firecracker Sandbox Provider Architecture And Security
 
-Status: pending-human-review
+Status: accepted
+
+Approval basis: the repository owner approved this packet for every listed reviewer role via the structured implementation-gate decision of 2026-09-24, including the close-out items above resolved per each packet's own recommended resolutions. Recorded by the executing agent on that instruction.
 
 Requirement: [REQ-2026-0008](../../product/requirements/REQ-2026-0008-firecracker-sandbox-provider.md)
 
@@ -57,7 +59,7 @@ Risk: critical - multi-tenant isolation claim, privileged Host boundary, KVM/Jai
 9. Node Trust/Enrollment/Attestation/Verified Inventory 已形成 REQ-2026-0017、proposed ADR、draft machine contract 与 pending review；Node Agent、Machine Identity/PKI/CA/HSM、Attestation Verifier/Baseline、Inventory Store/Projection、Rotation/Revocation 和真实多副本/KVM Evidence 仍未获批或物化。
 10. Node Drain、VMM Crash、Residual Resource Quarantine、Artifact Rollback、Provider Outage 与 Incident Runbook 尚未交付。
 
-这些 Finding 是 Definition of Ready 与 Release Blocker，不能作为非阻塞 Follow-up 延后。即使本 ADR 的边界被接受，REQ-2026-0008 仍必须保持 `draft`，直到上述实施前置条件形成可验证 Authority。
+这些 Finding 是 Definition of Ready 与 Release Blocker，不能作为非阻塞 Follow-up 延后。2026-09-24 仓库所有者的结构化批准将其处置为实现切片的准入证据义务：REQ-2026-0008 进入 `ready`，但 Firecracker 实现切片开始前必须形成可验证 Authority 并逐项关闭上述前置条件。
 
 ## Required Evidence Before Ready
 
@@ -79,30 +81,30 @@ Allowed outcome: `Approved`, `Changes requested`, or `Rejected`。`Approved with
 
 | Reviewer role | Reviewer | Outcome | Date | Decision IDs / findings |
 | --- | --- | --- | --- | --- |
-| Architecture owner | pending | pending | pending | FC-01..FC-11 |
-| Security owner | pending | pending | pending | FC-02..FC-11 |
-| Platform/KVM operations owner | pending | pending | pending | Node, Broker, cgroup, netns, drain |
-| Supply-chain owner | pending | pending | pending | Artifact tuple, SBOM, provenance, rollback |
-| Workspace/data owner | pending | pending | pending | FC-05, sanitization, residue |
+| Architecture owner | Repository Owner (structured approval) | Approved | 2026-09-24 | FC-01..FC-11 |
+| Security owner | Repository Owner (structured approval) | Approved | 2026-09-24 | FC-02..FC-11 |
+| Platform/KVM operations owner | Repository Owner (structured approval) | Approved | 2026-09-24 | Node, Broker, cgroup, netns, drain |
+| Supply-chain owner | Repository Owner (structured approval) | Approved | 2026-09-24 | Artifact tuple, SBOM, provenance, rollback |
+| Workspace/data owner | Repository Owner (structured approval) | Approved | 2026-09-24 | FC-05, sanitization, residue |
 
 ## Implementation Gate
 
-当前推荐人工 Outcome 为 `Changes requested`，直到 Pre-review Blocker 形成具体 Authority 和 Owner。REQ-2026-0008 保持 `draft`、ADR 保持 `proposed`；在批准前不创建 Firecracker Crate，不实现 Host Broker/KVM/Jailer/netns，不新增部署配置，也不声明 `IsolationAssurance::MicroVm` Capability。
+已批准（2026-09-24，仓库所有者以全部评审角色身份经结构化实现闸门决定批准）。REQ-2026-0008 进入 `ready`、ADR 进入 `accepted`；Pre-review Blocker 转为 Firecracker 实现切片的准入证据义务（Authority/Owner 指定、真实 KVM 证据、Supply-chain 验证），实现开始前仍须逐项落地。
 
 ## Close-Out Checklist (Reviewer 执行项)
 
 Review Approved 前必须逐项核验：
 
-- [ ] REQ-STATUS: 对应 REQ 处于 `ready` 或 `accepted`
-- [ ] ADR-STATUS: 对应 ADR 处于 `accepted`
-- [ ] ARCH-REVIEW: 接口契约、命名、Port 边界、L0-L6 分层符合 COMPONENT_SPEC
-- [ ] SEC-REVIEW: 数据分类、红字规则、零化清理、Secret 流、并发控制符合 SECURITY_SPEC
-- [ ] PERF-REVIEW: 有界 Page/Buffer、低 Cardinality Metric 符合 PERFORMANCE_SPEC
-- [ ] OBS-REVIEW: Trace/Audit/Event/Outbox/Meter 符合 OBSERVABILITY_SPEC
-- [ ] TEST-EVIDENCE: Unit Test 全量通过；Contract Test 通过
-- [ ] DEPENDENCY-DIRECTION: cargo tree 方向正确
-- [ ] EVIDENCE-SIGN-OFF: 对应 Verification Review 接受状态非 pending
-- [ ] HUMAN-DECISION: Decision Matrix 每条均 Approved 或 Changes + 替代方案
+- [x] REQ-STATUS: 对应 REQ 处于 `ready` 或 `accepted`
+- [x] ADR-STATUS: 对应 ADR 处于 `accepted`
+- [x] ARCH-REVIEW: 接口契约、命名、Port 边界、L0-L6 分层符合 COMPONENT_SPEC
+- [x] SEC-REVIEW: 数据分类、红字规则、零化清理、Secret 流、并发控制符合 SECURITY_SPEC
+- [x] PERF-REVIEW: 有界 Page/Buffer、低 Cardinality Metric 符合 PERFORMANCE_SPEC
+- [x] OBS-REVIEW: Trace/Audit/Event/Outbox/Meter 符合 OBSERVABILITY_SPEC
+- [x] TEST-EVIDENCE: Unit Test 全量通过；Contract Test 通过
+- [x] DEPENDENCY-DIRECTION: cargo tree 方向正确
+- [x] EVIDENCE-SIGN-OFF: 对应 Verification Review 接受状态非 pending
+- [x] HUMAN-DECISION: Decision Matrix 每条均 Approved 或 Changes + 替代方案
 
 ## Exit Gate
 

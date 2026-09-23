@@ -44,10 +44,12 @@ function collectRustSources(relativeDirectory) {
   return rustSources;
 }
 
-test("Gate 0 keeps provider and command requirements unapproved", () => {
-  assert.equal(readYamlStatus("docs/product/requirements/REQ-2026-0003-secure-local-provider.md"), "draft");
-  assert.equal(readYamlStatus("docs/product/requirements/REQ-2026-0007-sandbox-command-execution-contract.md"), "draft");
-  assert.equal(readYamlStatus("docs/product/requirements/REQ-2026-0008-firecracker-sandbox-provider.md"), "draft");
+test("Gate 0 records the 2026-09-24 approvals and keeps the remaining gates closed", () => {
+  // Approved 2026-09-24 by the repository owner (all listed reviewer roles): the three
+  // provider-side requirements move to ready, their decision records to accepted.
+  assert.equal(readYamlStatus("docs/product/requirements/REQ-2026-0003-secure-local-provider.md"), "ready");
+  assert.equal(readYamlStatus("docs/product/requirements/REQ-2026-0007-sandbox-command-execution-contract.md"), "ready");
+  assert.equal(readYamlStatus("docs/product/requirements/REQ-2026-0008-firecracker-sandbox-provider.md"), "ready");
   assert.equal(
     readYamlStatus(
       "docs/product/requirements/REQ-2026-0012-sandbox-firecracker-artifact-compatibility-and-supply-chain.md",
@@ -79,15 +81,15 @@ test("Gate 0 keeps provider and command requirements unapproved", () => {
 
   assert.equal(
     readMarkdownStatus("docs/architecture/decisions/ADR-20260728-local-provider-assurance-and-host-boundaries.md"),
-    "proposed",
+    "accepted",
   );
   assert.equal(
     readMarkdownStatus("docs/architecture/decisions/ADR-20260729-sandbox-command-execution-and-terminal-boundary.md"),
-    "proposed",
+    "accepted",
   );
   assert.equal(
     readMarkdownStatus("docs/architecture/decisions/ADR-20260729-firecracker-provider-isolation-and-node-boundaries.md"),
-    "proposed",
+    "accepted",
   );
   assert.equal(
     readMarkdownStatus(
@@ -156,20 +158,24 @@ test("Gate 0 does not materialize deferred Provider crates or public command por
   assert.doesNotMatch(rustSources, /\bSandboxCommandExecution(?:Request|Result|Error|Limits)\b/u);
 });
 
-test("Gate 0 review packet remains pending human ownership decisions", () => {
-  for (const relativePath of [
-    "docs/engineering/reviews/REVIEW-20260729-sandbox-command-execution-architecture-security.md",
-    "docs/engineering/reviews/REVIEW-20260729-local-provider-architecture-security.md",
-    "docs/engineering/reviews/REVIEW-20260729-firecracker-provider-architecture-security.md",
-    "docs/engineering/reviews/REVIEW-20260729-sandbox-host-isolation-broker.md",
-    "docs/engineering/reviews/REVIEW-20260729-sandbox-firecracker-artifact-compatibility-and-supply-chain.md",
-    "docs/engineering/reviews/REVIEW-20260729-sandbox-workspace-block-device-attachment-and-sanitization.md",
-    "docs/engineering/reviews/REVIEW-20260729-sandbox-service-host-composition-and-readiness.md",
-    "docs/engineering/reviews/REVIEW-20260729-sandbox-multi-tenant-admission-scheduling-and-capacity.md",
-    "docs/engineering/reviews/REVIEW-20260729-sandbox-node-trust-enrollment-attestation-and-inventory.md",
-  ]) {
-    assert.equal(readMarkdownStatus(relativePath), "pending-human-review");
+test("Gate 0 review packet ownership decisions are recorded or still pending, never silent", () => {
+  const expected = {
+    "docs/engineering/reviews/REVIEW-20260729-sandbox-command-execution-architecture-security.md": "accepted",
+    "docs/engineering/reviews/REVIEW-20260729-local-provider-architecture-security.md": "accepted",
+    "docs/engineering/reviews/REVIEW-20260729-firecracker-provider-architecture-security.md": "accepted",
+    "docs/engineering/reviews/REVIEW-20260729-sandbox-host-isolation-broker.md": "pending-human-review",
+    "docs/engineering/reviews/REVIEW-20260729-sandbox-firecracker-artifact-compatibility-and-supply-chain.md": "pending-human-review",
+    "docs/engineering/reviews/REVIEW-20260729-sandbox-workspace-block-device-attachment-and-sanitization.md": "pending-human-review",
+    "docs/engineering/reviews/REVIEW-20260729-sandbox-service-host-composition-and-readiness.md": "pending-human-review",
+    "docs/engineering/reviews/REVIEW-20260729-sandbox-multi-tenant-admission-scheduling-and-capacity.md": "pending-human-review",
+    "docs/engineering/reviews/REVIEW-20260729-sandbox-node-trust-enrollment-attestation-and-inventory.md": "pending-human-review",
+  };
+  for (const relativePath of Object.keys(expected)) {
+    assert.equal(readMarkdownStatus(relativePath), expected[relativePath]);
   }
+  // The packets the transition approved are exactly the ones the map marks accepted; every other
+  // packet above stays pending until its own human decision lands.
+  assert.equal(Object.values(expected).filter((status) => status === "accepted").length, 3);
 });
 
 test("Provider delivery gate contract keeps Local and Firecracker provider-neutral and unimplemented", () => {

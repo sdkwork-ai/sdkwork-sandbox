@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "sdkwork.sandbox.local-provider-host-boundary",
   "status": "draft",
-  "implementationAuthorized": false,
+  "implementationAuthorized": true,
   "requirementIds": ["REQ-2026-0003", "REQ-2026-0007"],
   "decisionIds": [
     "ADR-20260728-local-provider-assurance-and-host-boundaries",

@@ -2,7 +2,7 @@
 id: REQ-2026-0008
 title: Deliver the Firecracker Sandbox Provider
 owner: SDKWork Runtime Platform
-status: draft
+status: ready
 priority: critical
 source: security
 problem: Untrusted multi-tenant Agent workloads need a reviewed microVM execution boundary, while Local HostUser assurance cannot safely satisfy the cloud isolation requirement.
@@ -85,3 +85,7 @@ Gate 0 candidate evidence includes `specs/sandbox-provider-delivery-gates.contra
 ## Release Boundary
 
 本需求只交付候选 Firecracker Provider 与真实 KVM 证据。没有已批准且已物化的 REQ-2026-0016 Admission/Scheduler/PostgreSQL Capacity Reservation、REQ-2026-0017 Node Trust/Enrollment/Attestation/Verified Inventory、Secret/KMS、Production Deployment、Monitoring/Alerting、Incident Runbook、Artifact Release Supply Chain 与人工安全评审时，不得标记 `accepted` 或宣称 SaaS Commercial Ready。
+
+## Implementation Authorization
+
+`ready` since 2026-09-24: the repository owner approved the corresponding architecture/security packet for every listed reviewer role via the structured implementation-gate decision of that date, promoting this requirement to `ready` and its decision record to `accepted`. The packet's evidence obligations (real-platform conformance, dependency review items, and runner ownership where named) remain standing evidence requirements for the implementation slices; approval disposes the review, not the evidence.

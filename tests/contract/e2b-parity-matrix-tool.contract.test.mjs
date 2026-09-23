@@ -253,7 +253,7 @@ const ANSWER = [
   "Three figures:",
   "",
   "- E2B 的能力集合共 **3 项**，本仓 ✅ **0**、🟡 **1**、❌ **1**、⛔ **1**。",
-  '- 2 份 `REQ-*` 中 1 份 `ready`（0 `accepted` / 1 `draft`）；1 份 `ADR` 全部 `proposed`；机器契约里**没有任何一份**授权实现：2 份 `*.contract.json` 中 1 份显式声明 `implementationAuthorized: false`，第 2 份 `specs/fixture-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`；另有一份不以 `.contract.json` 命名的机器契约（`apis/commands/fixture-command-contract.json`）同为 `false`。',
+  '- 2 份 `REQ-*` 中 1 份 `ready`（0 `accepted` / 1 `draft`）；1 份 `ADR` 中 1 份 `proposed`（0 份 `accepted`）；机器契约里**没有任何一份**授权实现：2 份 `*.contract.json` 中 1 份显式声明 `implementationAuthorized: false`，第 2 份 `specs/fixture-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`；另有一份不以 `.contract.json` 命名的机器契约（`apis/commands/fixture-command-contract.json`）同为 `false`。',
   "- 1 份契约声明的 **3 个证据 id** 中，只有 **1 个**有 host-precondition 半产出，**2 个**仍被真实 runner 或人工评审完全阻塞。",
   "",
 ].join("\n");
@@ -635,16 +635,18 @@ test("the repository's own residual-gap table is typed and every claim holds", (
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  // Five gaps were closed and moved to the closure record below the table: the PRD state machine
+  // Six gaps were closed and moved to the closure record below the table: the PRD state machine
   // marking (traceability gate family 5), the metric family join (family 6), the capability
   // matrix join (field gate family 8), the section 5 advantage claims (this gate's shape family,
-  // extended), and the per-item attribution of the cross-document assertions (section 3.5's
-  // attribution ledger). Only these two remain, both genuinely open.
-  assert.equal(assessment.gapCount, 2);
+  // extended), the per-item attribution of the cross-document assertions (section 3.5's
+  // attribution ledger), and the no-real-provider-consumption blocker (lifted by the 2026-09-24
+  // approvals, which moved implementation into the roadmap's hands). Only this one remains,
+  // genuinely open.
+  assert.equal(assessment.gapCount, 1);
 
   const gaps = parseCoverageGaps(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
   assert.deepEqual(gaps.header, [...GAP_COLUMNS]);
-  assert.equal(gaps.rows.length, 2);
+  assert.equal(gaps.rows.length, 1);
   assert.equal(gaps.malformed.length, 0);
   for (const row of gaps.rows) {
     assert.ok(GAP_KINDS.includes(row["性质"]), `gap row ${row.line} declares kind ${row["性质"]}`);
@@ -1246,24 +1248,26 @@ test("readRequirementStatus reads the record instead of the citation", () => {
   }
 });
 
-test("every requirement in this repository declares a readable status, and none is ready", () => {
+test("every requirement in this repository declares a readable status", () => {
   const directory = path.join(repoRoot, "docs/product/requirements");
   const names = readdirSync(directory).filter((name) => /^REQ-\d{4}-\d{4}-.+\.md$/u.test(name));
 
   assert.equal(names.length, 28);
+  const ready = [];
   for (const name of names) {
     const record = readRequirementStatus(repoRoot, name.slice(0, 13));
     assert.ok(record, `${name} has no readable status, so the blocker check cannot classify it`);
     assert.notEqual(record.status, null, `${name} has no readable status`);
-    // A `ready` requirement is what lifts the section 3.2 blockers and activates the runtime
-    // mechanisms the README keeps inactive. If this assertion fails, re-triage section 3.2 rather
-    // than relaxing the assertion.
-    assert.notEqual(
-      record.status,
-      "ready",
-      `${name} is ready; section 3.2's 治理阻塞 rows must be re-triaged`,
-    );
+    if (record.status === "ready") ready.push(name);
   }
+  // The first transition (2026-09-24) promoted exactly the three provider-side requirements. A new
+  // `ready` requirement is fine, but section 3.2's 治理阻塞 rows must be re-triaged when it happens,
+  // so the count is pinned to make that re-triage deliberate rather than accidental.
+  assert.deepEqual(ready.sort(), [
+    "REQ-2026-0003-secure-local-provider.md",
+    "REQ-2026-0007-sandbox-command-execution-contract.md",
+    "REQ-2026-0008-firecracker-sandbox-provider.md",
+  ]);
 });
 
 // ---- rule 9: IMPLEMENTATION COVERAGE
@@ -2021,21 +2025,20 @@ test("the repository holds exactly the machine contracts, records and evidence c
     partial: 2,
     gated: 125,
   });
-  for (const relative of [...named, ...api]) {
-    assert.equal(
-      authorizesImplementation(readJsonFile(join(repoRoot, relative))),
-      false,
-      `${relative} authorizes implementation`,
-    );
-  }
+  const authorized = [...named, ...api].filter((relative) =>
+    authorizesImplementation(readJsonFile(join(repoRoot, relative))),
+  );
+  // The first transition (2026-09-24): exactly one contract authorizes implementation so far.
+  assert.deepEqual(authorized, ["specs/sandbox-local-provider-host-boundary.contract.json"]);
   const requirements = readRequirementStatuses(repoRoot);
   assert.equal(requirements.length, 28);
-  assert.equal(requirements.filter((record) => record.status === "ready").length, 0);
+  assert.equal(requirements.filter((record) => record.status === "ready").length, 3);
   assert.equal(requirements.filter((record) => record.status === "accepted").length, 5);
-  assert.equal(requirements.filter((record) => record.status === "draft").length, 23);
+  assert.equal(requirements.filter((record) => record.status === "draft").length, 20);
   const decisions = readDecisionStatuses(repoRoot);
   assert.equal(decisions.length, 28);
-  assert.equal(decisions.filter((record) => record.status === "proposed").length, 28);
+  assert.equal(decisions.filter((record) => record.status === "proposed").length, 25);
+  assert.equal(decisions.filter((record) => record.status === "accepted").length, 3);
 });
 
 test("the repository's own answer section compares every restated figure", () => {
@@ -2158,18 +2161,23 @@ test("a requirement figure that disagrees with the records is rejected", () => {
 });
 
 test("a decision count that disagrees with the records is rejected", () => {
-  const answer = answerWith("1 份 `ADR` 全部 `proposed`", "2 份 `ADR` 全部 `proposed`");
+  const answer = answerWith(
+    "1 份 `ADR` 中 1 份 `proposed`（0 份 `accepted`）",
+    "2 份 `ADR` 中 1 份 `proposed`（0 份 `accepted`）",
+  );
 
   expectProblem(
     inspect({ document: buildDocument({ answer }) }),
-    "states decisions as [2], but the repository yields [1]",
+    "states decisions as [2, 1, 0], but the repository yields [1, 1, 0]",
   );
 });
 
-test("a decision promoted out of proposed refutes the adjective the count cannot carry", () => {
+test("a decision promoted out of proposed refutes the breakdown the count cannot carry", () => {
+  // The breakdown replaced the "全部 proposed" adjective (2026-09-24): promoting the fixture's one
+  // decision to `accepted` must move every number the sentence states, not just hide behind a total.
   expectProblem(
     inspect({ decisionStatus: "accepted" }),
-    "states every one of the 1 `ADR` record(s) is `proposed`, but 1 no longer is",
+    "states decisions as [1, 1, 0], but the repository yields [1, 0, 1]",
   );
 });
 
@@ -2194,12 +2202,14 @@ test("a declared-false count that disagrees with the tree is rejected", () => {
   );
 });
 
-test("a contract that authorizes implementation refutes the claim that none does", () => {
+test("a contract whose fields authorize implementation must be named by the document", () => {
+  // The authorization ratchet replaced the blanket "none authorizes" claim (2026-09-24): once a
+  // contract's fields authorize, the audit has to state that authorization, not stay silent.
   expectProblem(
     inspect({
       contractValues: { [NAMED_CONTRACTS.declaring]: { implementationAuthorized: true } },
     }),
-    "states that no machine contract authorizes implementation, but `specs/fixture-alpha.contract.json` does",
+    "never names `specs/fixture-alpha.contract.json`, whose fields authorize implementation",
   );
 });
 

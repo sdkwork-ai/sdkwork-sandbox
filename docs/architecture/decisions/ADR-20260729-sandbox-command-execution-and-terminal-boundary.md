@@ -1,6 +1,8 @@
 # ADR-20260729: Sandbox Command Execution And Terminal Boundary
 
-Status: proposed
+Status: accepted
+
+Accepted: 2026-09-24 by the repository owner (structured implementation-gate decision, all listed reviewer roles).
 
 Requirement: REQ-2026-0007
 

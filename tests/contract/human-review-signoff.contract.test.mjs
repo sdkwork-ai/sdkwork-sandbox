@@ -36,12 +36,16 @@ test("the live repository human-review sign-off state is coherent", () => {
 
   assert.equal(assessment.ok, true, assessment.failures.join("\n"));
   assert.equal(assessment.summary.sandbox_named_by_contracts, 14);
-  assert.equal(assessment.summary.sandbox_named_by_contracts_and_pending, 14);
+  // Since 2026-09-24 three of the fourteen contract-gated packets are signed off (local provider,
+  // command execution, firecracker provider) and their contracts' shared delivery gate stays closed
+  // on the remaining eleven; the API/SDK authority packet gates no contract.
+  assert.equal(assessment.summary.sandbox_named_by_contracts_and_pending, 11);
   assert.ok(assessment.summary.sandbox_pending_human_review > 0);
+  // The backlog only ever holds pending packets, so the count is the filter itself.
   assert.equal(
     assessment.backlog.filter((item) => item.gatingContracts.length > 0).length,
-    14,
-    "every contract-gated packet must currently be pending",
+    11,
+    "the eleven unapproved contract-gated packets must still be pending",
   );
 });
 
@@ -56,12 +60,14 @@ test("the sign-off index lists exactly the contract-required packets and nothing
 
 test("the shared provider conformance packet is named by more than one gating contract", () => {
   const assessment = assess();
-  const local = assessment.backlog.find(
-    (item) => item.reviewId === "REVIEW-20260729-local-provider-architecture-security",
+  // The local-provider packet signed off on 2026-09-24 and left the backlog; the network-isolation
+  // one is the pending packet now named by two gating contracts.
+  const shared = assessment.backlog.find(
+    (item) => item.reviewId === "REVIEW-20260729-sandbox-firecracker-network-isolation",
   );
 
-  assert.deepEqual(local.gatingContracts, [
-    "sandbox-local-provider-host-boundary.contract.json",
+  assert.deepEqual(shared.gatingContracts, [
+    "sandbox-firecracker-network-isolation.contract.json",
     "sandbox-provider-delivery-gates.contract.json",
   ]);
 });
@@ -120,8 +126,9 @@ test("a contract requiring roles from a packet with no sign-off table fails", ()
 });
 
 test("a pending packet cannot coexist with an Approved reviewer outcome", () => {
+  // Still-pending packet after the 2026-09-24 transition: the firecracker network-isolation one.
   const packets = readReviewPackets().map((entry) =>
-    entry.file === "REVIEW-20260729-local-provider-architecture-security.md"
+    entry.file === "REVIEW-20260729-sandbox-firecracker-network-isolation.md"
       ? {
           ...entry,
           reviewerRows: entry.reviewerRows.map((row, index) =>
@@ -141,7 +148,10 @@ test("a pending packet cannot coexist with an Approved reviewer outcome", () => 
 });
 
 test("a defect on a packet named by two contracts is reported once, not once per contract", () => {
-  const shared = "REVIEW-20260729-local-provider-architecture-security";
+  // The local-provider packet signed off on 2026-09-24, so the shared packet under test is the
+  // firecracker network-isolation one: still pending, and named by its own contract plus the
+  // shared provider delivery gate.
+  const shared = "REVIEW-20260729-sandbox-firecracker-network-isolation";
   const packets = readReviewPackets().map((entry) =>
     entry.file === `${shared}.md`
       ? {
@@ -164,13 +174,14 @@ test("a defect on a packet named by two contracts is reported once, not once per
 });
 
 test("a pending packet cannot coexist with a ready requirement or an accepted decision", () => {
+  const pending = "REVIEW-20260729-sandbox-firecracker-network-isolation.md";
   const readyRequirement = readReviewPackets().map((entry) =>
-    entry.file === "REVIEW-20260729-local-provider-architecture-security.md"
+    entry.file === pending
       ? { ...entry, resolvedRequirement: { ...entry.resolvedRequirement, status: "ready" } }
       : entry,
   );
   const acceptedDecision = readReviewPackets().map((entry) =>
-    entry.file === "REVIEW-20260729-local-provider-architecture-security.md"
+    entry.file === pending
       ? { ...entry, resolvedDecision: { ...entry.resolvedDecision, status: "accepted" } }
       : entry,
   );
@@ -182,8 +193,11 @@ test("a pending packet cannot coexist with a ready requirement or an accepted de
 });
 
 test("an authorized contract fails while any packet it names is still pending", () => {
+  // The local-provider host-boundary contract flipped to authorized on 2026-09-24 with every
+  // packet it names signed off; the shared delivery gate still names pending packets, so it is
+  // the one whose authorization must keep failing.
   const demands = readContractHumanReview().map((demand) =>
-    demand.contractFile === "sandbox-local-provider-host-boundary.contract.json"
+    demand.contractFile === "sandbox-provider-delivery-gates.contract.json"
       ? { ...demand, implementationAuthorized: true }
       : demand,
   );

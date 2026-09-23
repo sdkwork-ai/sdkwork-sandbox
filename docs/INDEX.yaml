@@ -79,7 +79,7 @@ entries:
     path: docs/product/requirements/REQ-2026-0003-secure-local-provider.md
     layer: work
     audience: [product, engineering, security]
-    status: draft
+    status: ready
   - id: REQ-2026-0004
     path: docs/product/requirements/REQ-2026-0004-agents-workspace-attachment.md
     layer: work
@@ -99,12 +99,12 @@ entries:
     path: docs/product/requirements/REQ-2026-0007-sandbox-command-execution-contract.md
     layer: work
     audience: [product, architecture, engineering, security]
-    status: draft
+    status: ready
   - id: REQ-2026-0008
     path: docs/product/requirements/REQ-2026-0008-firecracker-sandbox-provider.md
     layer: work
     audience: [product, architecture, engineering, security, operations]
-    status: draft
+    status: ready
   - id: REQ-2026-0009
     path: docs/product/requirements/REQ-2026-0009-sandbox-service-host-composition-and-readiness.md
     layer: work
@@ -219,7 +219,7 @@ entries:
     path: docs/architecture/decisions/ADR-20260728-local-provider-assurance-and-host-boundaries.md
     layer: work
     audience: [architecture, engineering, security]
-    status: proposed
+    status: accepted
   - id: ADR-20260728-WORKSPACE
     path: docs/architecture/decisions/ADR-20260728-agents-workspace-and-sandbox-attachment-ownership.md
     layer: work
@@ -239,12 +239,12 @@ entries:
     path: docs/architecture/decisions/ADR-20260729-sandbox-command-execution-and-terminal-boundary.md
     layer: work
     audience: [architecture, engineering, security]
-    status: proposed
+    status: accepted
   - id: ADR-20260729-FIRECRACKER
     path: docs/architecture/decisions/ADR-20260729-firecracker-provider-isolation-and-node-boundaries.md
     layer: work
     audience: [architecture, engineering, security, operations]
-    status: proposed
+    status: accepted
   - id: ADR-20260729-SERVICE-HOST
     path: docs/architecture/decisions/ADR-20260729-sandbox-service-host-composition-and-readiness.md
     layer: work
@@ -384,17 +384,17 @@ entries:
     path: docs/engineering/reviews/REVIEW-20260729-sandbox-command-execution-architecture-security.md
     layer: work
     audience: [architecture, engineering, security, review]
-    status: pending-human-review
+    status: accepted
   - id: REVIEW-20260729-LOCAL-PROVIDER
     path: docs/engineering/reviews/REVIEW-20260729-local-provider-architecture-security.md
     layer: work
     audience: [product, architecture, engineering, security, operations, review]
-    status: pending-human-review
+    status: accepted
   - id: REVIEW-20260729-FIRECRACKER-PROVIDER
     path: docs/engineering/reviews/REVIEW-20260729-firecracker-provider-architecture-security.md
     layer: work
     audience: [architecture, engineering, security, operations, supply-chain, review]
-    status: pending-human-review
+    status: accepted
   - id: REVIEW-20260729-SERVICE-HOST
     path: docs/engineering/reviews/REVIEW-20260729-sandbox-service-host-composition-and-readiness.md
     layer: work
@@ -609,7 +609,7 @@ entries:
     path: docs/engineering/reviews/REVIEW-20260924-sandbox-e2b-api-sdk-authority.md
     layer: work
     audience: [product, architecture, engineering, sdk, api, security, review]
-    status: pending-human-review
+    status: accepted
 domains:
   - name: intelligence
     path: docs/product/prd/

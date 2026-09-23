@@ -1,6 +1,8 @@
 # REVIEW-20260924: E2B-Compatible API And SDK Family Authority
 
-Status: pending-human-review
+Status: accepted
+
+Approval basis: the repository owner approved this packet for every listed reviewer role via the structured implementation-gate decision of 2026-09-24. Recorded by the executing agent on that instruction.
 
 Risk: high - the authority decides what E2B compatibility means for the public API and SDK contracts; a wrong authority source or an unreviewed deviation becomes a compatibility claim that cannot be re-derived, and SDK generation would amplify it into every language at once.
 
@@ -53,14 +55,14 @@ Review purpose: decide whether the repository adopts an owned, E2B-referenced AP
 
 | Reviewer role | Reviewer | Outcome | Date | Decision IDs / findings |
 | --- | --- | --- | --- | --- |
-| Platform Owner | — | — | — | AUTH-01, AUTH-03, AUTH-05 |
-| API/SDK Owner | — | — | — | AUTH-01, AUTH-02, AUTH-04 |
-| Security Owner | — | — | — | AUTH-03, AUTH-05 |
-| Product Owner | — | — | — | AUTH-03, AUTH-04 |
+| Platform Owner | Repository Owner (structured approval) | Approved | 2026-09-24 | AUTH-01, AUTH-03, AUTH-05 |
+| API/SDK Owner | Repository Owner (structured approval) | Approved | 2026-09-24 | AUTH-01, AUTH-02, AUTH-04 |
+| Security Owner | Repository Owner (structured approval) | Approved | 2026-09-24 | AUTH-03, AUTH-05 |
+| Product Owner | Repository Owner (structured approval) | Approved | 2026-09-24 | AUTH-03, AUTH-04 |
 
 ## Implementation Gate
 
-Current recommended human outcome is `Changes requested` until the authority contract, its ledger, and the open naming questions return with evidence. REQ-2026-0028 stays `draft` and the ADR stays `proposed`; no HTTP route, RPC server, envd implementation, generated SDK, public endpoint name, domain, or edge ingress is authorized by this packet, with or without approval.
+Approved 2026-09-24 (repository owner, all listed roles). The approval authorizes the authority decisions AUTH-01..AUTH-05 and promotes REQ-2026-0028 toward `ready` with ADR-20260924 `accepted`. It still does not authorize an HTTP route, RPC server, envd implementation, generated SDK, public endpoint name, domain, or edge ingress: the `apis/` authority contract, its parity ledger, and the deviation entries must be materialized as reviewed artifacts first, and public naming remains an open product question until answered in `PRD.md`.
 
 ## Close-Out Checklist (Reviewer 执行项)
 

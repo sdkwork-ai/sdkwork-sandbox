@@ -2,7 +2,7 @@
 id: REQ-2026-0007
 title: Deliver the provider-neutral Sandbox command execution contract
 owner: SDKWork Runtime Platform
-status: draft
+status: ready
 priority: critical
 source: platform
 problem: Local and Firecracker execution cannot be completed through the lifecycle-only SandboxProvider port, and provider-specific command APIs would split Runtime semantics and force Kernel behavior branches.
@@ -29,7 +29,7 @@ affected_surfaces:
 
 ## Readiness Blockers
 
-本需求在以下决策完成人工评审前保持 `draft`：
+以下决策已于 2026-09-24 由仓库所有者以全部评审角色身份批准（见对应 Architecture/Security Review 的 Approval basis 记录）：
 
 - 接受 `SandboxCommandExecutor` 独立端口以及候选 `SandboxCommandExecution*`、`SandboxCommandCancellationRequest` 公共类型命名。
 - 接受 `SandboxProvider` 继续只拥有生命周期，Command Execution 通过同一 `sandbox_provider_id` 组合，而不是向生命周期 Trait 填入所有能力方法。
@@ -92,3 +92,7 @@ Provider-specific real Host/KVM commands and security suites are additional mand
 2026-07-30 已对齐 Execution/Cancel Schema、服务器 Trace Authority、Canonical Fingerprint、Tenant+Provider Idempotency Key、Workspace Root 与跨平台 Path/Console Alias 拒绝、Logical Executable Resolution、无 PATH/CWD Search、Runtime Binding Policy Snapshot 不可变、Protected Environment Override Denial、UTF-8 Byte Bound、Outcome/Exit/Truncation 一致性、Command Result Replay、Result-unavailable 同 Operation 重试、durable first-terminal CAS、Cleanup Status/Quarantine、Terminal Result/Error Partition 与 Common Conformance 场景。机器契约现显式设置 `implementationAuthorized: false`，供 Service Host 与 Provider Gate 统一关闭失败。Local crate 的 `#[cfg(test)]` Fake Host Boundary 只验证相同 Executable/Path/Argv/Environment 纯数据规则，包括 Allowlist 不得覆盖 Command String/Path/Credential/Protected Name 和 NUL/CR/LF 拒绝；它不导出 Port、不访问 Host。
 
 完整静态证据见对应 Architecture/Security Review；本节不授权真实 Host Process 或 Provider 实现。
+
+## Implementation Authorization
+
+`ready` since 2026-09-24: the repository owner approved the corresponding architecture/security packet for every listed reviewer role via the structured implementation-gate decision of that date, promoting this requirement to `ready` and its decision record to `accepted`. The packet's evidence obligations (real-platform conformance, dependency review items, and runner ownership where named) remain standing evidence requirements for the implementation slices; approval disposes the review, not the evidence.

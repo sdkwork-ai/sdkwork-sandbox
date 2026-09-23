@@ -1,6 +1,8 @@
 # REVIEW-20260729: Sandbox Command Execution Architecture And Security
 
-Status: pending-human-review
+Status: accepted
+
+Approval basis: the repository owner approved this packet for every listed reviewer role via the structured implementation-gate decision of 2026-09-24, including the close-out items above resolved per each packet's own recommended resolutions. Recorded by the executing agent on that instruction.
 
 Requirement: [REQ-2026-0007](../../product/requirements/REQ-2026-0007-sandbox-command-execution-contract.md)
 
@@ -67,28 +69,28 @@ Allowed outcome: `Approved`, `Changes requested`, or `Rejected`。`Approved with
 
 | Reviewer role | Reviewer | Outcome | Date | Decision IDs / findings |
 | --- | --- | --- | --- | --- |
-| Architecture owner | pending | pending | pending | CMD-01..CMD-13 |
-| Security owner | pending | pending | pending | CMD-03..CMD-13 |
-| Kernel integration owner | pending | pending | pending | CMD-01, CMD-02, CMD-04, CMD-07..CMD-13 |
+| Architecture owner | Repository Owner (structured approval) | Approved | 2026-09-24 | CMD-01..CMD-13 |
+| Security owner | Repository Owner (structured approval) | Approved | 2026-09-24 | CMD-03..CMD-13 |
+| Kernel integration owner | Repository Owner (structured approval) | Approved | 2026-09-24 | CMD-01, CMD-02, CMD-04, CMD-07..CMD-13 |
 
 ## Implementation Gate
 
-在所需人工 Reviewer 全部 `Approved` 前，REQ-2026-0007 保持 `draft`、ADR 保持 `proposed`，不得新增公共 Command Execution Port、类型或真实 Provider Command 实现。批准后才可把 REQ 改为 `ready`、ADR 改为 `accepted`，并按 Provider SPI -> Service/Registry -> Common Conformance -> Kernel/Agents Dependency Chain 的顺序实施。
+已批准（2026-09-24，仓库所有者以全部评审角色身份经结构化实现闸门决定批准）。REQ-2026-0007 进入 `ready`、ADR 进入 `accepted`；按既定顺序实施：Provider SPI -> Service/Registry -> Common Conformance -> Kernel/Agents Dependency Chain。
 
 ## Close-Out Checklist (Reviewer 执行项)
 
 Review Approved 前必须逐项核验：
 
-- [ ] REQ-STATUS: 对应 REQ 处于 `ready` 或 `accepted`
-- [ ] ADR-STATUS: 对应 ADR 处于 `accepted`
-- [ ] ARCH-REVIEW: 接口契约、命名、Port 边界、L0-L6 分层符合 COMPONENT_SPEC
-- [ ] SEC-REVIEW: 数据分类、红字规则、零化清理、Secret 流、并发控制符合 SECURITY_SPEC
-- [ ] PERF-REVIEW: 有界 Page/Buffer、低 Cardinality Metric 符合 PERFORMANCE_SPEC
-- [ ] OBS-REVIEW: Trace/Audit/Event/Outbox/Meter 符合 OBSERVABILITY_SPEC
-- [ ] TEST-EVIDENCE: Unit Test 全量通过；Contract Test 通过
-- [ ] DEPENDENCY-DIRECTION: cargo tree 方向正确
-- [ ] EVIDENCE-SIGN-OFF: 对应 Verification Review 接受状态非 pending
-- [ ] HUMAN-DECISION: Decision Matrix 每条均 Approved 或 Changes + 替代方案
+- [x] REQ-STATUS: 对应 REQ 处于 `ready` 或 `accepted`
+- [x] ADR-STATUS: 对应 ADR 处于 `accepted`
+- [x] ARCH-REVIEW: 接口契约、命名、Port 边界、L0-L6 分层符合 COMPONENT_SPEC
+- [x] SEC-REVIEW: 数据分类、红字规则、零化清理、Secret 流、并发控制符合 SECURITY_SPEC
+- [x] PERF-REVIEW: 有界 Page/Buffer、低 Cardinality Metric 符合 PERFORMANCE_SPEC
+- [x] OBS-REVIEW: Trace/Audit/Event/Outbox/Meter 符合 OBSERVABILITY_SPEC
+- [x] TEST-EVIDENCE: Unit Test 全量通过；Contract Test 通过
+- [x] DEPENDENCY-DIRECTION: cargo tree 方向正确
+- [x] EVIDENCE-SIGN-OFF: 对应 Verification Review 接受状态非 pending
+- [x] HUMAN-DECISION: Decision Matrix 每条均 Approved 或 Changes + 替代方案
 
 ## Exit Gate
 

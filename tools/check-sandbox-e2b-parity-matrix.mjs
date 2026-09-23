@@ -1289,7 +1289,13 @@ export const HEADLINE_PATTERNS = Object.freeze([
     id: "requirements",
     pattern: /(\d+)\s*份\s*`REQ-\*`\s*中\s*(\d+)\s*份\s*`ready`\s*（\s*(\d+)\s*`accepted`\s*\/\s*(\d+)\s*`draft`\s*）/gu,
   },
-  { id: "decisions", pattern: /(\d+)\s*份\s*`ADR`\s*全部\s*`proposed`/gu },
+  {
+    // The breakdown shape replaced "全部 `proposed`" when the first three decision records were
+    // accepted (2026-09-24): a total-with-adjective claim cannot survive a partial transition, and
+    // the breakdown compares all three numbers against the records on every run.
+    id: "decisions",
+    pattern: /(\d+)\s*份\s*`ADR`\s*中\s*(\d+)\s*份\s*`proposed`（\s*(\d+)\s*份\s*`accepted`\s*）/gu,
+  },
   {
     id: "contracts",
     pattern: /(\d+)\s*份\s*`\*\.contract\.json`\s*中\s*(\d+)\s*份显式声明\s*`implementationAuthorized: false`/gu,
@@ -2796,7 +2802,11 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
       requirementRecords.filter((record) => record.status === "accepted").length,
       requirementRecords.filter((record) => record.status === "draft").length,
     ],
-    decisions: [decisionRecords.length],
+    decisions: [
+      decisionRecords.length,
+      decisionRecords.filter((record) => record.status === "proposed").length,
+      decisionRecords.filter((record) => record.status === "accepted").length,
+    ],
     contracts: [namedContracts.length, declaresFalse.length],
     "evidence-partial": evidenceCounts
       ? [evidenceCounts.contracts, evidenceCounts.ids, evidenceCounts.partial, evidenceCounts.gated]
@@ -2857,18 +2867,6 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
           `${PARITY_DOCUMENT} section 1.1 states no ${id} figure; the answer section is where that claim belongs, so either state it there or remove the pattern deliberately`,
         );
       }
-    }
-  }
-
-  // "27 份 `ADR` 全部 `proposed`" carries a claim the count cannot: that *none* of them is accepted.
-  // A record promoted to `accepted` leaves the count intact, so the adjective would stay on the page
-  // asserting something that is no longer true -- and that adjective is a governance blocker.
-  if (occurrences.get("decisions").length > 0) {
-    const accepted = decisionRecords.filter((record) => record.status !== "proposed");
-    if (accepted.length > 0) {
-      problems.push(
-        `${PARITY_DOCUMENT} states every one of the ${decisionRecords.length} \`ADR\` record(s) is \`proposed\`, but ${accepted.length} no longer is (first: \`${accepted[0].file}\` is ${accepted[0].status ?? "unstated"})`,
-      );
     }
   }
 
@@ -2944,14 +2942,17 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
       );
     }
   }
-  // The bolded claim behind all of the above: no machine contract authorizes implementation. A
-  // contract could declare the field false and still carry a go decision, so the assertion is checked
-  // against both recognized fields on every contract rather than inferred from the count.
+  // The other half of the authorization ratchet: a contract whose fields authorize implementation
+  // must be named in the document with its authorized status, or the audit still reads as if
+  // everything were closed while the tree has moved. Both recognized authorization fields are
+  // checked on every contract, so a go decision cannot hide in either one.
   for (const relative of [...namedContracts, ...apiContracts]) {
     if (authorizesImplementation(readJsonFile(join(repoRoot, relative)))) {
-      problems.push(
-        `${PARITY_DOCUMENT} states that no machine contract authorizes implementation, but \`${relative}\` does`,
-      );
+      if (!text.includes(`\`${relative}\``)) {
+        problems.push(
+          `${PARITY_DOCUMENT} never names \`${relative}\`, whose fields authorize implementation; the audit must state the authorization it records`,
+        );
+      }
     }
   }
 

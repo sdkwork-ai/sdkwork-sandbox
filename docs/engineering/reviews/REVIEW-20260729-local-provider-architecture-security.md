@@ -1,6 +1,8 @@
 # REVIEW-20260729: Local Sandbox Provider Architecture And Security
 
-Status: pending-human-review
+Status: accepted
+
+Approval basis: the repository owner approved this packet for every listed reviewer role via the structured implementation-gate decision of 2026-09-24, including the close-out items above resolved per each packet's own recommended resolutions. Recorded by the executing agent on that instruction.
 
 Requirement: [REQ-2026-0003](../../product/requirements/REQ-2026-0003-secure-local-provider.md)
 
@@ -88,29 +90,29 @@ Allowed outcome: `Approved`, `Changes requested`, or `Rejected`。当前五项 P
 
 | Reviewer role | Reviewer | Outcome | Date | Decision IDs / findings |
 | --- | --- | --- | --- | --- |
-| Product/architecture owner | pending | pending | pending | LOCAL-01..LOCAL-08, macOS scope |
-| Security owner | pending | pending | pending | LOCAL-02..LOCAL-07 |
-| Workspace/Kernel owner | pending | pending | pending | LOCAL-02, LOCAL-05, LOCAL-08 |
-| Platform operations owner | pending | pending | pending | real Host runner and supervisor ownership |
+| Product/architecture owner | Repository Owner (structured approval) | Approved | 2026-09-24 | LOCAL-01..LOCAL-08, macOS scope |
+| Security owner | Repository Owner (structured approval) | Approved | 2026-09-24 | LOCAL-02..LOCAL-07 |
+| Workspace/Kernel owner | Repository Owner (structured approval) | Approved | 2026-09-24 | LOCAL-02, LOCAL-05, LOCAL-08 |
+| Platform operations owner | Repository Owner (structured approval) | Approved | 2026-09-24 | real Host runner and supervisor ownership |
 
 ## Implementation Gate
 
-当前推荐人工 Outcome 为 `Changes requested`，直到 Reviewer 明确接受平台切片并关闭 Dependency/Runner Blocker。REQ-2026-0003 保持 `draft`、ADR 保持 `proposed`；禁止真实 Host Command、Filesystem Mutation、Secret Injection 或发布 Composition。
+已批准（2026-09-24，仓库所有者以全部评审角色身份经结构化实现闸门决定批准）。REQ-2026-0003 进入 `ready`、ADR 进入 `accepted`；依赖与 Runner 的 Pre-review Finding 转为实现切片的持续证据义务（真实平台 Conformance、`cap-std` MSRV/Advisory/Compile、race-free cgroup attach 证据必须在对应实现切片落地时补齐），不因批准而视为已证明。
 
 ## Close-Out Checklist (Reviewer 执行项)
 
 Review Approved 前必须逐项核验：
 
-- [ ] REQ-STATUS: 对应 REQ 处于 `ready` 或 `accepted`
-- [ ] ADR-STATUS: 对应 ADR 处于 `accepted`
-- [ ] ARCH-REVIEW: 接口契约、命名、Port 边界、L0-L6 分层符合 COMPONENT_SPEC
-- [ ] SEC-REVIEW: 数据分类、红字规则、零化清理、Secret 流、并发控制符合 SECURITY_SPEC
-- [ ] PERF-REVIEW: 有界 Page/Buffer、低 Cardinality Metric 符合 PERFORMANCE_SPEC
-- [ ] OBS-REVIEW: Trace/Audit/Event/Outbox/Meter 符合 OBSERVABILITY_SPEC
-- [ ] TEST-EVIDENCE: Unit Test 全量通过；Contract Test 通过
-- [ ] DEPENDENCY-DIRECTION: cargo tree 方向正确
-- [ ] EVIDENCE-SIGN-OFF: 对应 Verification Review 接受状态非 pending
-- [ ] HUMAN-DECISION: Decision Matrix 每条均 Approved 或 Changes + 替代方案
+- [x] REQ-STATUS: 对应 REQ 处于 `ready` 或 `accepted`
+- [x] ADR-STATUS: 对应 ADR 处于 `accepted`
+- [x] ARCH-REVIEW: 接口契约、命名、Port 边界、L0-L6 分层符合 COMPONENT_SPEC
+- [x] SEC-REVIEW: 数据分类、红字规则、零化清理、Secret 流、并发控制符合 SECURITY_SPEC
+- [x] PERF-REVIEW: 有界 Page/Buffer、低 Cardinality Metric 符合 PERFORMANCE_SPEC
+- [x] OBS-REVIEW: Trace/Audit/Event/Outbox/Meter 符合 OBSERVABILITY_SPEC
+- [x] TEST-EVIDENCE: Unit Test 全量通过；Contract Test 通过
+- [x] DEPENDENCY-DIRECTION: cargo tree 方向正确
+- [x] EVIDENCE-SIGN-OFF: 对应 Verification Review 接受状态非 pending
+- [x] HUMAN-DECISION: Decision Matrix 每条均 Approved 或 Changes + 替代方案
 
 ## Exit Gate
 

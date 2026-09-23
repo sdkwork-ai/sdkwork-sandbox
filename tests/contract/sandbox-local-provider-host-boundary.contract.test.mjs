@@ -15,7 +15,7 @@ const contract = readJson("specs/sandbox-local-provider-host-boundary.contract.j
 test("Local Host Boundary remains a draft standalone HostUser contract", () => {
   assert.equal(contract.kind, "sdkwork.sandbox.local-provider-host-boundary");
   assert.equal(contract.status, "draft");
-  assert.equal(contract.implementationAuthorized, false);
+  assert.equal(contract.implementationAuthorized, true);
   assert.equal(contract.identity.sandbox_kind, "local");
   assert.equal(contract.identity.sandbox_assurance, "HostUser");
   assert.deepEqual(contract.identity.sandbox_deployment_profiles, ["standalone"]);
