@@ -10,6 +10,8 @@ import {
   ADVANTAGE_SECTION,
   ANSWER_COLUMNS,
   ANSWER_REQUIRED_FIGURES,
+  CLAIM_ATTRIBUTION_COLUMNS,
+  CLAIM_ATTRIBUTION_VERDICTS,
   CLAIM_CENSUS_COLUMNS,
   CLAIM_COLUMNS,
   CLAIM_CORRECTION_COLUMNS,
@@ -142,6 +144,19 @@ const CLAIM_SURFACE = [
   `| ${CLAIM_CORRECTION_COLUMNS.join(" | ")} |`,
   "| --- | --- | --- | --- | --- |",
   "| 1 | `docs/product/prd/PRD.md` | Fixture Capability | `REQ-2026-0002` | `fixture-absent-probe` |",
+  "",
+].join("\n");
+
+/**
+ * The attribution ledger, the fixture's counterpart to the repository's own. Its one row judges the
+ * one counted claim: the keyword stands for the capability, the candidate is the record a reader
+ * would most suspect, and the lexical ownership of that keyword by that candidate is what the gate
+ * re-derives (`capability` appears nowhere in the fixture records' needles, so the verdict holds).
+ */
+const ATTRIBUTION = [
+  `| ${CLAIM_ATTRIBUTION_COLUMNS.join(" | ")} |`,
+  "| --- | --- | --- | --- | --- | --- |",
+  "| 1 | `docs/product/prd/PRD.md` | fixture capability | `capability` | 确认无承载 | `REQ-2026-0002` |",
   "",
 ].join("\n");
 
@@ -296,6 +311,7 @@ function buildDocument({
   surface = CLAIM_SURFACE,
   shape = SHAPE,
   advantage = ADVANTAGE,
+  attribution = ATTRIBUTION,
   description = GATE_DESCRIPTION,
 } = {}) {
   return [
@@ -318,6 +334,8 @@ function buildDocument({
     claims,
     "",
     surface,
+    "",
+    attribution,
     "",
     advantage,
     "",
@@ -617,15 +635,16 @@ test("the repository's own residual-gap table is typed and every claim holds", (
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  // Four gaps were closed and moved to the closure record below the table: the PRD state machine
+  // Five gaps were closed and moved to the closure record below the table: the PRD state machine
   // marking (traceability gate family 5), the metric family join (family 6), the capability
-  // matrix join (field gate family 8), and the section 5 advantage claims (this gate's shape
-  // family, extended). Only these three remain, all genuinely open.
-  assert.equal(assessment.gapCount, 3);
+  // matrix join (field gate family 8), the section 5 advantage claims (this gate's shape family,
+  // extended), and the per-item attribution of the cross-document assertions (section 3.5's
+  // attribution ledger). Only these two remain, both genuinely open.
+  assert.equal(assessment.gapCount, 2);
 
   const gaps = parseCoverageGaps(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
   assert.deepEqual(gaps.header, [...GAP_COLUMNS]);
-  assert.equal(gaps.rows.length, 3);
+  assert.equal(gaps.rows.length, 2);
   assert.equal(gaps.malformed.length, 0);
   for (const row of gaps.rows) {
     assert.ok(GAP_KINDS.includes(row["性质"]), `gap row ${row.line} declares kind ${row["性质"]}`);
@@ -1023,14 +1042,19 @@ test("the repository's own cross-document census recount matches its declaration
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  assert.equal(assessment.claimSurfaceCount, 4);
-  assert.equal(assessment.claimSurfaceClaims, 15);
+  // Five documents, 19 claims: the widened phrasing set (无独立 `REQ-*`) added the Auto Pause and
+  // MCP assertions in PRD-capabilities, the MCP row in PRD section 8, and the Port Exposure row of
+  // PRD-sandbox-surfaces to the four documents the narrower set counted.
+  assert.equal(assessment.claimSurfaceCount, 5);
+  assert.equal(assessment.claimSurfaceClaims, 19);
 
   const surface = parseClaimSurfaceRegistry(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
   assert.deepEqual(surface.census.header, [...CLAIM_CENSUS_COLUMNS]);
   assert.deepEqual(surface.corrections.header, [...CLAIM_CORRECTION_COLUMNS]);
+  assert.deepEqual(surface.attribution.header, [...CLAIM_ATTRIBUTION_COLUMNS]);
   assert.equal(surface.census.malformed.length, 0);
   assert.equal(surface.corrections.rows.length, 1);
+  assert.equal(surface.attribution.rows.length, 19);
 
   // The census is the whole account: every document outside this one that makes the claim is
   // registered. This restates the gate's completeness scan from outside the gate.
@@ -1041,6 +1065,132 @@ test("the repository's own cross-document census recount matches its declaration
     if (lines.length === 0) continue;
     assert.ok(registered.has(`\`${relative}\``), `${relative} makes a claim no census row counts`);
   }
+});
+
+test("the repository's own attribution ledger judges every counted claim", () => {
+  const assessment = assessE2bParityMatrix({ repoRoot });
+  assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
+
+  const surface = parseClaimSurfaceRegistry(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
+  const verdicts = new Set(surface.attribution.rows.map((row) => row["判定"]));
+  for (const verdict of verdicts) {
+    assert.ok(CLAIM_ATTRIBUTION_VERDICTS.includes(verdict), `unknown verdict ${verdict}`);
+  }
+  // Every counted capability is either confirmed unowned with named candidates, marked as a
+  // definitional sentence, or pointed at the correction ledger -- none left unjudged.
+  const unowned = surface.attribution.rows.filter((row) => row["判定"] === "确认无承载");
+  assert.ok(unowned.length >= 14, `expected the bulk to be confirmed unowned, got ${unowned.length}`);
+  for (const row of unowned) {
+    assert.ok(/REQ-\d{4}-\d{4}/u.test(row["已核对候选"]), `row ${row["#"]} cites no candidate`);
+    assert.ok(row["关键词"].trim() !== "", `row ${row["#"]} names no keyword`);
+  }
+});
+
+test("a missing attribution ledger is reported rather than passed", () => {
+  expectProblem(
+    inspect({ document: buildDocument({ attribution: "" }) }),
+    "has no attribution ledger",
+  );
+});
+
+test("an attribution table that judges nothing is rejected", () => {
+  const attribution = [
+    `| ${CLAIM_ATTRIBUTION_COLUMNS.join(" | ")} |`,
+    "| --- | --- | --- | --- | --- | --- |",
+    "",
+  ].join("\n");
+
+  expectProblem(inspect({ document: buildDocument({ attribution }) }), "attributes no counted claim");
+});
+
+test("an attribution row with an unknown verdict is rejected", () => {
+  const attribution = ATTRIBUTION.replace("确认无承载", "已由 REQ 承载");
+
+  expectProblem(inspect({ document: buildDocument({ attribution }) }), 'declares verdict "已由 REQ 承载"');
+});
+
+test("an attribution row that names no keyword is rejected", () => {
+  const attribution = ATTRIBUTION.replace("| `capability` | 确认无承载 |", "| — | 确认无承载 |");
+
+  expectProblem(inspect({ document: buildDocument({ attribution }) }), "names no keyword");
+});
+
+test("an attribution row citing no checked record is rejected", () => {
+  const attribution = ATTRIBUTION.replace(" | `REQ-2026-0002` |", " | — |");
+
+  expectProblem(inspect({ document: buildDocument({ attribution }) }), "cites no checked requirement record");
+});
+
+test("an attribution row whose candidate does not resolve is rejected", () => {
+  const attribution = ATTRIBUTION.replace("`REQ-2026-0002`", "`REQ-2026-9999`");
+
+  expectProblem(
+    inspect({ document: buildDocument({ attribution }) }),
+    "`REQ-2026-9999`, which has no record in",
+  );
+});
+
+test("an attribution row whose keyword is owned by its candidate is rejected", () => {
+  // The refutation that keeps the ledger honest: the fixture record's slug contains `fixture`, so
+  // citing it as checked-and-unowned for the keyword `fixture` is self-contradicting.
+  const attribution = ATTRIBUTION.replace("| `capability` |", "| `fixture` |");
+
+  expectProblem(
+    inspect({ document: buildDocument({ attribution }) }),
+    "the checked candidate `REQ-2026-0002` owns it",
+  );
+});
+
+test("an attribution row claiming a refuted capability without a ledger entry is rejected", () => {
+  const attribution = ATTRIBUTION.replace(
+    "| 1 | `docs/product/prd/PRD.md` | fixture capability | `capability` | 确认无承载 | `REQ-2026-0002` |",
+    "| 1 | `docs/product/prd/PRD.md` | fixture capability | — | 已证伪，见更正账 | — |",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ attribution }) }),
+    "holds no `fixture capability` entry",
+  );
+});
+
+test("an attribution count that disagrees with the census is rejected", () => {
+  const attribution = ATTRIBUTION.replace(
+    "`REQ-2026-0002` |",
+    "`REQ-2026-0002` |\n| 2 | `docs/product/prd/PRD.md` | another counted claim | `capability` | 确认无承载 | `REQ-2026-0003` |",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ attribution }) }),
+    "attributes 2 claim(s) in `docs/product/prd/PRD.md`, but its census row declares 1",
+  );
+});
+
+test("an attribution row for a document no census row counts is rejected", () => {
+  const attribution = ATTRIBUTION.replace(
+    "`REQ-2026-0002` |",
+    "`REQ-2026-0002` |\n| 2 | `docs/architecture/tech/TECH-fixture-surface.md` | another counted claim | `capability` | 确认无承载 | `REQ-2026-0003` |",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ attribution }) }),
+    "attributes claims in `docs/architecture/tech/TECH-fixture-surface.md`, which no census row counts",
+  );
+});
+
+test("a broken attribution numbering is rejected", () => {
+  const attribution = ATTRIBUTION.replace("| 1 | `docs/product/prd/PRD.md` | fixture capability", "| 7 | `docs/product/prd/PRD.md` | fixture capability");
+
+  expectProblem(
+    inspect({ document: buildDocument({ attribution }) }),
+    "breaks the attribution numbering; expected 1",
+  );
+});
+
+test("the attribution reader is total on the real document and on one without the section", () => {
+  const real = parseClaimSurfaceRegistry(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
+  assert.equal(real.attribution.rows.length, 19);
+  // A document with no section at all parses to null, the same contract the census reader states.
+  assert.equal(parseClaimSurfaceRegistry("# nothing to see\n"), null);
 });
 
 test("the cross-document census reader is total, and heading spans do not nest", () => {

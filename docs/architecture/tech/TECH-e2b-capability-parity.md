@@ -135,7 +135,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | 14 | `connect()` 恢复（热恢复） | 无 | ❌ | — |
 | 15 | Reboot-on-resume（`resume-without-memory`） | 无 | ❌ | — |
 | 16 | Paused 无限期保留、无 TTL、无自动删除 | 无 | ❌ | **形态相反**：`REQ-2026-0020` 定义的是**有界**热状态投影与终态保留窗口，不是无限期保留 |
-| 17 | Auto-pause on timeout（`onTimeout: 'pause'`） | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 9 节；无独立 `REQ-*` |
+| 17 | Auto-pause on timeout（`onTimeout: 'pause'`） | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 9 节；无独立 `REQ-*`〔§3.4/5〕 |
 | 18 | Pause 被拒语义（HTTP 503 `ServiceBusyError`，沙箱保持运行可重试） | `SandboxLifecycleError::LeaseUnavailable` / `LeaseLost` | 🟡 | 形态不同：本仓的拒绝对象是**生命周期控制权竞争**，不是快照拥塞；E2B 那套快照背压语义本仓无对应 |
 | 19 | 暂停/恢复性能承诺（约 4 s/GiB RAM；恢复约 1 s） | 无 | ❌ | [TECH-performance-and-capacity.md](TECH-performance-and-capacity.md) 有恢复时延目标，但无参考硬件与测量 |
 
@@ -258,7 +258,7 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 
 | # | E2B 能力 | 本仓对应 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
-| 73 | MCP Gateway（200+ servers / custom templates / custom servers） | 仅 Transport 级 | ❌ | [PRD-capabilities.md](../../product/prd/PRD-capabilities.md) 第 5 节只有传输级描述；无独立 `REQ-*` |
+| 73 | MCP Gateway（200+ servers / custom templates / custom servers） | 仅 Transport 级 | ❌ | [PRD-capabilities.md](../../product/prd/PRD-capabilities.md) 第 5 节只有传输级描述；无独立 `REQ-*`〔§3.4/7〕 |
 
 ### 2.16 平台与部署
 
@@ -316,7 +316,7 @@ cargo test --workspace
 node --test tests/contract/*.test.mjs
 ```
 
-`660 pass / 0 fail`（其中 E2B 矩阵门禁 159 个、E2B 基准门禁 30 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
+`673 pass / 0 fail`（其中 E2B 矩阵门禁 172 个、E2B 基准门禁 30 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
 
 ### 3.2 覆盖空档
 
@@ -325,12 +325,11 @@ node --test tests/contract/*.test.mjs
 | 优先级 | 空档 | 性质 | 取证 | 说明 |
 | --- | --- | --- | --- | --- |
 | 1 | **已实现面没有任何消费点测试** | 治理阻塞 | `REQ-2026-0003` `REQ-2026-0008` | 7 个 SPI 测试全部落在谓词与构造器上，`allocate`/`start`/`stop`/`destroy` 的**真实 Provider 调用序列**没有任何实现可测——因为 Provider 不存在。两条能授权它的需求（安全本地 Provider、Firecracker Provider）都还是 `draft`，`AGENTS.md` 未放行，所以这不是"没写用例"而是"没有可写用例的实现"。本仓最深的空档 |
-| 2 | **PRD 第 8 节的其余「无需求承载」断言只有计数，没有逐条归属对账** | 缺门禁 | `docs/product/prd/PRD.md` `docs/architecture/tech/TECH-e2b-capability-parity.md` | 该节曾把「Benchmark 套件与容量基线」列为无需求承载，并断言「无参考硬件定义」；而 `REQ-2026-0019` 的 Goals 正是「在公开参考环境和固定工作负载中证明 Pool Claim 到 Sandbox Running Ready 的 p50/p95/p99」，其 Performance 行还要求记录固定硬件。该行已改写，§3.5 也把这条修正连反证物一起登记。但 §3.5 证明的是**覆盖**——每处断言都被数到、已证伪的那条留下探针——不是**真值**：其余 15 行里任何一行都可能同样过期，而词法反证对这一形态无效（实测记在 §3.5）。逐条归属判定仍缺 |
-| 3 | **500 ms 热分配目标没有测量者，三份性能文档互不 join** | 治理阻塞 | `REQ-2026-0019` | 目标（`PRD.md` 第 6 节）说的是"公开参考环境中 Pool 到 Workspace 绑定 p95 小于 500 ms"；基线（`docs/architecture/tech/TECH-performance-baseline.md`）自述**发布门禁资格：不合格**，且其第 0.2 条明确"分子（编排）已测、分母（真实沙箱启动）不存在"，测的是编排地板；容量分片（`docs/architecture/tech/TECH-performance-and-capacity.md`）声明"全部数值都是工程目标"。三份文件各说各话、无人同时读它们。而 500 ms 对应的 Pool 路径由 `REQ-2026-0019` 承载且仍是 `draft`，所以**这里连可测的实现都还没有**，只能先作为阻塞登记 |
+| 2 | **500 ms 热分配目标没有测量者，三份性能文档互不 join** | 治理阻塞 | `REQ-2026-0019` | 目标（`PRD.md` 第 6 节）说的是"公开参考环境中 Pool 到 Workspace 绑定 p95 小于 500 ms"；基线（`docs/architecture/tech/TECH-performance-baseline.md`）自述**发布门禁资格：不合格**，且其第 0.2 条明确"分子（编排）已测、分母（真实沙箱启动）不存在"，测的是编排地板；容量分片（`docs/architecture/tech/TECH-performance-and-capacity.md`）声明"全部数值都是工程目标"。三份文件各说各话、无人同时读它们。而 500 ms 对应的 Pool 路径由 `REQ-2026-0019` 承载且仍是 `draft`，所以**这里连可测的实现都还没有**，只能先作为阻塞登记 |
 
 **本表此前有一行是假的，这正是新增门禁的由来。** 原第 5 行写作「"快速创建/快速部署"的性能断言全为零测试」，性质一栏写着"既无参考硬件也无 Benchmark 套件，且该目标没有任何需求承载"——**这句有一半不成立**：`REQ-2026-0019` 承载的正是这个目标，`tools/bench-sandbox-lifecycle.mjs` 与两平台原始样本也都在树里（样本落在 gitignore 的 `target/` 下，是证据不是缓存）。一张"缺什么"的清单如果不可被目录列举推翻，它就会越写越旧。所以本节改成带性质的表，并由门禁按性质**反向核验**：`缺产物` 点名的路径必须**不存在**、`缺门禁` 点名的路径必须**存在**、`治理阻塞` 必须点名一份**记录在案且尚未 `ready`** 的需求——三者问的都是"这句话能不能被证伪"，不是措辞问题。
 
-**四个空档已于本轮闭合并从本表移除**，各自的门禁落点：
+**五个空档已于本轮闭合并从本表移除**，各自的门禁落点：
 
 | 已闭合空档 | 门禁落点 | 闭合方式 |
 | --- | --- | --- |
@@ -338,6 +337,7 @@ node --test tests/contract/*.test.mjs
 | 指标契约与指标族名不相交 + `*_latency` 命名违规 | `tools/check-sandbox-requirement-traceability.mjs` 第 6 条规则族 | PRD 第 13 节 13 个指标族按 `OBSERVABILITY_SPEC.md` 命名规则重写；`apis/async/sandbox-observability-catalog.json` 新增 `metrics.productFamilies` 机器映射（6 控制面 / 7 运行面），双向一一对应、`catalogMetrics` 必须可解析 |
 | `PRD-capabilities.md` 第 11 节与 E2B 基准之间无门禁 | `tools/check-sandbox-e2b-field-parity.mjs` 第 8 条规则族（capability-matrix-join） | 基准 JSON 逐行携带 `capabilityMatrixRows`，78 行与 34 行双向记账（57 映射 / 21 登记无产品行；25 被判定 / 9 登记无基线行），审计文档自己的 34/78 标题句被解析比对 |
 | §5「我们比 E2B 强的地方」的 9 行优势断言没有门禁 | `tools/check-sandbox-e2b-parity-matrix.mjs` 第 11 条规则族（形状取证扩至 §5） | 每行证据格必须含至少一个**可反证**引用（仓库路径 / Rust 文件 / `REQ-*`/`ADR-*` 记录 / 在 crates 或 database 树中出现的裸标识符）；裸 Rust 文件名拒绝（改名即孤儿）；行锚必须在界内且**该行引用的其他物证至少一项在锚点窗口内可见**（与 §1.2 同一配对法）。上线首跑抓到 5 处真缺陷：两处行锚已漂移（`identity.rs:88`→实为 :97、`model.rs:24`→实为 :276）、两个裸文件名、一行证据格只有文档链接没有可反证 token，均已按真值改写 |
+| PRD 第 8 节等跨文档「无需求承载」断言只有计数、没有逐条归属 | `tools/check-sandbox-e2b-parity-matrix.mjs` 第 8 条规则族（§3.5 归属账） | 句型清单拓宽收编 `无独立 REQ-*`（普查 15→19 行、新增第 5 个文档），归属账把 19 行断言逐条判到封闭词表（口径句 / 确认无承载 / 已证伪见更正账）；门禁按文档核对归属行数与普查声明数相等、候选记录可解析、且每对（关键词，候选）词法不命中——新增需求记录一旦拥有某行关键词即转红，语义判定因此被账本化而不是散文化 |
 
 **本表此前有一行是假的，这正是新增门禁的由来。** 原第 5 行写作「"快速创建/快速部署"的性能断言全为零测试」，性质一栏写着"既无参考硬件也无 Benchmark 套件，且该目标没有任何需求承载"——**这句有一半不成立**：`REQ-2026-0019` 承载的正是这个目标，`tools/bench-sandbox-lifecycle.mjs` 与两平台原始样本也都在树里（样本落在 gitignore 的 `target/` 下，是证据不是缓存）。一张"缺什么"的清单如果不可被目录列举推翻，它就会越写越旧。所以本节改成带性质的表，并由门禁按性质**反向核验**：`缺产物` 点名的路径必须**不存在**、`缺门禁` 点名的路径必须**存在**、`治理阻塞` 必须点名一份**记录在案且尚未 `ready`** 的需求——三者问的都是"这句话能不能被证伪"，不是措辞问题。
 
@@ -434,18 +434,45 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 ### 3.5 跨文档零需求断言对账
 
-第 3.4 节登记的是**本文档**的断言。「某能力无需求承载」这个句型不是本文档独有的：逐字扫 `docs/**`，它一共出现在 5 个文档的 26 行上，而第 3.4 节的两向记账只覆盖本文档那 10 行。其余 4 个文档的 16 行此前**没有任何东西读**——其中一行已经被证伪，并在下表第二张里留了账。
+第 3.4 节登记的是**本文档**的断言。「某能力无需求承载」这个句型不是本文档独有的：逐字扫 `docs/**`（时点证据目录除外），句型一共出现在 6 个文档的 31 行上，而第 3.4 节的两向记账只覆盖本文档那 12 行。其余 5 个文档的 19 行由本节记账——其中一行已经被证伪，并在下表第二张里留了账。
 
-把关键词反证的口径放宽**解决不了**这件事，本轮是实测而不是推测：把第 3.4 节的关键词从需求记录的 id / slug / title 扩到 id / slug / title / Goals，既抓不到那条假断言（`benchmark` 在 27 份记录的这四个字段里一次都不出现），又会引入一批误报（`snapshot`、`cache`、`port` 各自在若干份无关记录的 Goals 里命中）。所以第 3.4 节的窄口径保持不变，放宽的是**账**。
+**句型清单本身也是实测对象。** 2026-09-23 的归属判定轮发现：`无独立 ` + backtick + `REQ-*` + backtick + `（如 PRD.md 第 8 节 MCP 行、PRD-capabilities.md 第 11 节 Auto Pause 行、PRD-sandbox-surfaces.md 第 1 节 Port Exposure 行）是**同类断言**，却因决定词与 `REQ-*` 之间隔了一个形容词而被旧句型静默漏数——与 `#[tokio::test(...)]` 带参数被丢、operationId 含点被丢是同一类抽取口径缺陷。本轮把 `无独立` 并进句型并重算：跨文档断言从 15 行变为 **19 行**、新增第 5 个文档；本文档自己的两行（矩阵第 17、73 行）按第 3.4 节规则补了 `〔§3.4/N〕` 引用。任何覆盖率结论必须先对抽取规则做正反例自检再报数——这条纪律第三次同向验证。
 
 下表按文档逐段计数。`断言数` 是**重算值**：门禁在该段落（同级或更浅的下一节标题之前）重新数句型出现次数，再与声明值比对——加一句、删一句、或把整节搬走，都会转红。本文档自己的断言由第 3.4 节负责，故不在本表内。
 
 | # | 文档 | 段落 | 断言数 |
 | --- | --- | --- | --- |
-| 1 | `docs/product/prd/PRD.md` | `尚未拆分的能力` | 11 |
-| 2 | `docs/product/prd/PRD-capabilities.md` | `11. 能力对齐矩阵 (Capability Alignment Matrix)` | 2 |
+| 1 | `docs/product/prd/PRD.md` | `尚未拆分的能力` | 12 |
+| 2 | `docs/product/prd/PRD-capabilities.md` | `11. 能力对齐矩阵 (Capability Alignment Matrix)` | 4 |
 | 3 | `docs/architecture/tech/TECH_ARCHITECTURE.md` | `2. 技术选型 (Technology Choices)` | 1 |
 | 4 | `docs/architecture/views/gate-zero-current-state.md` | `验证门禁` | 1 |
+| 5 | `docs/product/prd/PRD-sandbox-surfaces.md` | `1. 能力面对齐范围` | 1 |
+
+**归属账（逐条真值判定）。** 普查证明每条断言被**数到**，不证明它**为真**。下表把上表的每一行断言逐一判到需求目录上：`判定` 取封闭词表（`口径句，不指能力`——定义性句子而非能力断言；`确认无承载`——已对目录核对、无记录承载；`已证伪，见更正账`——该断言已被推翻，由更正账留探针）；`已核对候选` 点名核对时最可疑的记录，`关键词` 是该能力的代表词。门禁核验三件事：候选记录必须可解析；对每对（关键词，候选），`requirementOwnsKeyword` 必须不命中——**命中即说明候选就是承载者，该行判定为假**；每文档归属行数必须与普查声明数相等，断言增删而判定不同步即转红。词法核验只保"候选不承载"这半句；"目录中无任何记录承载"这半句是逐条人工判断，随目录增长必须复核——这正是把它登记成账而不是写成散文的原因。
+
+| # | 文档 | 能力 | 关键词 | 判定 | 已核对候选 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `docs/product/prd/PRD.md` | （§8 引言口径句，不指具体能力） | — | 口径句，不指能力 | — |
+| 2 | `docs/product/prd/PRD.md` | 运行模式分层（Mode 0 / Mode 1） | `mode` | 确认无承载 | `REQ-2026-0002`、`REQ-2026-0008` |
+| 3 | `docs/product/prd/PRD.md` | Template 与构建链 | `template` | 确认无承载 | `REQ-2026-0008`、`REQ-2026-0012` |
+| 4 | `docs/product/prd/PRD.md` | Fork | `fork` | 确认无承载 | `REQ-2026-0002`、`REQ-2026-0021` |
+| 5 | `docs/product/prd/PRD.md` | 按需内存与写时复制根文件系统 | `memory` | 确认无承载 | `REQ-2026-0008`、`REQ-2026-0013` |
+| 6 | `docs/product/prd/PRD.md` | 端口暴露 | `port` | 确认无承载 | `REQ-2026-0014`、`REQ-2026-0023` |
+| 7 | `docs/product/prd/PRD.md` | 网络 `shared` 模式 | `shared` | 确认无承载 | `REQ-2026-0014` |
+| 8 | `docs/product/prd/PRD.md` | Sandbox 内 Agent 运行时 | `agent` | 确认无承载 | `REQ-2026-0024` |
+| 9 | `docs/product/prd/PRD.md` | MCP 执行面 | `mcp` | 确认无承载 | `REQ-2026-0023`、`REQ-2026-0024` |
+| 10 | `docs/product/prd/PRD.md` | Skills | `skill` | 确认无承载 | `REQ-2026-0023` |
+| 11 | `docs/product/prd/PRD.md` | SDK 家族 | `sdk` | 确认无承载 | `REQ-2026-0027` |
+| 12 | `docs/product/prd/PRD.md` | Node Drain 与迁移 | `migration` | 确认无承载 | `REQ-2026-0017` |
+| 13 | `docs/product/prd/PRD-capabilities.md` | （§11 引言口径句） | — | 口径句，不指能力 | — |
+| 14 | `docs/product/prd/PRD-capabilities.md` | Egress Policy 行的 `shared` 模式 | `shared` | 确认无承载 | `REQ-2026-0014` |
+| 15 | `docs/product/prd/PRD-capabilities.md` | Auto Pause | `pause` | 确认无承载 | `REQ-2026-0019`、`REQ-2026-0020` |
+| 16 | `docs/product/prd/PRD-capabilities.md` | MCP | `mcp` | 确认无承载 | `REQ-2026-0023`、`REQ-2026-0024` |
+| 17 | `docs/architecture/tech/TECH_ARCHITECTURE.md` | 边缘路由与端口暴露 | `port` | 确认无承载 | `REQ-2026-0023` |
+| 18 | `docs/architecture/views/gate-zero-current-state.md` | Benchmark 套件与容量基线 | `benchmark` | 已证伪，见更正账 | `REQ-2026-0019` |
+| 19 | `docs/product/prd/PRD-sandbox-surfaces.md` | Port Exposure | `port` | 确认无承载 | `REQ-2026-0023` |
+
+第 18 行说明：gate-zero 视图那句关于「`REQ-*` 计数为零」的历史措辞是对已修正断言的**转述**（它讲的就是那条规则为何存在），断言本体已在更正账第 1 行留探针；按「已证伪断言全仓皆假」的口径，这里判到同一条更正上。第 15 行的 Auto Pause 是本轮句型拓宽后新入账的断言：`REQ-2026-0019`（池化）与 `REQ-2026-0020`（热状态保留）都不含 pause 语义，PRD-runtime-execution-model 第 9 节的产品要求仍无需求承载。
 
 被证伪的断言必须在这里留账，且**原文必须已经消失**：`缺失探针` 是一个不得再出现在该文档里的字面串。它是这条「已修正」声明的**反证物**——与第 1.2 节要求「不存在」必须点名不存在什么，是同一条规则；承载需求必须能在需求目录里解析到记录。
 
@@ -455,7 +482,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 第 1 行的来龙去脉：`PRD.md` 第 8 节曾把「Benchmark 套件与容量基线」列为无需求承载，并断言「无参考硬件定义」。该断言已被推翻——`REQ-2026-0019` 的 Goals 与 Performance 行要求「在公开参考环境和固定工作负载中证明 Pool Claim 到 Sandbox Running Ready 的 p50/p95/p99」并记录固定硬件，`tools/bench-sandbox-lifecycle.mjs` 与 [TECH-performance-baseline.md](TECH-performance-baseline.md)（两平台实测）也都在树里。该行已改写为「已有承载 + 仍缺什么」，探针保证旧措辞不会悄悄回来。
 
-**这张表给出的是覆盖，不是真值。** 它证明每个文档的断言都被**数到**（未经登记的新句子会转红），并让已证伪的那条留下可反证物；但它不证明其余 15 行**为真**——那需要逐条归属判定，仍登记在 §3.2 第 5 行。
+**普查表给出覆盖，归属账给出真值判定，两者都不是免检结论。** 覆盖的判据（句型清单）在本轮就被抓到漏数 4 行；真值判定的词法半句由门禁逐对复算，语义半句（"目录中确实无人承载"）随每份新增需求记录增长而必须复核——新增记录若与某行关键词冲突，门禁会在候选之外转红（第 3.4 节的目录反查对全目录生效）。
 
 ## 4. 缺口清单
 

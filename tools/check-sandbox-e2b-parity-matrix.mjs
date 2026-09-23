@@ -412,6 +412,13 @@ const RECORD_STATUS = /^\s*(?:\*\*)?status(?:\*\*)?\s*[:：]\s*(?:\*\*)?([A-Za-z
 export const ZERO_REQUIREMENT_PATTERNS = Object.freeze([
   "(?:尚无任何|尚无|无|没有任何|零)\\s*`REQ-\\*`",
   "`REQ-\\*`\\s*为零",
+  // `无独立 REQ-*` is the same assertion with an adjective between the determiner and the token.
+  // The first pattern requires the backtick to sit right after the determiner (or whitespace), so
+  // this form silently escaped every count below -- which is the extraction-rule defect this
+  // repository keeps re-learning: a coverage number is only as good as the counterexamples run
+  // against its extraction rule. Widening here widens the census recount and the completeness scan
+  // together; the declared counts in section 3.5 must move with it.
+  "无独立\\s*`REQ-\\*`",
 ]);
 
 /** The citation a zero-requirement claim must carry: which registry row backs it. */
@@ -442,6 +449,27 @@ export const CLAIM_COLUMNS = Object.freeze(["#", "主题", "关键词", "说明"
 export const CLAIM_SURFACE_SECTION = "### 3.5";
 export const CLAIM_CENSUS_COLUMNS = Object.freeze(["#", "文档", "段落", "断言数"]);
 export const CLAIM_CORRECTION_COLUMNS = Object.freeze(["#", "文档", "能力", "承载需求", "缺失探针"]);
+
+/**
+ * The attribution ledger: every counted cross-document claim, judged against the requirement
+ * catalog by hand. The census proves each assertion is *counted*; this ledger records whether it is
+ * *true*, with the requirement records that were actually checked named so the judgment can be
+ * re-derived as the catalog grows. The keyword column makes the citation falsifiable at the lexical
+ * layer: a candidate that owns the keyword would be a carrier, contradicting the verdict.
+ */
+export const CLAIM_ATTRIBUTION_COLUMNS = Object.freeze(["#", "文档", "能力", "关键词", "判定", "已核对候选"]);
+
+/** The closed vocabulary an attribution verdict may use. A new verdict is a deliberate edit here. */
+export const CLAIM_ATTRIBUTION_VERDICTS = Object.freeze([
+  // A definitional sentence (the phrasing used to introduce a table), not a claim about a
+  // capability, so there is nothing to attribute.
+  "口径句，不指能力",
+  // The catalog was checked and no record carries the capability; the named candidates are the
+  // records a reader would most suspect, each verified not to own the keyword.
+  "确认无承载",
+  // The assertion was refuted; the correction ledger below owns the fix and the probe.
+  "已证伪，见更正账",
+]);
 
 /** Where the census scans for the claim phrasing. The phrasing is confined to the documentation. */
 export const ZERO_REQUIREMENT_SCAN_ROOT = "docs";
@@ -545,6 +573,8 @@ export function parseClaimSurfaceRegistry(text) {
     census: tables.find((table) => table.header.join("|") === CLAIM_CENSUS_COLUMNS.join("|")) ?? null,
     corrections:
       tables.find((table) => table.header.join("|") === CLAIM_CORRECTION_COLUMNS.join("|")) ?? null,
+    attribution:
+      tables.find((table) => table.header.join("|") === CLAIM_ATTRIBUTION_COLUMNS.join("|")) ?? null,
     tables,
     start: start + 1,
     end,
@@ -1993,6 +2023,135 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
               `${PARITY_DOCUMENT}:${row.line} ${label} records \`${probe}\` as corrected, but \`${relative}\` still contains it`,
             );
           }
+        }
+      }
+    }
+
+    // The census proves every assertion is counted; the attribution ledger records whether each one
+    // is true. Without it the counts above are coverage of a sentence shape, not of a judgment: 15
+    // lines could say "no requirement carries this" and not one of them would have been checked
+    // against the catalog. Each ledger row names the capability, the keyword that stands for it,
+    // the verdict from a closed vocabulary, and the requirement records that were actually checked
+    // -- so as the catalog grows, a row whose keyword a new record owns turns red on its own.
+    const attribution = claimSurface.attribution;
+    if (!attribution) {
+      problems.push(
+        `${PARITY_DOCUMENT} section 3.5 has no attribution ledger; expected columns [${CLAIM_ATTRIBUTION_COLUMNS.join(", ")}]`,
+      );
+    } else {
+      for (const row of attribution.malformed) {
+        problems.push(
+          `${PARITY_DOCUMENT}:${row.line} attribution row has ${row.cells.length} cell(s), expected ${CLAIM_ATTRIBUTION_COLUMNS.length}`,
+        );
+      }
+      if (attribution.rows.length === 0) {
+        problems.push(
+          `${PARITY_DOCUMENT} section 3.5 attributes no counted claim, which leaves every cross-document assertion unjudged; state the attributions or delete the table`,
+        );
+      }
+      const ownerIndex = requirementOwnershipIndex(repoRoot);
+      const correctionsIndex = (claimCorrections?.rows ?? []).map((row) => ({
+        document: stripBackticks(row["文档"]),
+        capability: stripEmphasis(row["能力"]).trim(),
+      }));
+      let expectedAttributionNumber = 1;
+      const attributedCounts = new Map();
+      for (const row of attribution.rows) {
+        const number = Number(row["#"]);
+        const label = `section 3.5 attribution row ${Number.isInteger(number) ? number : `at line ${row.line}`}`;
+        if (!Number.isInteger(number)) {
+          problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} has a non-numeric number`);
+        } else {
+          if (number !== expectedAttributionNumber) {
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} breaks the attribution numbering; expected ${expectedAttributionNumber}`,
+            );
+            expectedAttributionNumber = number;
+          }
+          expectedAttributionNumber += 1;
+        }
+        const document = stripBackticks(row["文档"]);
+        const capability = stripEmphasis(row["能力"]).trim();
+        if (document === "") {
+          problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} names no document`);
+        }
+        if (capability === "") {
+          problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} names no capability`);
+        }
+        const verdict = row["判定"];
+        if (!CLAIM_ATTRIBUTION_VERDICTS.includes(verdict)) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} declares verdict "${verdict || "none"}"; expected one of ${CLAIM_ATTRIBUTION_VERDICTS.join(" / ")}`,
+          );
+          continue;
+        }
+        // Counted before the verdict branches: a definitional sentence is skipped for judging below,
+        // but the census counts its line, so the per-document parity must count it too.
+        attributedCounts.set(document, (attributedCounts.get(document) ?? 0) + 1);
+        if (verdict === "已证伪，见更正账") {
+          // The join is on the capability, not the document: a refuted claim is refuted
+          // repository-wide, and a surviving quotation of it (a view retelling the correction)
+          // attributes to the same ledger entry the document that carried the original does.
+          const corrected = correctionsIndex.some((entry) => entry.capability === capability);
+          if (!corrected) {
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} claims the assertion was refuted, but the correction ledger holds no \`${capability}\` entry`,
+            );
+          }
+          continue;
+        }
+        if (verdict === "口径句，不指能力") continue;
+        const keywords = parseClaimKeywords(row["关键词"]);
+        if (keywords.length === 0) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} names no keyword, so the records it cites cannot be checked for ownership`,
+          );
+        }
+        const candidates = [...String(row["已核对候选"]).matchAll(/REQ-\d{4}-\d{4}/gu)].map(
+          (match) => match[0],
+        );
+        if (candidates.length === 0) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} cites no checked requirement record, so the verdict names nothing that was verified`,
+          );
+          continue;
+        }
+        for (const id of candidates) {
+          const record = ownerIndex.find((entry) => entry.id === id);
+          if (!record) {
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} cites \`${id}\`, which has no record in ${REQUIREMENTS_DIRECTORY}`,
+            );
+            continue;
+          }
+          for (const keyword of keywords) {
+            if (requirementOwnsKeyword(record, keyword)) {
+              problems.push(
+                `${PARITY_DOCUMENT}:${row.line} ${label} claims no record carries \`${keyword}\`, but the checked candidate \`${id}\` owns it`,
+              );
+            }
+          }
+        }
+      }
+      // Count parity, per document: the census says how many assertions a document's section makes;
+      // the ledger must judge exactly that many, so a claim can be added without a verdict and a
+      // verdict can outlive the claim it judged.
+      if (claimCensus) {
+        for (const row of claimCensus.rows) {
+          const relative = stripBackticks(row["文档"]);
+          const declared = Number.parseInt(stripEmphasis(row["断言数"]), 10);
+          const attributed = attributedCounts.get(relative) ?? 0;
+          if (Number.isInteger(declared) && declared !== attributed) {
+            problems.push(
+              `${PARITY_DOCUMENT} attributes ${attributed} claim(s) in \`${relative}\`, but its census row declares ${declared}`,
+            );
+          }
+          attributedCounts.delete(relative);
+        }
+        for (const [relative] of attributedCounts) {
+          problems.push(
+            `${PARITY_DOCUMENT} attributes claims in \`${relative}\`, which no census row counts`,
+          );
         }
       }
     }

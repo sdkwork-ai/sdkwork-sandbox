@@ -4303,11 +4303,11 @@
   "testInventory": {
     "suiteGlob": "tests/contract/*.test.mjs",
     "files": 41,
-    "tests": 660,
+    "tests": 673,
     "auditSuites": [
       {
         "file": "tests/contract/e2b-parity-matrix-tool.contract.test.mjs",
-        "tests": 159
+        "tests": 172
       },
       {
         "file": "tests/contract/sandbox-e2b-field-parity-tool.contract.test.mjs",
