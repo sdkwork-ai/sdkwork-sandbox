@@ -70,7 +70,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | Service Host | `crates/sdkwork-sandbox-service-host` | 5 行 | 只有 doc comment（`crates/sdkwork-sandbox-service-host/src/lib.rs`），**无 composition、无 wiring** |
 | CLI | `crates/sdkwork-sandbox-cli` | 3 行 | `fn main() {}`（`main.rs:3`）——**零命令** |
 | API Assembly | `crates/sdkwork-api-sandbox-assembly` | 骨架 | `ROUTE_CRATE_COUNT: usize = 0`（`generated.rs:3`）+ `Router::new()`（`bootstrap.rs:26`）——**零路由** |
-| Command Executor | `crates/sdkwork-sandbox-provider-spi` | 6 模块 | 端口已声明：`SandboxCommandExecutor`（`command.rs:236`，2026-09-24 授权）+ 规范指纹 `sandbox_command_execution_fingerprint`（`command.rs:124`）；**零 Provider 实现**——`crates/` 下不存在 `SandboxLocalCommandExecutor` |
+| Command Executor | `crates/sdkwork-sandbox-provider-spi` | 6 模块 | 端口已声明：`SandboxCommandExecutor`（`command.rs:262`，2026-09-24 授权）+ 规范指纹 `sandbox_command_execution_fingerprint`（`command.rs:127`）；**零 Provider 实现**——`crates/` 下不存在 `SandboxLocalCommandExecutor` |
 | Template / Snapshot / Fork / Pool | — | 不存在 | `crates/` 下无 `template` / `snapshot` / `fork` / `pool` 同名 crate，全仓无对应实现，也无产品级 `REQ-*` |
 | SDK | `sdks/` | 目录 + README | **零生成产物**，`apis/` 无权威 OpenAPI |
 
