@@ -62,7 +62,11 @@ function matchesWorkingDirectory(value) {
 test('Sandbox command contract is a draft, provider-neutral machine authority', () => {
   assert.equal(catalog.kind, 'sdkwork.sandbox.command-contract');
   assert.equal(catalog.status, 'draft');
-  assert.equal(catalog.implementationAuthorized, false);
+  assert.equal(catalog.implementationAuthorized, true);
+  // Authorized 2026-09-24: REQ-2026-0007 is `ready` and ADR-20260729-sandbox-command-execution-and-terminal-boundary
+  // is `accepted` (packet approved with the SandboxCommandExecutor port and SandboxCommandExecution*
+  // public naming). The shared provider-delivery-gates contract stays unauthorized until its other
+  // eleven packets are signed.
   assert.equal(catalog.requirementId, 'REQ-2026-0007');
   assert.equal(request['x-sdkwork-requirement-id'], 'REQ-2026-0007');
   assert.equal(cancellationRequest['x-sdkwork-requirement-id'], 'REQ-2026-0007');

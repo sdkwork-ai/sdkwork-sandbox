@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "sdkwork.sandbox.command-contract",
   "status": "draft",
-  "implementationAuthorized": false,
+  "implementationAuthorized": true,
   "requirementId": "REQ-2026-0007",
   "adr": "../../docs/architecture/decisions/ADR-20260729-sandbox-command-execution-and-terminal-boundary.md",
   "review": "../../docs/engineering/reviews/REVIEW-20260729-sandbox-command-execution-architecture-security.md",

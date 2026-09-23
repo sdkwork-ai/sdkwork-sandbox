@@ -2029,8 +2029,12 @@ test("the repository holds exactly the machine contracts, records and evidence c
   const authorized = [...named, ...api].filter((relative) =>
     authorizesImplementation(readJsonFile(join(repoRoot, relative))),
   );
-  // The first transition (2026-09-24): exactly one contract authorizes implementation so far.
-  assert.deepEqual(authorized, ["specs/sandbox-local-provider-host-boundary.contract.json"]);
+  // The 2026-09-24 approvals authorized the local host boundary and, with REQ-2026-0007 ready,
+  // the shared command contract; every other machine contract remains closed.
+  assert.deepEqual(authorized, [
+    "specs/sandbox-local-provider-host-boundary.contract.json",
+    "apis/commands/sandbox-command-contract.json",
+  ]);
   const requirements = readRequirementStatuses(repoRoot);
   assert.equal(requirements.length, 28);
   assert.equal(requirements.filter((record) => record.status === "ready").length, 3);
