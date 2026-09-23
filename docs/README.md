@@ -45,7 +45,7 @@ node tools/check-sandbox-component-contract-alignment.mjs
 node tools/check-sandbox-database-contract-reproducibility.mjs
 node ../sdkwork-specs/tools/check-repository-docs-standard.mjs --root .
 node ../sdkwork-specs/tools/check-database-framework-standard.mjs --root .
-node ../sdkwork-specs/tools/verify-database-initialization-state.mjs --root .
+node ../sdkwork-specs/tools/verify-database-initialization-state.mjs --workspace ..
 node tools/check-sandbox-commercial-readiness.mjs
 node tools/check-sandbox-evidence-traceability.mjs
 node tools/check-sandbox-human-review-signoff.mjs
