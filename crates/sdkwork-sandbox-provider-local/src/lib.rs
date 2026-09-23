@@ -9,7 +9,11 @@
 //! Host process, filesystem, network, browser, and terminal access are not
 //! implemented until capability and isolation policies are approved.
 
+pub mod command_admission;
 pub mod host_boundary;
+
+#[cfg(test)]
+mod command_admission_tests;
 
 #[cfg(test)]
 mod fake_host_boundary;

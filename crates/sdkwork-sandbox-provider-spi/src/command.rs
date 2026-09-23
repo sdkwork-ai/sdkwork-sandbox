@@ -56,7 +56,8 @@ impl SandboxCommandLimits {
         {
             return Err(SandboxCommandLimitsError::FieldOverBound);
         }
-        if self.sandbox_max_process_count == 0 || self.sandbox_max_process_count > CONTRACT_MAX_PROCESS_COUNT
+        if self.sandbox_max_process_count == 0
+            || self.sandbox_max_process_count > CONTRACT_MAX_PROCESS_COUNT
         {
             return Err(SandboxCommandLimitsError::FieldOverBound);
         }
@@ -74,7 +75,9 @@ pub enum SandboxCommandLimitsError {
 impl fmt::Display for SandboxCommandLimitsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::FieldOverBound => f.write_str("sandbox command limits exceed the contract bounds"),
+            Self::FieldOverBound => {
+                f.write_str("sandbox command limits exceed the contract bounds")
+            }
         }
     }
 }
@@ -143,15 +146,24 @@ pub fn sandbox_command_execution_fingerprint(
     ] {
         hash_length_prefixed(&mut hasher, field);
     }
-    Digest::update(&mut hasher, sandbox_request.sandbox_fencing_token.to_be_bytes());
+    Digest::update(
+        &mut hasher,
+        sandbox_request.sandbox_fencing_token.to_be_bytes(),
+    );
     hash_length_prefixed(&mut hasher, &sandbox_request.sandbox_command_operation_id);
     hash_length_prefixed(&mut hasher, &sandbox_request.sandbox_executable);
-    Digest::update(&mut hasher, (sandbox_request.sandbox_arguments.len() as u64).to_be_bytes());
+    Digest::update(
+        &mut hasher,
+        (sandbox_request.sandbox_arguments.len() as u64).to_be_bytes(),
+    );
     for argument in &sandbox_request.sandbox_arguments {
         hash_length_prefixed(&mut hasher, argument);
     }
     hash_length_prefixed(&mut hasher, &sandbox_request.sandbox_working_directory);
-    Digest::update(&mut hasher, (sandbox_request.sandbox_environment.len() as u64).to_be_bytes());
+    Digest::update(
+        &mut hasher,
+        (sandbox_request.sandbox_environment.len() as u64).to_be_bytes(),
+    );
     // `BTreeMap` iterates in ascending name order, which is the canonical ordering.
     for (name, value) in &sandbox_request.sandbox_environment {
         hash_length_prefixed(&mut hasher, name);
@@ -215,7 +227,10 @@ pub fn sandbox_command_cancellation_fingerprint(
         Digest::update(&mut hasher, (field.len() as u64).to_be_bytes());
         Digest::update(&mut hasher, field.as_bytes());
     }
-    Digest::update(&mut hasher, sandbox_request.sandbox_fencing_token.to_be_bytes());
+    Digest::update(
+        &mut hasher,
+        sandbox_request.sandbox_fencing_token.to_be_bytes(),
+    );
     for field in [
         sandbox_request.sandbox_command_operation_id.as_str(),
         sandbox_request.sandbox_cancellation_operation_id.as_str(),
@@ -224,6 +239,17 @@ pub fn sandbox_command_cancellation_fingerprint(
         Digest::update(&mut hasher, field.as_bytes());
     }
     format!("{:x}", hasher.finalize())
+}
+
+/// Whether the caller-supplied fingerprint matches the executor's own recomputation. The contract
+/// requires executors to recompute rather than trust this value; a mismatch fails closed as
+/// `invalid-request`.
+#[must_use]
+pub fn sandbox_verify_request_fingerprint(
+    sandbox_request: &SandboxCommandExecutionRequest,
+    sandbox_claimed_fingerprint: &str,
+) -> bool {
+    sandbox_command_execution_fingerprint(sandbox_request) == sandbox_claimed_fingerprint
 }
 
 /// The Provider-implemented port for running and cancelling one sandbox command.
@@ -293,7 +319,9 @@ impl fmt::Display for SandboxCommandExecutionError {
             Self::UnsupportedCapability => "sandbox command capability is not supported",
             Self::PolicyDenied => "sandbox command was denied by execution policy",
             Self::StaleFencing => "sandbox command fencing token is stale",
-            Self::IdempotencyConflict => "sandbox command operation id conflicts with a different fingerprint",
+            Self::IdempotencyConflict => {
+                "sandbox command operation id conflicts with a different fingerprint"
+            }
         };
         f.write_str(message)
     }
@@ -303,8 +331,10 @@ impl Error for SandboxCommandExecutionError {}
 
 #[cfg(test)]
 mod tests {
-    use super::{SandboxCommandExecutionRequest, SandboxCommandLimits,
-                SandboxCommandLimitsError, sandbox_command_execution_fingerprint};
+    use super::{
+        sandbox_command_execution_fingerprint, SandboxCommandExecutionRequest,
+        SandboxCommandLimits, SandboxCommandLimitsError,
+    };
     use std::collections::BTreeMap;
 
     fn sandbox_request() -> SandboxCommandExecutionRequest {
@@ -373,7 +403,7 @@ mod tests {
 
     #[test]
     fn cancellation_fingerprint_is_deterministic_and_field_sensitive() {
-        use super::{SandboxCommandCancellationRequest, sandbox_command_cancellation_fingerprint};
+        use super::{sandbox_command_cancellation_fingerprint, SandboxCommandCancellationRequest};
 
         let request = SandboxCommandCancellationRequest {
             sandbox_tenant_id: "tenant-1".to_owned(),
@@ -413,10 +443,22 @@ mod tests {
         let valid = sandbox_request().sandbox_command_limits;
         assert_eq!(valid.validate(), Ok(()));
 
-        let over = SandboxCommandLimits { sandbox_timeout_ms: 86_400_001, ..valid };
-        assert_eq!(over.validate(), Err(SandboxCommandLimitsError::FieldOverBound));
+        let over = SandboxCommandLimits {
+            sandbox_timeout_ms: 86_400_001,
+            ..valid
+        };
+        assert_eq!(
+            over.validate(),
+            Err(SandboxCommandLimitsError::FieldOverBound)
+        );
 
-        let zero = SandboxCommandLimits { sandbox_max_process_count: 0, ..valid };
-        assert_eq!(zero.validate(), Err(SandboxCommandLimitsError::FieldOverBound));
+        let zero = SandboxCommandLimits {
+            sandbox_max_process_count: 0,
+            ..valid
+        };
+        assert_eq!(
+            zero.validate(),
+            Err(SandboxCommandLimitsError::FieldOverBound)
+        );
     }
 }

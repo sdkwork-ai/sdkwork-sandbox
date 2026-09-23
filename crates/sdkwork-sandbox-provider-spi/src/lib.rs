@@ -9,9 +9,10 @@ mod provider;
 
 pub use capability::{IsolationAssurance, RuntimeCapability};
 pub use command::{
-    sandbox_command_execution_fingerprint, SandboxCommandExecutionError,
-    SandboxCommandExecutionRequest, SandboxCommandExecutor, SandboxCommandLimits,
-    SandboxCommandLimitsError, SandboxCommandOutcome,
+    sandbox_command_cancellation_fingerprint, sandbox_command_execution_fingerprint,
+    sandbox_verify_request_fingerprint, SandboxCommandCancellationRequest,
+    SandboxCommandExecutionError, SandboxCommandExecutionRequest, SandboxCommandExecutor,
+    SandboxCommandLimits, SandboxCommandLimitsError, SandboxCommandOutcome,
 };
 pub use error::{
     SandboxProviderError, SandboxProviderErrorKind, SandboxProviderOperation, SandboxProviderResult,

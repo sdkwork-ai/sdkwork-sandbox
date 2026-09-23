@@ -1284,8 +1284,8 @@ test("the repository's own coverage table accounts for every test the workspace 
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  assert.equal(assessment.workspaceTests, 91);
-  assert.equal(assessment.coveredTests, 91);
+  assert.equal(assessment.workspaceTests, 95);
+  assert.equal(assessment.coveredTests, 95);
 
   const discovered = discoverWorkspaceTests(repoRoot);
   let runnable = 0;
@@ -1298,7 +1298,7 @@ test("the repository's own coverage table accounts for every test the workspace 
   }
   // The two readings the audit quotes have to agree with the code: 90 declared, 89 of them
   // runnable because one declares it needs an external PostgreSQL.
-  assert.equal(runnable + ignored, 91);
+  assert.equal(runnable + ignored, 95);
   assert.equal(ignored, 1);
 });
 
@@ -1539,11 +1539,11 @@ test("the repository's own shape table resolves and its sizes recompute", () => 
   const assessment = assessE2bParityMatrix({ repoRoot });
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
   assert.equal(assessment.shapeRows, 11);
-  // Nine lines in the real table point the reader at a numbered line (the Local Provider row cites
-  // both its production module and its retained fake; the Command Executor row cites its port and
-  // its fingerprint function). Each is resolved into its file and checked to still carry the
-  // construct the row names.
-  assert.equal(assessment.shapeAnchors, 9);
+  // Ten lines in the real table point the reader at a numbered line (the Local Provider row cites
+  // its two production modules and a test module; the Command Executor row cites its port and its
+  // fingerprint function). Each is resolved into its file and checked to still carry the construct
+  // the row names.
+  assert.equal(assessment.shapeAnchors, 10);
 });
 
 test("a module count that disagrees with the crate's sources is rejected", () => {

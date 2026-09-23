@@ -1542,6 +1542,7 @@ version = "0.1.0"
 name = "sdkwork-sandbox-provider-local"
 version = "0.1.0"
 dependencies = [
+ "sdkwork-sandbox-provider-spi",
  "serde_json",
 ]
 

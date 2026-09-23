@@ -133,7 +133,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs --root <dir>
 node --test tests/contract/e2b-parity-matrix-tool.contract.test.mjs
 ```
 
-Current reading: 17 categories, 78 rows, census `✅ 0 | 🟡 16 | ❌ 60 | ⛔ 2`, 1 residual gap, 7 registered zero-requirement claims, 91 of 91 workspace tests accounted for by section 3.1, 11 component rows and 6 line-numbered anchors resolved by section 1.2, 9 advantage rows and 4 line-numbered anchors resolved by section 5; twelve rule families are declared consistently in all five surfaces that describe this gate.
+Current reading: 17 categories, 78 rows, census `✅ 0 | 🟡 16 | ❌ 60 | ⛔ 2`, 1 residual gap, 7 registered zero-requirement claims, 95 of 95 workspace tests accounted for by section 3.1, 11 component rows and 6 line-numbered anchors resolved by section 1.2, 9 advantage rows and 4 line-numbered anchors resolved by section 5; twelve rule families are declared consistently in all five surfaces that describe this gate.
 
 ## E2B Field Parity Gate
 
@@ -161,7 +161,7 @@ node tools/check-sandbox-e2b-field-parity.mjs --root <dir>
 node --test tests/contract/sandbox-e2b-field-parity-tool.contract.test.mjs
 ```
 
-Current reading: 78 rows fully evidenced across 17 categories from 101 captured sources, 0 rows index-only (ceiling 0); 71 E2B OpenAPI operations, 70 judged by a row, 1 recorded unjudged; 34 product rows joined, 57 baseline rows mapped, 21 registered unmapped, 9 product rows registered without a baseline row; the audit document's quoted suite readings (673 contract tests recomputed from `tests/contract/*.test.mjs`, 90 Rust tests measured by `cargo test --workspace`) are checked against the files and the recording, and eleven rule families are declared consistently in all four surfaces that describe this gate.
+Current reading: 78 rows fully evidenced across 17 categories from 101 captured sources, 0 rows index-only (ceiling 0); 71 E2B OpenAPI operations, 70 judged by a row, 1 recorded unjudged; 34 product rows joined, 57 baseline rows mapped, 21 registered unmapped, 9 product rows registered without a baseline row; the audit document's quoted suite readings (673 contract tests recomputed from `tests/contract/*.test.mjs`, 94 Rust tests measured by `cargo test --workspace`) are checked against the files and the recording, and eleven rule families are declared consistently in all four surfaces that describe this gate.
 
 ## E2B Upstream Source-Parity Sampler
 
