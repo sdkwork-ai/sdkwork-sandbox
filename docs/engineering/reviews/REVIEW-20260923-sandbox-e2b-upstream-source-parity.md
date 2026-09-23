@@ -649,3 +649,23 @@ A 与 B 不触碰实现面，属研究基础设施；C 是任何 Provider / API 
 契约套件 660 → **673**（矩阵门禁 159 → **172**，新增归属账反面用例 11 条 + 真文档对照 2 条）；基准 `testInventory` 同步 673/172；普查读数 `5 document section(s), 19 claim(s)`；残余空档 2 → **1**（§3.2 仅剩 500 ms 热分配目标一项治理阻塞）。18 项门禁、`cargo fmt --check`、`cargo check --workspace --all-targets`、`cargo test --workspace`（78/0/1）全绿；上游采样器 `No drift`（当日 GitHub 网络不可达，四个 vendored 克隆保持 0c21aa2 / ccaf9fc / 17ddc44 / f56a1ed，与记录读数逐字节一致，研究面不受影响）。
 
 **本节没有产生任何实现，也不产生实现授权。** 归属账确认的 15 项「确认无承载」正是未来需求拆分的工作清单：它们的优先级排序与拆分时机是产品决策，仍归人工（§7-C）。
+
+## 15. 追加：REST API 与 SDK 兼容的关键路径立约——REQ-2026-0028 三件套（2026-09-24）
+
+归属账第 11 行（SDK 家族，`确认无承载`）是用户目标「REST API 和 SDK 能力完整兼容」的关键路径：没有 API 权威就没有可生成的 SDK，没有权威契约就没有可复算的兼容声明。本轮把它从"待拆分的能力"变成**已登记、待人审的治理切片**——不实现任何东西，只立约。
+
+### 15.1 落地的三件套
+
+| 产物 | 状态 | 内容 |
+| --- | --- | --- |
+| `REQ-2026-0028-sandbox-e2b-compatible-api-sdk-family.md` | `draft` | 兼容参考集（pinned sha256）vs `apis/` 单一权威；控制面/数据面双契约与双鉴权模型分离；能力级 parity 的双向 operation ledger；SDK 五面验收矩阵；int64-as-string wire rule（`API_SPEC.md` §13.6）；偏离账——每个偏离 root 姿态的点（默认拒绝出网、无 Docker 运行边界、租户 fencing 归属）必须点名承载决策并人审 |
+| `ADR-20260924-sandbox-e2b-api-sdk-authority.md` | `proposed` | 四个被拒备选：照抄 E2B OpenAPI 当权威（聚合了 admin/internal 操作、与自家源码双向 28/25 不一致、安全姿态相反）、原生 API 无视 E2B（兼容性不可验证）、手写 SDK（五面审计正是手写漂移的证据）、双面合一（信任边界是真实的） |
+| `REVIEW-20260924-sandbox-e2b-api-sdk-authority.md` | `pending-human-review` | AUTH-01…05 决策矩阵（reference-vs-authority、双面分离、偏离集、五面矩阵、内部契约排除），四类评审角色（Platform/API-SDK/Security/Product Owner），Close-Out 清单 |
+
+### 15.2 账本联动（一条断言的退役走完全部门禁）
+
+`REQ-2026-0028` 一登记，PRD §8「SDK 家族」行的无承载断言即为假——本轮按 Benchmark 行的既有先例走完账本流程：该行改写为「已有承载 + 仍缺什么」（不再命中断言句型），更正账新增第 2 行（承载 `REQ-2026-0028`，探针 `REQ-*；无`、`apis/ 权威契约` 两个不在 PRD 复现的字面串——首个探针方案含管道符，正是本仓已记录过的"反引号内 `|` 切断表格行"形态，现场复现即改），普查表 PRD 行 12→11（总数 19→18），归属账删第 11 行并重排为 18 行。真文档契约断言与 `requirementOnRecord`/`decisionsOnRecord`（27→28）同步。**一条断言从被质疑到被退役，每一步都有门禁看着——这正是归属账存在的意义。**
+
+### 15.3 边界
+
+本节没有产生任何实现，也没有翻转任何授权：`REQ-2026-0028` 是 `draft`，`ADR-20260924` 是 `proposed`，packet 是 `pending-human-review`（Gate 0 就绪包第 23 行，risk `high`）。人审通过后，才进入 `apis/` 权威契约与 parity ledger 的落地切片。剩余 14 行 `确认无承载` 断言仍是未来需求拆分清单。

@@ -208,8 +208,8 @@ test("the repository's own traceability chain resolves and the gate is not vacuo
     assessment.decisionReferencesChecked >= 100,
     `the gate must not be vacuous; saw ${assessment.decisionReferencesChecked} decision references`,
   );
-  assert.equal(assessment.requirementsOnRecord, 27);
-  assert.equal(assessment.decisionsOnRecord, 27);
+  assert.equal(assessment.requirementsOnRecord, 28);
+  assert.equal(assessment.decisionsOnRecord, 28);
   assert.equal(assessment.capabilityRowsUnattributed, 0);
 });
 

@@ -1046,15 +1046,17 @@ test("the repository's own cross-document census recount matches its declaration
   // MCP assertions in PRD-capabilities, the MCP row in PRD section 8, and the Port Exposure row of
   // PRD-sandbox-surfaces to the four documents the narrower set counted.
   assert.equal(assessment.claimSurfaceCount, 5);
-  assert.equal(assessment.claimSurfaceClaims, 19);
+  assert.equal(assessment.claimSurfaceClaims, 18);
 
   const surface = parseClaimSurfaceRegistry(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
   assert.deepEqual(surface.census.header, [...CLAIM_CENSUS_COLUMNS]);
   assert.deepEqual(surface.corrections.header, [...CLAIM_CORRECTION_COLUMNS]);
   assert.deepEqual(surface.attribution.header, [...CLAIM_ATTRIBUTION_COLUMNS]);
   assert.equal(surface.census.malformed.length, 0);
-  assert.equal(surface.corrections.rows.length, 1);
-  assert.equal(surface.attribution.rows.length, 19);
+  // Two corrections on record: the benchmark-capability claim and the SDK-family claim, both
+  // retired into the ledger with probes instead of being edited silently.
+  assert.equal(surface.corrections.rows.length, 2);
+  assert.equal(surface.attribution.rows.length, 18);
 
   // The census is the whole account: every document outside this one that makes the claim is
   // registered. This restates the gate's completeness scan from outside the gate.
@@ -1188,7 +1190,7 @@ test("a broken attribution numbering is rejected", () => {
 
 test("the attribution reader is total on the real document and on one without the section", () => {
   const real = parseClaimSurfaceRegistry(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
-  assert.equal(real.attribution.rows.length, 19);
+  assert.equal(real.attribution.rows.length, 18);
   // A document with no section at all parses to null, the same contract the census reader states.
   assert.equal(parseClaimSurfaceRegistry("# nothing to see\n"), null);
 });
@@ -1248,7 +1250,7 @@ test("every requirement in this repository declares a readable status, and none 
   const directory = path.join(repoRoot, "docs/product/requirements");
   const names = readdirSync(directory).filter((name) => /^REQ-\d{4}-\d{4}-.+\.md$/u.test(name));
 
-  assert.equal(names.length, 27);
+  assert.equal(names.length, 28);
   for (const name of names) {
     const record = readRequirementStatus(repoRoot, name.slice(0, 13));
     assert.ok(record, `${name} has no readable status, so the blocker check cannot classify it`);
@@ -2027,13 +2029,13 @@ test("the repository holds exactly the machine contracts, records and evidence c
     );
   }
   const requirements = readRequirementStatuses(repoRoot);
-  assert.equal(requirements.length, 27);
+  assert.equal(requirements.length, 28);
   assert.equal(requirements.filter((record) => record.status === "ready").length, 0);
   assert.equal(requirements.filter((record) => record.status === "accepted").length, 5);
-  assert.equal(requirements.filter((record) => record.status === "draft").length, 22);
+  assert.equal(requirements.filter((record) => record.status === "draft").length, 23);
   const decisions = readDecisionStatuses(repoRoot);
-  assert.equal(decisions.length, 27);
-  assert.equal(decisions.filter((record) => record.status === "proposed").length, 27);
+  assert.equal(decisions.length, 28);
+  assert.equal(decisions.filter((record) => record.status === "proposed").length, 28);
 });
 
 test("the repository's own answer section compares every restated figure", () => {

@@ -16,7 +16,7 @@ Updated: 2026-09-22
 
 1. Provider Delivery Gate 的 11 个 Review Packet 全部完成人工评审前，`implementationAuthorized` 保持 `false`
 2. Service Host 与 Observability/Event/Outbox 是运行时激活和商业发布的补充门禁，不能因不在 Provider Delivery Gate 的 `humanReview.reviewPackets` 数组中而跳过
-3. 当前全部 **22** 个相关 Review Packet 状态均为 `pending-human-review`。该计数不手工维护：它必须等于 `node tools/check-sandbox-human-review-signoff.mjs` 输出里的 `pending human review`，并且下文表格必须逐行列全这 22 个包——两道一致性由同一门禁校验（见本节末尾）。
+3. 当前全部 **23** 个相关 Review Packet 状态均为 `pending-human-review`。该计数不手工维护：它必须等于 `node tools/check-sandbox-human-review-signoff.mjs` 输出里的 `pending human review`，并且下文表格必须逐行列全这 23 个包——两道一致性由同一门禁校验（见本节末尾）。
 4. 人工评审通过后，REQ、ADR、门禁契约、Component Contract 与实现证据必须同步更新，不能只修改 `implementationAuthorized`
 
 当前商业发布判定为 **No-Go**。完整问题、交付顺序和发布证据见 [PLAN-2026-0002](plans/PLAN-2026-0002-commercial-cloud-agent-runtime-delivery.md)。
@@ -47,6 +47,7 @@ Updated: 2026-09-22
 | 20 | REVIEW-20260801-sandbox-runtime-secret-projection | ADR-20260801-sandbox-runtime-secret-projection | REQ-2026-0025 | critical | pending-human-review |
 | 21 | REVIEW-20260801-sandbox-cloud-data-residency-and-recovery | ADR-20260801-sandbox-cloud-data-residency-and-recovery | REQ-2026-0026 | critical | pending-human-review |
 | 22 | REVIEW-20260801-sandbox-cross-repository-version-compatibility | ADR-20260801-sandbox-cross-repository-version-compatibility | REQ-2026-0027 | critical | pending-human-review |
+| 23 | REVIEW-20260924-sandbox-e2b-api-sdk-authority | ADR-20260924-sandbox-e2b-api-sdk-authority | REQ-2026-0028 | high | pending-human-review |
 
 **这张表的来源与校验**（2026-09-22 复核）：`风险` 列不是本页判定，它是每个 Review Packet 自己 `Risk:` 头的投影；`状态` 列同理取包内 `Status:`。第 18–22 行是本轮复核新补的——此前它们已处于 `pending-human-review`，却既不在本页表中、也不被任何 `specs/` 契约具名，因此**任何只读本页的评审者都会漏掉它们**。
 

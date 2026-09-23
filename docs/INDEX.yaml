@@ -200,6 +200,11 @@ entries:
     layer: work
     audience: [product, architecture, engineering, security, privacy, rpc, sdk, storage, release, reliability, operations, review]
     status: draft
+  - id: REQ-2026-0028
+    path: docs/product/requirements/REQ-2026-0028-sandbox-e2b-compatible-api-sdk-family.md
+    layer: work
+    audience: [product, architecture, engineering, sdk, api, security, review]
+    status: draft
   - id: ADR-20260728
     path: docs/architecture/decisions/ADR-20260728-runtime-boundary-and-rust-workspace.md
     layer: work
@@ -334,6 +339,11 @@ entries:
     path: docs/architecture/decisions/ADR-20260801-sandbox-cross-repository-version-compatibility.md
     layer: work
     audience: [product, architecture, engineering, security, privacy, rpc, sdk, storage, release, reliability, operations, review]
+    status: proposed
+  - id: ADR-20260924-E2B-API-SDK-AUTHORITY
+    path: docs/architecture/decisions/ADR-20260924-sandbox-e2b-api-sdk-authority.md
+    layer: work
+    audience: [product, architecture, engineering, sdk, api, security, review]
     status: proposed
   - id: PLAN-2026-0001
     path: docs/engineering/plans/PLAN-2026-0001-local-and-firecracker-provider-delivery.md
@@ -595,6 +605,11 @@ entries:
     layer: work
     audience: [architecture, engineering, review, operations]
     status: active
+  - id: REVIEW-20260924-E2B-API-SDK-AUTHORITY
+    path: docs/engineering/reviews/REVIEW-20260924-sandbox-e2b-api-sdk-authority.md
+    layer: work
+    audience: [product, architecture, engineering, sdk, api, security, review]
+    status: pending-human-review
 domains:
   - name: intelligence
     path: docs/product/prd/

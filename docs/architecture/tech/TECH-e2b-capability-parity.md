@@ -53,7 +53,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 具体到三个数字：
 
 - E2B 的能力集合共 **78 项**（本分片逐行展开），本仓 ✅ **0**、🟡 **16**、❌ **60**、⛔ **2**。
-- 27 份 `REQ-*` 中 **0 份 `ready`**（5 `accepted` / 22 `draft`）；27 份 `ADR` **全部 `proposed`**；机器契约里**没有任何一份**授权实现：23 份 `*.contract.json` 中 22 份显式声明 `implementationAuthorized: false`，第 23 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约（`apis/commands/sandbox-command-contract.json`、`apis/async/sandbox-observability-catalog.json`）同为 `false`。
+- 28 份 `REQ-*` 中 **0 份 `ready`**（5 `accepted` / 23 `draft`）；28 份 `ADR` **全部 `proposed`**；机器契约里**没有任何一份**授权实现：23 份 `*.contract.json` 中 22 份显式声明 `implementationAuthorized: false`，第 23 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约（`apis/commands/sandbox-command-contract.json`、`apis/async/sandbox-observability-catalog.json`）同为 `false`。
 - 8 份契约声明的 **127 个证据 id** 中，只有 **2 个**有 host-precondition 半产出，**125 个**仍被真实 runner 或人工评审完全阻塞。
 
 因此本仓对用户画像的承诺（`PRD.md` 第 2 节"AI Agent 应用开发者：用少量代码获得一个可执行代码、可读写文件、可访问网络、可持久化的独立运行环境"）**当前为零兑现**。
@@ -403,7 +403,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 **第十二条规则族：结论数字（§1.1 的每一个数字都变成可比对的断言）。** §1.1 标题是「直接回答」，是整份审计里**被评审引用得最多**的一段——它说的就是"能力集到底对齐没有"。这一段里的每个数字都是**别处某个数字的副本**：下一节的普查表、需求记录、决策记录、每份机器契约上的授权字段、证据注册表。此前没有任何东西把副本与原值放在一起，而这一段还会**自我重复**：那段"23 份 `*.contract.json` 中 22 份未授权"的话在 §1.1 与 §3.2 各出现一次，一处过期就会被引用两次。现在读的是**全文档的每一处**出现（不只是第一处），且 §1.1 赖以成立的五个数字必须出现在本节——数字悄悄消失留下的是一段"读起来仍像答案、其实什么都没断言"的文字。
 
 - **普查数字比对的是矩阵行本身**，不是 §1.3 的普查表：两个副本一起写错同一个数照样转红，拿副本比副本只能证明两个副本彼此一致。契约测试里就有这条：把 §1.3 合计行与 §1.1 同时改成 4，门禁仍报"矩阵里是 3"。
-- **需求与决策数字重算自记录**：`docs/product/requirements/` 与 `docs/architecture/decisions/` 逐份读 `status`。那句"27 份 `ADR` **全部** `proposed`"里的**形容词**也核——一份记录被推进 `accepted` 不改变数量，却会让这句话从"治理阻塞"变成一句不成立的话。
+- **需求与决策数字重算自记录**：`docs/product/requirements/` 与 `docs/architecture/decisions/` 逐份读 `status`。那句"28 份 `ADR` **全部** `proposed`"里的**形容词**也核——一份记录被推进 `accepted` 不改变数量，却会让这句话从"治理阻塞"变成一句不成立的话。
 - **契约面既核数量也核身份**："23 份里 22 份声明未授权"只有在**第 23 份被点名**时才有意义，所以凡是不声明该字段的契约必须被文档点名；两份不以 `.contract.json` 命名的 `apis/` 机器契约按名单逐个对上（顺序无关，按集合比）；"没有任何一份授权实现"则对**两个**被本仓门禁承认的授权字段（`implementationAuthorized`、`releaseDecision.runtimeImplementationAuthorizationGranted`，分别由 `check-sandbox-human-review-signoff.mjs` 与 `check-sandbox-commercial-readiness.mjs` 读）逐份核，而不是从计数反推。
 - **证据数字比对注册表的 `acknowledged` 块**（该块由 `check-sandbox-evidence-traceability.mjs` 保证等于活契约），**不在这里重算**——再写一份"什么算作被要求的证据 id"的抽取规则，正是证据门禁存在的意义所要防止的那种漂移。
 - **来源读不到就报红**：注册表存在但没有 `acknowledged` 块时，门禁报"该数字无法被反驳"，而不是当作通过。这是"查过了"与"什么都没查"的分界。
@@ -434,15 +434,15 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 ### 3.5 跨文档零需求断言对账
 
-第 3.4 节登记的是**本文档**的断言。「某能力无需求承载」这个句型不是本文档独有的：逐字扫 `docs/**`（时点证据目录除外），句型一共出现在 6 个文档的 31 行上，而第 3.4 节的两向记账只覆盖本文档那 12 行。其余 5 个文档的 19 行由本节记账——其中一行已经被证伪，并在下表第二张里留了账。
+第 3.4 节登记的是**本文档**的断言。「某能力无需求承载」这个句型不是本文档独有的：逐字扫 `docs/**`（时点证据目录除外），句型一共出现在 6 个文档的 30 行上，而第 3.4 节的两向记账只覆盖本文档那 12 行。其余 5 个文档的 18 行由本节记账——其中一行已经被证伪，并在下表第二张里留了账。
 
-**句型清单本身也是实测对象。** 2026-09-23 的归属判定轮发现：`无独立 ` + backtick + `REQ-*` + backtick + `（如 PRD.md 第 8 节 MCP 行、PRD-capabilities.md 第 11 节 Auto Pause 行、PRD-sandbox-surfaces.md 第 1 节 Port Exposure 行）是**同类断言**，却因决定词与 `REQ-*` 之间隔了一个形容词而被旧句型静默漏数——与 `#[tokio::test(...)]` 带参数被丢、operationId 含点被丢是同一类抽取口径缺陷。本轮把 `无独立` 并进句型并重算：跨文档断言从 15 行变为 **19 行**、新增第 5 个文档；本文档自己的两行（矩阵第 17、73 行）按第 3.4 节规则补了 `〔§3.4/N〕` 引用。任何覆盖率结论必须先对抽取规则做正反例自检再报数——这条纪律第三次同向验证。
+**句型清单本身也是实测对象。** 2026-09-23 的归属判定轮发现：`无独立 ` + backtick + `REQ-*` + backtick + `（如 PRD.md 第 8 节 MCP 行、PRD-capabilities.md 第 11 节 Auto Pause 行、PRD-sandbox-surfaces.md 第 1 节 Port Exposure 行）是**同类断言**，却因决定词与 `REQ-*` 之间隔了一个形容词而被旧句型静默漏数——与 `#[tokio::test(...)]` 带参数被丢、operationId 含点被丢是同一类抽取口径缺陷。本轮把 `无独立` 并进句型并重算：跨文档断言从 15 行变为 **19 行**、新增第 5 个文档（其后 `REQ-2026-0028` 登记并按更正账第 2 行移出 SDK 家族断言，现值 **18 行**）；本文档自己的两行（矩阵第 17、73 行）按第 3.4 节规则补了 `〔§3.4/N〕` 引用。任何覆盖率结论必须先对抽取规则做正反例自检再报数——这条纪律第三次同向验证。
 
 下表按文档逐段计数。`断言数` 是**重算值**：门禁在该段落（同级或更浅的下一节标题之前）重新数句型出现次数，再与声明值比对——加一句、删一句、或把整节搬走，都会转红。本文档自己的断言由第 3.4 节负责，故不在本表内。
 
 | # | 文档 | 段落 | 断言数 |
 | --- | --- | --- | --- |
-| 1 | `docs/product/prd/PRD.md` | `尚未拆分的能力` | 12 |
+| 1 | `docs/product/prd/PRD.md` | `尚未拆分的能力` | 11 |
 | 2 | `docs/product/prd/PRD-capabilities.md` | `11. 能力对齐矩阵 (Capability Alignment Matrix)` | 4 |
 | 3 | `docs/architecture/tech/TECH_ARCHITECTURE.md` | `2. 技术选型 (Technology Choices)` | 1 |
 | 4 | `docs/architecture/views/gate-zero-current-state.md` | `验证门禁` | 1 |
@@ -462,15 +462,14 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 | 8 | `docs/product/prd/PRD.md` | Sandbox 内 Agent 运行时 | `agent` | 确认无承载 | `REQ-2026-0024` |
 | 9 | `docs/product/prd/PRD.md` | MCP 执行面 | `mcp` | 确认无承载 | `REQ-2026-0023`、`REQ-2026-0024` |
 | 10 | `docs/product/prd/PRD.md` | Skills | `skill` | 确认无承载 | `REQ-2026-0023` |
-| 11 | `docs/product/prd/PRD.md` | SDK 家族 | `sdk` | 确认无承载 | `REQ-2026-0027` |
-| 12 | `docs/product/prd/PRD.md` | Node Drain 与迁移 | `migration` | 确认无承载 | `REQ-2026-0017` |
-| 13 | `docs/product/prd/PRD-capabilities.md` | （§11 引言口径句） | — | 口径句，不指能力 | — |
-| 14 | `docs/product/prd/PRD-capabilities.md` | Egress Policy 行的 `shared` 模式 | `shared` | 确认无承载 | `REQ-2026-0014` |
-| 15 | `docs/product/prd/PRD-capabilities.md` | Auto Pause | `pause` | 确认无承载 | `REQ-2026-0019`、`REQ-2026-0020` |
-| 16 | `docs/product/prd/PRD-capabilities.md` | MCP | `mcp` | 确认无承载 | `REQ-2026-0023`、`REQ-2026-0024` |
-| 17 | `docs/architecture/tech/TECH_ARCHITECTURE.md` | 边缘路由与端口暴露 | `port` | 确认无承载 | `REQ-2026-0023` |
-| 18 | `docs/architecture/views/gate-zero-current-state.md` | Benchmark 套件与容量基线 | `benchmark` | 已证伪，见更正账 | `REQ-2026-0019` |
-| 19 | `docs/product/prd/PRD-sandbox-surfaces.md` | Port Exposure | `port` | 确认无承载 | `REQ-2026-0023` |
+| 11 | `docs/product/prd/PRD.md` | Node Drain 与迁移 | `migration` | 确认无承载 | `REQ-2026-0017` |
+| 12 | `docs/product/prd/PRD-capabilities.md` | （§11 引言口径句） | — | 口径句，不指能力 | — |
+| 13 | `docs/product/prd/PRD-capabilities.md` | Egress Policy 行的 `shared` 模式 | `shared` | 确认无承载 | `REQ-2026-0014` |
+| 14 | `docs/product/prd/PRD-capabilities.md` | Auto Pause | `pause` | 确认无承载 | `REQ-2026-0019`、`REQ-2026-0020` |
+| 15 | `docs/product/prd/PRD-capabilities.md` | MCP | `mcp` | 确认无承载 | `REQ-2026-0023`、`REQ-2026-0024` |
+| 16 | `docs/architecture/tech/TECH_ARCHITECTURE.md` | 边缘路由与端口暴露 | `port` | 确认无承载 | `REQ-2026-0023` |
+| 17 | `docs/architecture/views/gate-zero-current-state.md` | Benchmark 套件与容量基线 | `benchmark` | 已证伪，见更正账 | `REQ-2026-0019` |
+| 18 | `docs/product/prd/PRD-sandbox-surfaces.md` | Port Exposure | `port` | 确认无承载 | `REQ-2026-0023` |
 
 第 18 行说明：gate-zero 视图那句关于「`REQ-*` 计数为零」的历史措辞是对已修正断言的**转述**（它讲的就是那条规则为何存在），断言本体已在更正账第 1 行留探针；按「已证伪断言全仓皆假」的口径，这里判到同一条更正上。第 15 行的 Auto Pause 是本轮句型拓宽后新入账的断言：`REQ-2026-0019`（池化）与 `REQ-2026-0020`（热状态保留）都不含 pause 语义，PRD-runtime-execution-model 第 9 节的产品要求仍无需求承载。
 
@@ -479,6 +478,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 | # | 文档 | 能力 | 承载需求 | 缺失探针 |
 | --- | --- | --- | --- | --- |
 | 1 | `docs/product/prd/PRD.md` | Benchmark 套件与容量基线 | `REQ-2026-0019` | `无参考硬件定义` |
+| 2 | `docs/product/prd/PRD.md` | SDK 家族与 API 权威 | `REQ-2026-0028` | `REQ-*；无`、`apis/ 权威契约` |
 
 第 1 行的来龙去脉：`PRD.md` 第 8 节曾把「Benchmark 套件与容量基线」列为无需求承载，并断言「无参考硬件定义」。该断言已被推翻——`REQ-2026-0019` 的 Goals 与 Performance 行要求「在公开参考环境和固定工作负载中证明 Pool Claim 到 Sandbox Running Ready 的 p50/p95/p99」并记录固定硬件，`tools/bench-sandbox-lifecycle.mjs` 与 [TECH-performance-baseline.md](TECH-performance-baseline.md)（两平台实测）也都在树里。该行已改写为「已有承载 + 仍缺什么」，探针保证旧措辞不会悄悄回来。
 
@@ -552,8 +552,8 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 本仓不是"有些功能没做完"，而是**治理门禁未打开**。四条硬门禁互相依赖：
 
-1. 27 份 `REQ-*` 中 0 份 `ready`（5 `accepted` / 22 `draft`）→ 需逐份人工评审进 `ready`。
-2. 27 份 `ADR` 全部 `proposed` → 需 `accepted`。
+1. 28 份 `REQ-*` 中 0 份 `ready`（5 `accepted` / 23 `draft`）→ 需逐份人工评审进 `ready`。
+2. 28 份 `ADR` 全部 `proposed` → 需 `accepted`。
 3. 机器契约全部未授权（23 份 `*.contract.json` + 2 份 `apis/` 机器契约，全部 `implementationAuthorized: false` 或独立声明 `runtimeImplementationAuthorizationGranted: false`）→ 需人工评审签字后翻转。
 4. 8 份契约声明的 127 个证据 id 中 125 个无产出者 → 需真实 runner 与人工评审闭合。
 

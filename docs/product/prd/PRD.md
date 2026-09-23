@@ -43,6 +43,7 @@ Specs: `REQUIREMENTS_SPEC.md`, `DOCUMENTATION_SPEC.md`, `SECURITY_SPEC.md`, `PRI
 - [REQ-2026-0025: Sandbox Runtime Secret Projection](../requirements/REQ-2026-0025-sandbox-runtime-secret-projection.md)
 - [REQ-2026-0026: Sandbox Cloud Data Residency And Recovery](../requirements/REQ-2026-0026-sandbox-cloud-data-residency-and-recovery.md)
 - [REQ-2026-0027: Sandbox Cross-Repository Version Compatibility And Release Set](../requirements/REQ-2026-0027-sandbox-cross-repository-version-compatibility.md)
+- [REQ-2026-0028: E2B-Compatible API And SDK Family Authority](../requirements/REQ-2026-0028-sandbox-e2b-compatible-api-sdk-family.md)
 - [技术架构](../../architecture/tech/TECH_ARCHITECTURE.md)
 
 ## 1. 背景与问题 (Background And Problem)
@@ -280,6 +281,7 @@ SDKWork 共享类型 `TenantId`、`OperationId`、`RuntimeCapability` 与 `Isola
 - [REQ-2026-0025: Sandbox Runtime Secret Projection](../requirements/REQ-2026-0025-sandbox-runtime-secret-projection.md) - value-free opaque grant、Agents/IAM/Secret Authority/Kernel/Sandbox 职责拆分、Local/Cloud lane 与 region binding、显式 process target、rotation/revocation/outage、Checkpoint/Pool exclusion 和 scoped security claim；保持 `draft`，不批准 Secret Authority、value transport、process projection、Proto/SDK/API、persistence、Provider、Service Host 或跨仓库实现。
 - [REQ-2026-0026: Sandbox Cloud Data Residency And Recovery](../requirements/REQ-2026-0026-sandbox-cloud-data-residency-and-recovery.md) - Cloud-only data inventory、`regionCode/providerRegion/storageRegion/availabilityZone` tuple、Drive/Agents/Sandbox authority split、explicit replication、backup/PITR、ordered recovery、tenant isolation、export/delete、Secret exclusion 与 RPO/RTO gate；保持 `draft`，不批准 storage/replication/backup/restore/purge implementation、API/SDK、Provider、Service Host 或跨仓库实现。
 - [REQ-2026-0027: Sandbox Cross-Repository Version Compatibility And Release Set](../requirements/REQ-2026-0027-sandbox-cross-repository-version-compatibility.md) - immutable BirdCoder/Agents/Kernel/Sandbox revision set, Workspace/storage/RPC/SDK/config/artifact/evidence provenance, explicit multi-dimensional compatibility matrix, peer preflight, drain/rollout/rollback/downgrade and bounded support window；保持 `draft`，不批准 release registry、SDK/proto/artifact publication、migration、deployment 或跨仓库实现。
+- [REQ-2026-0028: E2B-Compatible API And SDK Family Authority](../requirements/REQ-2026-0028-sandbox-e2b-compatible-api-sdk-family.md) - pinned E2B reference set、`apis/` 单一权威 OpenAPI、控制面/数据面双契约、能力级 parity 与已评审偏离账、五面 SDK 验收矩阵、int64-as-string wire rule；保持 `draft`，不批准 HTTP route、RPC server、envd 实现、SDK 生成、公共命名或边缘归属。
 
 后续 Runtime API、生命周期、Provider、Scheduler、安全、Snapshot、Cache 与 SaaS 工作必须在实施前拆分为可评审的需求记录。
 
@@ -301,7 +303,7 @@ SDKWork 共享类型 `TenantId`、`OperationId`、`RuntimeCapability` 与 `Isola
 | Sandbox 内 Agent 运行时 | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 9 节 | 无 `REQ-*`；`REQ-2026-0024` 明确将 Guest Agent Stream 列为未批准 |
 | MCP 执行面 | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 10 节 | 仅 Transport 级描述，无独立 `REQ-*` |
 | Skills | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 11 节 | 无 `REQ-*`；目录命名与供应链 Owner 未定 |
-| SDK 家族 | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 12 节 | 无 `REQ-*`；无 `apis/` 权威契约 |
+| SDK 家族与 API 权威 | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 12 节 | 已有承载：`REQ-2026-0028`（`draft`）定义 pinned E2B 参考、`apis/` 权威、双面契约、parity ledger 与偏离账。仍缺：人审通过后的权威契约落地、生成链与公共命名决策 |
 | Node Drain 与迁移 | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 9 节 | `REQ-2026-0017` 仅覆盖 Drain 的信任侧，迁移无 `REQ-*` |
 | Benchmark 套件与容量基线 | [PRD-roadmap.md](PRD-roadmap.md) 验收标准 | 已有承载：`REQ-2026-0019` 的 Goals 与 Performance 行要求记录固定硬件、工作负载与统计方法并出具 p50/p95/p99，`tools/bench-sandbox-lifecycle.mjs` 与 `docs/architecture/tech/TECH-performance-baseline.md`（两平台实测）也已在树中，但该基线自述发布门禁资格不合格。仍缺：可写入发布门禁的参考硬件与容量基线定义 |
 
