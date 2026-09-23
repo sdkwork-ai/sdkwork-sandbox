@@ -70,7 +70,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | Service Host | `crates/sdkwork-sandbox-service-host` | 5 行 | 只有 doc comment（`crates/sdkwork-sandbox-service-host/src/lib.rs`），**无 composition、无 wiring** |
 | CLI | `crates/sdkwork-sandbox-cli` | 3 行 | `fn main() {}`（`main.rs:3`）——**零命令** |
 | API Assembly | `crates/sdkwork-api-sandbox-assembly` | 骨架 | `ROUTE_CRATE_COUNT: usize = 0`（`generated.rs:3`）+ `Router::new()`（`bootstrap.rs:26`）——**零路由** |
-| Command Executor | `crates/sdkwork-sandbox-provider-spi` | 6 模块 | 端口已声明：`SandboxCommandExecutor`（`command.rs:181`，2026-09-24 授权）+ 规范指纹 `sandbox_command_execution_fingerprint`（`command.rs:124`）；**零 Provider 实现**——`crates/` 下不存在 `SandboxLocalCommandExecutor` |
+| Command Executor | `crates/sdkwork-sandbox-provider-spi` | 6 模块 | 端口已声明：`SandboxCommandExecutor`（`command.rs:236`，2026-09-24 授权）+ 规范指纹 `sandbox_command_execution_fingerprint`（`command.rs:124`）；**零 Provider 实现**——`crates/` 下不存在 `SandboxLocalCommandExecutor` |
 | Template / Snapshot / Fork / Pool | — | 不存在 | `crates/` 下无 `template` / `snapshot` / `fork` / `pool` 同名 crate，全仓无对应实现，也无产品级 `REQ-*` |
 | SDK | `sdks/` | 目录 + README | **零生成产物**，`apis/` 无权威 OpenAPI |
 
@@ -302,9 +302,9 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 | SQLx 持久化生命周期（需外部 PostgreSQL） | `crates/sdkwork-intelligence-sandbox-repository-sqlx/tests/postgres_repository.rs` | `crates/sdkwork-intelligence-sandbox-repository-sqlx/tests/postgres_repository.rs` | `sandbox_postgres_destructive_test_requires_matching_non_echoing_database_urls`、`sandbox_postgres_repository_enforces_durable_lifecycle_contract` |
 | Local Fake Host Boundary：类型化参数、路径逃逸、环境上界 | `crates/sdkwork-sandbox-provider-local/src/fake_host_boundary/mod.rs` | `crates/sdkwork-sandbox-provider-local/src/fake_host_boundary/tests.rs` | `sandbox_fake_host_boundary_preserves_typed_arguments_without_shell_parsing`、`sandbox_fake_host_boundary_rejects_path_escape_and_windows_path_hazards`、`sandbox_fake_host_boundary_denies_command_strings_and_ambient_credentials`、`sandbox_fake_host_boundary_enforces_argument_and_environment_bounds`、`sandbox_fake_host_boundary_enforces_environment_entry_bound` |
 | Local Host Boundary 生产纯数据规则（2026-09-24 授权切片） | `crates/sdkwork-sandbox-provider-local/src/host_boundary/mod.rs` | `crates/sdkwork-sandbox-provider-local/src/host_boundary/tests.rs` | `accepts_a_well_formed_sandbox_command_request`、`rejects_an_executable_that_is_not_a_bare_name`、`rejects_an_executable_outside_the_allowlist`、`rejects_argument_overruns_and_forbidden_bytes`、`rejects_working_directory_escapes_and_windows_hazards`、`rejects_environment_entries_that_break_the_boundary`、`rejects_environment_count_overruns`、`displays_every_error_variant_without_panicking` |
-| Command Execution 端口与规范指纹（2026-09-24 授权切片） | `crates/sdkwork-sandbox-provider-spi/src/command.rs` | `crates/sdkwork-sandbox-provider-spi/src/command.rs` | `fingerprint_is_deterministic_for_identical_requests`、`fingerprint_moves_when_any_covered_field_moves`、`limits_validation_enforces_the_contract_maxima` |
+| Command Execution 端口与规范指纹（2026-09-24 授权切片） | `crates/sdkwork-sandbox-provider-spi/src/command.rs` | `crates/sdkwork-sandbox-provider-spi/src/command.rs` | `fingerprint_is_deterministic_for_identical_requests`、`fingerprint_moves_when_any_covered_field_moves`、`limits_validation_enforces_the_contract_maxima`、`cancellation_fingerprint_is_deterministic_and_field_sensitive` |
 
-表内共 **90 个用例**（18 行），与工作区静态清点一致；其中 `sandbox_postgres_repository_enforces_durable_lifecycle_contract` 带 `#[ignore]`，是唯一不进默认运行的用例（它声明需要 `SDKWORK_DATABASE_TEST_POSTGRES_URL` 与一个已初始化的 PostgreSQL）。因此 `cargo test --workspace` 的读数是 **89 passed / 0 failed / 1 ignored**，90 = 89 + 1，两侧对得上。
+表内共 **91 个用例**（18 行），与工作区静态清点一致；其中 `sandbox_postgres_repository_enforces_durable_lifecycle_contract` 带 `#[ignore]`，是唯一不进默认运行的用例（它声明需要 `SDKWORK_DATABASE_TEST_POSTGRES_URL` 与一个已初始化的 PostgreSQL）。因此 `cargo test --workspace` 的读数是 **90 passed / 0 failed / 1 ignored**，91 = 90 + 1，两侧对得上。
 
 计数（2026-09-22 实测）：
 
@@ -312,7 +312,7 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 cargo test --workspace
 ```
 
-`89 passed / 1 ignored`（另 0 failed；1 ignored 是声明需要外部 PostgreSQL 的测试）。契约测试：
+`90 passed / 1 ignored`（另 0 failed；1 ignored 是声明需要外部 PostgreSQL 的测试）。契约测试：
 
 ```bash
 node --test tests/contract/*.test.mjs

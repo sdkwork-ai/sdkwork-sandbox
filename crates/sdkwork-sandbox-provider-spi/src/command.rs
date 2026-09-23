@@ -171,6 +171,61 @@ pub fn sandbox_command_execution_fingerprint(
     format!("{:x}", hasher.finalize())
 }
 
+/// The canonical cancellation request the contract's `cancellationRequestSchema` defines.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SandboxCommandCancellationRequest {
+    /// Tenant the cancellation is scoped to.
+    pub sandbox_tenant_id: String,
+    /// Provider the cancellation is addressed to.
+    pub sandbox_provider_id: String,
+    /// Workspace the target execution runs inside.
+    pub sandbox_workspace_id: String,
+    /// Session the target execution belongs to.
+    pub sandbox_session_id: String,
+    /// Runtime sandbox identifier.
+    pub sandbox_id: String,
+    /// Runtime binding the target execution is fenced to.
+    pub sandbox_runtime_binding_id: String,
+    /// Monotonic fencing token proving single-writer authority.
+    pub sandbox_fencing_token: u64,
+    /// Durable operation id of the target execution.
+    pub sandbox_command_operation_id: String,
+    /// Durable operation id making this cancellation idempotent.
+    pub sandbox_cancellation_operation_id: String,
+}
+
+/// `sha256` over the contract's canonical encoding of the nine `cancellationFields`, in the same
+/// domain-separated length-prefixed encoding as the execution fingerprint.
+#[must_use]
+pub fn sandbox_command_cancellation_fingerprint(
+    sandbox_request: &SandboxCommandCancellationRequest,
+) -> String {
+    const DOMAIN: &str = "sdkwork-sandbox-command-v1";
+    let mut hasher = Sha256::new();
+    Digest::update(&mut hasher, (DOMAIN.len() as u64).to_be_bytes());
+    Digest::update(&mut hasher, DOMAIN.as_bytes());
+    for field in [
+        sandbox_request.sandbox_tenant_id.as_str(),
+        sandbox_request.sandbox_provider_id.as_str(),
+        sandbox_request.sandbox_workspace_id.as_str(),
+        sandbox_request.sandbox_session_id.as_str(),
+        sandbox_request.sandbox_id.as_str(),
+        sandbox_request.sandbox_runtime_binding_id.as_str(),
+    ] {
+        Digest::update(&mut hasher, (field.len() as u64).to_be_bytes());
+        Digest::update(&mut hasher, field.as_bytes());
+    }
+    Digest::update(&mut hasher, sandbox_request.sandbox_fencing_token.to_be_bytes());
+    for field in [
+        sandbox_request.sandbox_command_operation_id.as_str(),
+        sandbox_request.sandbox_cancellation_operation_id.as_str(),
+    ] {
+        Digest::update(&mut hasher, (field.len() as u64).to_be_bytes());
+        Digest::update(&mut hasher, field.as_bytes());
+    }
+    format!("{:x}", hasher.finalize())
+}
+
 /// The Provider-implemented port for running and cancelling one sandbox command.
 ///
 /// Implementations must recompute the canonical fingerprint from the request, enforce the
@@ -313,6 +368,43 @@ mod tests {
         assert_ne!(
             sandbox_command_execution_fingerprint(&sandbox_request()),
             sandbox_command_execution_fingerprint(&limited)
+        );
+    }
+
+    #[test]
+    fn cancellation_fingerprint_is_deterministic_and_field_sensitive() {
+        use super::{SandboxCommandCancellationRequest, sandbox_command_cancellation_fingerprint};
+
+        let request = SandboxCommandCancellationRequest {
+            sandbox_tenant_id: "tenant-1".to_owned(),
+            sandbox_provider_id: "provider-1".to_owned(),
+            sandbox_workspace_id: "workspace-1".to_owned(),
+            sandbox_session_id: "session-1".to_owned(),
+            sandbox_id: "sandbox-1".to_owned(),
+            sandbox_runtime_binding_id: "binding-1".to_owned(),
+            sandbox_fencing_token: 7,
+            sandbox_command_operation_id: "operation-1".to_owned(),
+            sandbox_cancellation_operation_id: "cancel-1".to_owned(),
+        };
+        assert_eq!(
+            sandbox_command_cancellation_fingerprint(&request),
+            sandbox_command_cancellation_fingerprint(&request)
+        );
+
+        let mut moved = request.clone();
+        moved.sandbox_cancellation_operation_id = "cancel-2".to_owned();
+        assert_ne!(
+            sandbox_command_cancellation_fingerprint(&request),
+            sandbox_command_cancellation_fingerprint(&moved)
+        );
+
+        // A cancellation is bound to its target execution: a different command operation id
+        // changes the fingerprint even with everything else fixed.
+        let mut retargeted = request.clone();
+        retargeted.sandbox_command_operation_id = "operation-2".to_owned();
+        assert_ne!(
+            sandbox_command_cancellation_fingerprint(&request),
+            sandbox_command_cancellation_fingerprint(&retargeted)
         );
     }
 

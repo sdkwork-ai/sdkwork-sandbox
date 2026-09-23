@@ -1284,8 +1284,8 @@ test("the repository's own coverage table accounts for every test the workspace 
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  assert.equal(assessment.workspaceTests, 90);
-  assert.equal(assessment.coveredTests, 90);
+  assert.equal(assessment.workspaceTests, 91);
+  assert.equal(assessment.coveredTests, 91);
 
   const discovered = discoverWorkspaceTests(repoRoot);
   let runnable = 0;
@@ -1298,7 +1298,7 @@ test("the repository's own coverage table accounts for every test the workspace 
   }
   // The two readings the audit quotes have to agree with the code: 90 declared, 89 of them
   // runnable because one declares it needs an external PostgreSQL.
-  assert.equal(runnable + ignored, 90);
+  assert.equal(runnable + ignored, 91);
   assert.equal(ignored, 1);
 });
 
