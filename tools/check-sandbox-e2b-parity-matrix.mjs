@@ -967,6 +967,27 @@ export function parseImplementationCoverage(text) {
 export const SHAPE_SECTION = "### 1.2";
 export const SHAPE_COLUMNS = Object.freeze(["组件", "路径", "规模", "真实状态"]);
 
+export const ADVANTAGE_SECTION = "## 5. 我们比 E2B 强的地方";
+export const ADVANTAGE_COLUMNS = Object.freeze(["本仓能力", "证据", "为什么保留"]);
+
+/** `REQ-2026-0004` -- a requirement record an advantage row cites as the carrier of a difference. */
+const REQUIREMENT_ID = /^REQ-\d{4}-\d{4}$/u;
+
+/**
+ * `ADR-20260728-...` -- a decision record an advantage row cites. The document sometimes writes the
+ * bare date prefix and sometimes the full slug, so both forms are citations.
+ */
+const DECISION_ID = /^ADR-\d{8}(?:-[a-z0-9-]+)*$/u;
+
+/** Any `*.rs` file name, qualified or not -- qualifiedness is exactly what the bare-name check asks. */
+const RUST_FILE_NAME = /^[A-Za-z0-9_./-]+\.rs$/u;
+
+/**
+ * A bare snake_case identifier with at least one underscore: the form a table or column name takes
+ * (`sandbox_session_lease`). Single lowercase words are prose, not claims, and stay unchecked.
+ */
+const SNAKE_IDENTIFIER = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$/u;
+
 /** The top-level directories a citation may open with. A token below one is a path, not prose. */
 const REPO_PATH_PREFIXES = Object.freeze([
   "crates", "apis", "sdks", "specs", "docs", "tools", "tests",
@@ -1032,9 +1053,89 @@ export function parseShapeEvidence(text) {
   return { header, rows, malformed };
 }
 
+/**
+ * The section 5 advantage table: the capabilities this repository claims to already have that E2B
+ * does not offer. The rows are the mirror of the matrix -- where section 2 records what is missing,
+ * section 5 records what is claimed worth keeping -- and they rot the same way: a bare file name,
+ * a drifted line anchor, or a cited record that no longer exists all leave the row asserting an
+ * advantage nothing can open.
+ */
+export function parseAdvantageClaims(text) {
+  const lines = text.split(/\r?\n/u);
+  const start = lines.findIndex((line) => line.trim().startsWith(ADVANTAGE_SECTION));
+  if (start === -1) return null;
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^#{1,4}\s/u.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  let header = null;
+  const rows = [];
+  const malformed = [];
+  for (let index = start + 1; index < end; index += 1) {
+    const line = lines[index].trim();
+    if (!line.startsWith("|")) continue;
+    const cells = line
+      .replace(/^\|/u, "")
+      .replace(/\|$/u, "")
+      .split("|")
+      .map((cell) => cell.trim());
+    if (cells.every((cell) => /^:?-{2,}:?$/u.test(cell))) continue;
+    if (!header) {
+      header = cells;
+      continue;
+    }
+    if (cells.length !== header.length) {
+      malformed.push({ line: index + 1, cells });
+      continue;
+    }
+    const record = {};
+    ADVANTAGE_COLUMNS.forEach((column, position) => {
+      record[column] = cells[position] ?? "";
+    });
+    record.line = index + 1;
+    rows.push(record);
+  }
+  return { header, rows, malformed };
+}
+
+/**
+ * The decision record an ADR citation names, or null. A full slug must be the exact record file; a
+ * bare `ADR-YYYYMMDD` prefix-matches the way `readRequirementStatus` matches requirement ids.
+ */
+function readDecisionRecord(repoRoot, id) {
+  const directory = join(repoRoot, DECISIONS_DIRECTORY);
+  if (!existsSync(directory)) return null;
+  const fullSlug = /^ADR-\d{8}-/u.test(id);
+  const name = readdirSync(directory).find((entry) =>
+    fullSlug ? entry === `${id}.md` : entry.startsWith(`${id}-`) && entry.endsWith(".md"),
+  );
+  return name ? { file: `${DECISIONS_DIRECTORY}/${name}` } : null;
+}
+
+/**
+ * Whether a bare snake_case identifier occurs anywhere it could be declared: Rust sources under
+ * `crates/`, or the schema and sources under `database/`. Returns the first repository-relative
+ * file holding it, so the finding can name where the claim stopped being true.
+ */
+function identifierOccursInRepository(repoRoot, identifier) {
+  for (const root of ["crates", "database"]) {
+    const absolute = join(repoRoot, root);
+    if (!existsSync(absolute)) continue;
+    for (const relative of walkRelativeFiles(absolute)) {
+      if (!relative.endsWith(".rs") && !relative.endsWith(".sql")) continue;
+      if (readFileSync(join(absolute, relative), "utf8").includes(identifier)) {
+        return `${root}/${relative}`;
+      }
+    }
+  }
+  return null;
+}
+
 /** Recursively list the `.rs` files under an absolute directory, sorted. */
-function listRustSources(absoluteDirectory) {
-  if (!existsSync(absoluteDirectory)) return [];
+function listRustSources(absoluteDirectory) {  if (!existsSync(absoluteDirectory)) return [];
   const found = [];
   const walk = (directory) => {
     for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) =>
@@ -1360,6 +1461,8 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
     workspaceTests: 0,
     shapeRows: 0,
     shapeAnchors: 0,
+    advantageRows: 0,
+    advantageAnchors: 0,
     answerRows: 0,
     headlineChecks: 0,
     totals: { ok: 0, partial: 0, missing: 0, deliberate: 0 },
@@ -2304,6 +2407,147 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
     }
   }
 
+  // Section 5 is the mirror image of the matrix and rots in the same ways, with one addition: the
+  // matrix says what is missing, so a stale row understates the repository, while section 5 says
+  // what is already here and worth keeping, so a stale row overstates it. Its evidence cells cited
+  // bare file names (`provider.rs:50`) that survive no crate rename, and its line anchors drifted
+  // unobserved -- the fencing-token row pointed at a line of `opaque_id!` declarations three lines
+  // above the type it names. So the family reads section 5 with the same demands it reads 1.2:
+  // every row cites at least one checkable artifact (a repository path, a Rust file, a requirement
+  // or decision record, or a bare identifier that occurs in the code or schema), bare Rust file
+  // names are refused because they survive the rename that orphans them, and every line anchor
+  // must land inside its file with something else the row cites visible at that line -- the same
+  // pairing 1.2 uses, where the cell quotes the construct the anchor should be showing.
+  const advantages = parseAdvantageClaims(text);
+  let advantageRows = 0;
+  let advantageAnchors = 0;
+  if (!advantages) {
+    problems.push(`${PARITY_DOCUMENT} has no "${ADVANTAGE_SECTION}" advantage section`);
+  } else if (!advantages.header) {
+    problems.push(`${PARITY_DOCUMENT} section 5 has no advantage table`);
+  } else if (
+    advantages.header.length !== ADVANTAGE_COLUMNS.length ||
+    advantages.header.join("|") !== ADVANTAGE_COLUMNS.join("|")
+  ) {
+    problems.push(
+      `${PARITY_DOCUMENT} section 5 advantage table header is [${advantages.header.join(", ")}]; expected [${ADVANTAGE_COLUMNS.join(", ")}]`,
+    );
+  } else {
+    for (const row of advantages.malformed) {
+      problems.push(
+        `${PARITY_DOCUMENT}:${row.line} advantage row has ${row.cells.length} cell(s), expected ${ADVANTAGE_COLUMNS.length}`,
+      );
+    }
+    if (advantages.rows.length === 0) {
+      problems.push(
+        `${PARITY_DOCUMENT} section 5 claims no advantage, which asserts nothing here is worth keeping while catching up with E2B; state the advantages or delete the section`,
+      );
+    }
+    advantageRows = advantages.rows.length;
+    const isCheckable = (token) =>
+      REPO_PATH_PREFIXES.some((prefix) => token.startsWith(`${prefix}/`)) ||
+      RUST_FILE_NAME.test(token) ||
+      REQUIREMENT_ID.test(token) ||
+      DECISION_ID.test(token) ||
+      SNAKE_IDENTIFIER.test(token);
+    for (const row of advantages.rows) {
+      const label = `section 5 advantage row at line ${row.line}`;
+      if (stripEmphasis(row["本仓能力"]).trim() === "") {
+        problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} names no capability`);
+      }
+      const citations = backtickedTokens(row["证据"]);
+      if (citations.length === 0) {
+        problems.push(
+          `${PARITY_DOCUMENT}:${row.line} ${label} cites no backticked evidence; an advantage nothing can open is a preference, not an advantage`,
+        );
+        continue;
+      }
+      if (!citations.some(isCheckable)) {
+        problems.push(
+          `${PARITY_DOCUMENT}:${row.line} ${label} names no checkable anchor; cite a repository path, a Rust file, a REQ-*/ADR-* record, or an identifier that occurs in the code or schema`,
+        );
+      }
+      for (const token of citations) {
+        // The bare-name refusal runs on the file part of an anchor too: `lib.rs:4` ends in a line
+        // number, not in `.rs`, so the file-name regex alone would let the exact form the real
+        // table used slip through to the anchor branch and fail there with the wrong diagnosis.
+        const lineAnchor = LINE_ANCHOR.exec(token);
+        const rustFile = lineAnchor !== null ? lineAnchor[1] : RUST_FILE_NAME.test(token) ? token : null;
+        if (rustFile !== null && !rustFile.includes("/")) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} cites the bare file name \`${token}\`; write the crate-qualified path, because a bare name survives the crate rename that orphans it`,
+          );
+          continue;
+        }
+        // A line anchor is not a path: `crates/.../identity.rs:97` starts with a repository prefix
+        // but names a position in a file, so the anchor branch below owns it.
+        if (
+          lineAnchor === null &&
+          REPO_PATH_PREFIXES.some((prefix) => token.startsWith(`${prefix}/`)) &&
+          !citedPathExists(repoRoot, token)
+        ) {
+          problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} cites \`${token}\`, which does not exist`);
+          continue;
+        }
+        if (lineAnchor === null) continue;
+        advantageAnchors += 1;
+        const anchorPath = lineAnchor[1];
+        const citedLine = Number.parseInt(lineAnchor[2], 10);
+        // Unlike 1.2, section 5 cites whole paths (there is no per-row crate column to resolve a
+        // bare name against), so every anchor is root-relative by construction.
+        const anchorFile = join(repoRoot, anchorPath);
+        if (!existsSync(anchorFile)) {
+          problems.push(`${PARITY_DOCUMENT}:${row.line} ${label} cites \`${token}\`, which resolves to no file`);
+          continue;
+        }
+        const anchorTotal = countSourceLines(anchorFile);
+        if (citedLine < 1 || citedLine > anchorTotal) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} cites \`${token}\`, but \`${anchorPath}\` has ${anchorTotal} line(s)`,
+          );
+          continue;
+        }
+        const anchorWindow = readFileSync(anchorFile, "utf8")
+          .split(/\r?\n/u)
+          .slice(citedLine - 1, citedLine + ANCHOR_WINDOW)
+          .join(" ")
+          .replace(/\s+/gu, " ");
+        const otherCitations = citations.filter((candidate) => candidate !== token);
+        if (
+          otherCitations.length > 0 &&
+          !otherCitations.some((candidate) => anchorWindow.includes(candidate))
+        ) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} cites \`${token}\`, but nothing else the row cites is visible at \`${anchorPath}:${citedLine}\``,
+          );
+        }
+      }
+      for (const token of citations) {
+        if (REQUIREMENT_ID.test(token) && !readRequirementStatus(repoRoot, token)) {
+          problems.push(
+            `${PARITY_DOCUMENT}:${row.line} ${label} cites \`${token}\`, which has no record in ${REQUIREMENTS_DIRECTORY}`,
+          );
+        }
+        if (DECISION_ID.test(token)) {
+          const decisionRecord = readDecisionRecord(repoRoot, token);
+          if (decisionRecord === null) {
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} cites \`${token}\`, which has no record in ${DECISIONS_DIRECTORY}`,
+            );
+          }
+        }
+        if (SNAKE_IDENTIFIER.test(token)) {
+          const where = identifierOccursInRepository(repoRoot, token);
+          if (where === null) {
+            problems.push(
+              `${PARITY_DOCUMENT}:${row.line} ${label} cites \`${token}\`, which occurs nowhere under crates/ or database/`,
+            );
+          }
+        }
+      }
+    }
+  }
+
   // ---- 12. HEADLINE NUMBERS
   // Section 1.1 is headed "直接回答" -- the direct answer -- and it is the part of the audit a
   // reviewer quotes, because it is the part that says whether the capability set is aligned at all.
@@ -2569,6 +2813,8 @@ export function assessE2bParityMatrix({ repoRoot = process.cwd() } = {}) {
     workspaceTests,
     shapeRows,
     shapeAnchors,
+    advantageRows,
+    advantageAnchors,
     answerRows,
     headlineChecks,
     totals: census.total ?? summed,
@@ -2588,6 +2834,7 @@ export function formatE2bParityMatrixReport(assessment) {
     `cross-document claim census: ${assessment.claimSurfaceCount} document section(s), ${assessment.claimSurfaceClaims} claim(s)`,
     `implementation coverage: ${assessment.coveredTests} of ${assessment.workspaceTests} workspace test(s) accounted for`,
     `shape evidence: ${assessment.shapeRows} component row(s), ${assessment.shapeAnchors} line-numbered anchor(s) resolved`,
+    `advantage claims: ${assessment.advantageRows} row(s), ${assessment.advantageAnchors} line-numbered anchor(s) resolved`,
     `answer section: ${assessment.answerRows} path row(s), ${assessment.headlineChecks} restated figure(s) compared to their source`,
   ];
   if (assessment.totals) {

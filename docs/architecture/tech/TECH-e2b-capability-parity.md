@@ -316,7 +316,7 @@ cargo test --workspace
 node --test tests/contract/*.test.mjs
 ```
 
-`644 pass / 0 fail`（其中 E2B 矩阵门禁 143 个、E2B 基准门禁 30 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
+`660 pass / 0 fail`（其中 E2B 矩阵门禁 159 个、E2B 基准门禁 30 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
 
 ### 3.2 覆盖空档
 
@@ -327,17 +327,17 @@ node --test tests/contract/*.test.mjs
 | 1 | **已实现面没有任何消费点测试** | 治理阻塞 | `REQ-2026-0003` `REQ-2026-0008` | 7 个 SPI 测试全部落在谓词与构造器上，`allocate`/`start`/`stop`/`destroy` 的**真实 Provider 调用序列**没有任何实现可测——因为 Provider 不存在。两条能授权它的需求（安全本地 Provider、Firecracker Provider）都还是 `draft`，`AGENTS.md` 未放行，所以这不是"没写用例"而是"没有可写用例的实现"。本仓最深的空档 |
 | 2 | **PRD 第 8 节的其余「无需求承载」断言只有计数，没有逐条归属对账** | 缺门禁 | `docs/product/prd/PRD.md` `docs/architecture/tech/TECH-e2b-capability-parity.md` | 该节曾把「Benchmark 套件与容量基线」列为无需求承载，并断言「无参考硬件定义」；而 `REQ-2026-0019` 的 Goals 正是「在公开参考环境和固定工作负载中证明 Pool Claim 到 Sandbox Running Ready 的 p50/p95/p99」，其 Performance 行还要求记录固定硬件。该行已改写，§3.5 也把这条修正连反证物一起登记。但 §3.5 证明的是**覆盖**——每处断言都被数到、已证伪的那条留下探针——不是**真值**：其余 15 行里任何一行都可能同样过期，而词法反证对这一形态无效（实测记在 §3.5）。逐条归属判定仍缺 |
 | 3 | **500 ms 热分配目标没有测量者，三份性能文档互不 join** | 治理阻塞 | `REQ-2026-0019` | 目标（`PRD.md` 第 6 节）说的是"公开参考环境中 Pool 到 Workspace 绑定 p95 小于 500 ms"；基线（`docs/architecture/tech/TECH-performance-baseline.md`）自述**发布门禁资格：不合格**，且其第 0.2 条明确"分子（编排）已测、分母（真实沙箱启动）不存在"，测的是编排地板；容量分片（`docs/architecture/tech/TECH-performance-and-capacity.md`）声明"全部数值都是工程目标"。三份文件各说各话、无人同时读它们。而 500 ms 对应的 Pool 路径由 `REQ-2026-0019` 承载且仍是 `draft`，所以**这里连可测的实现都还没有**，只能先作为阻塞登记 |
-| 4 | **§5「我们比 E2B 强的地方」的 9 行优势断言没有门禁** | 缺门禁 | `docs/architecture/tech/TECH-e2b-capability-parity.md` | 这 9 行的判词是"本仓**已有**"，取证是 crate 行锚：`crates/sdkwork-sandbox-provider-spi/src/identity.rs:88`、`crates/sdkwork-intelligence-sandbox-service/src/model.rs:24`、`crates/sdkwork-intelligence-sandbox-repository-sqlx/src/encryption.rs`，以及两个**裸文件名**（`provider.rs:50`、`capability.rs:2`）和一个表名。其中 `REQ-*`/`ADR-*` 已被第 6 条规则族解析并登记，但**行锚与"已有"这句判词没有任何东西核过**，裸文件名更是连所属 crate 都没写——crate 改名、行号整体下移、或某个"已有"的能力被移除，这张表会继续断言旧形状。它和 §1.2 是同一类句子（"可点证据"），只是 §1.2 已被第 11 条规则族接管 |
 
 **本表此前有一行是假的，这正是新增门禁的由来。** 原第 5 行写作「"快速创建/快速部署"的性能断言全为零测试」，性质一栏写着"既无参考硬件也无 Benchmark 套件，且该目标没有任何需求承载"——**这句有一半不成立**：`REQ-2026-0019` 承载的正是这个目标，`tools/bench-sandbox-lifecycle.mjs` 与两平台原始样本也都在树里（样本落在 gitignore 的 `target/` 下，是证据不是缓存）。一张"缺什么"的清单如果不可被目录列举推翻，它就会越写越旧。所以本节改成带性质的表，并由门禁按性质**反向核验**：`缺产物` 点名的路径必须**不存在**、`缺门禁` 点名的路径必须**存在**、`治理阻塞` 必须点名一份**记录在案且尚未 `ready`** 的需求——三者问的都是"这句话能不能被证伪"，不是措辞问题。
 
-**三个空档已于本轮闭合并从本表移除**，各自的门禁落点：
+**四个空档已于本轮闭合并从本表移除**，各自的门禁落点：
 
 | 已闭合空档 | 门禁落点 | 闭合方式 |
 | --- | --- | --- |
 | PRD 状态机 ⊋ 实现状态机（`Pausing`/`Paused`/`Recovering` 无标记） | `tools/check-sandbox-requirement-traceability.mjs` 第 5 条规则族 | PRD 第 3 节补 `目标态标记` 行；门禁双向核验：图中状态必须被实现枚举包含**或**被标记，标记集合必须恰好等于差集，目标态进了代码而标记未收缩同样转红 |
 | 指标契约与指标族名不相交 + `*_latency` 命名违规 | `tools/check-sandbox-requirement-traceability.mjs` 第 6 条规则族 | PRD 第 13 节 13 个指标族按 `OBSERVABILITY_SPEC.md` 命名规则重写；`apis/async/sandbox-observability-catalog.json` 新增 `metrics.productFamilies` 机器映射（6 控制面 / 7 运行面），双向一一对应、`catalogMetrics` 必须可解析 |
 | `PRD-capabilities.md` 第 11 节与 E2B 基准之间无门禁 | `tools/check-sandbox-e2b-field-parity.mjs` 第 8 条规则族（capability-matrix-join） | 基准 JSON 逐行携带 `capabilityMatrixRows`，78 行与 34 行双向记账（57 映射 / 21 登记无产品行；25 被判定 / 9 登记无基线行），审计文档自己的 34/78 标题句被解析比对 |
+| §5「我们比 E2B 强的地方」的 9 行优势断言没有门禁 | `tools/check-sandbox-e2b-parity-matrix.mjs` 第 11 条规则族（形状取证扩至 §5） | 每行证据格必须含至少一个**可反证**引用（仓库路径 / Rust 文件 / `REQ-*`/`ADR-*` 记录 / 在 crates 或 database 树中出现的裸标识符）；裸 Rust 文件名拒绝（改名即孤儿）；行锚必须在界内且**该行引用的其他物证至少一项在锚点窗口内可见**（与 §1.2 同一配对法）。上线首跑抓到 5 处真缺陷：两处行锚已漂移（`identity.rs:88`→实为 :97、`model.rs:24`→实为 :276）、两个裸文件名、一行证据格只有文档链接没有可反证 token，均已按真值改写 |
 
 **本表此前有一行是假的，这正是新增门禁的由来。** 原第 5 行写作「"快速创建/快速部署"的性能断言全为零测试」，性质一栏写着"既无参考硬件也无 Benchmark 套件，且该目标没有任何需求承载"——**这句有一半不成立**：`REQ-2026-0019` 承载的正是这个目标，`tools/bench-sandbox-lifecycle.mjs` 与两平台原始样本也都在树里（样本落在 gitignore 的 `target/` 下，是证据不是缓存）。一张"缺什么"的清单如果不可被目录列举推翻，它就会越写越旧。所以本节改成带性质的表，并由门禁按性质**反向核验**：`缺产物` 点名的路径必须**不存在**、`缺门禁` 点名的路径必须**存在**、`治理阻塞` 必须点名一份**记录在案且尚未 `ready`** 的需求——三者问的都是"这句话能不能被证伪"，不是措辞问题。
 
@@ -397,6 +397,8 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 - **点名的否定要能被反证**：加粗否定短语（`**无 …**` / `**零…**`）里凡是点名了标识符的，那些标识符必须在**该行所锚的那个文件**里不存在。范围取"所锚文件"而不是全仓，是因为这句话说的就是"那个文件里的那个构造没有"——第 2 行断言状态枚举没有 `Pausing`/`Paused`/`Recovering`，而这一行正是 §3.2 第 1 条治理阻塞的实现侧：门禁打开前写不了它，门禁打开后它会被静默改掉，所以这条否定的真假必须每次重算。没点名标识符的否定（`零命令` / `零路由` / `零生产实现`）不靠短语自证，而由行号锚承担——`main.rs:3` 上真的只有 `fn main() {}`，才是"零命令"可被核对的原因。
 
 同一轮还顺手把 3 行判词改精确了：Command Executor 那行原写"全仓无 `SandboxCommandExecutor`"，实际上它**被一份契约声明为 `sandbox_required_bindings` 的一项**——`crates/**/*.rs` 里确实没有实现（这一点现在被门禁核验），但"全仓无"是错的，准确的形状是"已声明、未绑定"；Template / Snapshot / Fork / Pool 那行原写"全仓无对应实现"，没有点名任何可反证的东西，现在点名 `crates/` 下四个不得出现的同名 crate。
+
+**形状取证随后扩到了 §5**（"我们比 E2B 强的地方"）：这 9 行与 §1.2 是同一类"可点证据"句子，但方向相反——§1.2 过期会**低**估本仓，§5 过期会**高**估本仓，而高估的那张表正是被引用来回答"追赶时哪些差异必须保住"的表。门禁对 §5 施加与 §1.2 同配对的核验：每行证据格至少一个可反证引用（仓库路径 / Rust 文件 / `REQ-*`/`ADR-*` 记录 / 在 `crates/` 或 `database/` 树中出现的裸标识符，`sandbox_session_lease` 表名因此从"一个名字"变成"一棵可被改名杀死的声明"）；裸 Rust 文件名拒绝，因为它在 crate 改名时恰好幸存下来指向虚无；行锚必须在界内，且该行引用的**其他物证至少一项**在锚点起 4 行的窗口内可见——§1.2 的引文配对法原样照搬。这条上线首跑就抓到 5 处真缺陷：`identity.rs:88` 与 `model.rs:24` 两个行锚已漂移（构造真身在 :97 与 :276，两者都仍落在"行号在文件内"的旧口径里，所以此前的在界检查看不见它们）、`provider.rs:50` 与 `capability.rs:2` 两个裸文件名、以及一行证据格只有 markdown 链接没有任何可反证 token。
 
 **第十二条规则族：结论数字（§1.1 的每一个数字都变成可比对的断言）。** §1.1 标题是「直接回答」，是整份审计里**被评审引用得最多**的一段——它说的就是"能力集到底对齐没有"。这一段里的每个数字都是**别处某个数字的副本**：下一节的普查表、需求记录、决策记录、每份机器契约上的授权字段、证据注册表。此前没有任何东西把副本与原值放在一起，而这一段还会**自我重复**：那段"23 份 `*.contract.json` 中 22 份未授权"的话在 §1.1 与 §3.2 各出现一次，一处过期就会被引用两次。现在读的是**全文档的每一处**出现（不只是第一处），且 §1.1 赖以成立的五个数字必须出现在本节——数字悄悄消失留下的是一段"读起来仍像答案、其实什么都没断言"的文字。
 
@@ -538,11 +540,11 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 | 本仓能力 | 证据 | 为什么保留 |
 | --- | --- | --- |
-| 单写者 Lease + 单调 Fencing Token 防止双重活动所有权 | `crates/sdkwork-sandbox-provider-spi/src/identity.rs:88`、`service.rs`、`sandbox_session_lease` 表 | E2B 未公开等价机制。多控制器竞争下的 Provider 副作用去重是自建平台必须自证的 |
-| 稳定 `sandbox_operation_sequence` + 恢复重放校验 + 幂等 ledger | `crates/sdkwork-intelligence-sandbox-service/src/model.rs:24`、`REQ-2026-0020` | 恢复时先重放 Create/Start/Stop/Destroy 并校验组合，非法组合关闭失败。E2B 不对外承诺这一层 |
+| 单写者 Lease + 单调 Fencing Token 防止双重活动所有权 | `crates/sdkwork-sandbox-provider-spi/src/identity.rs:97`（`SandboxFencingToken`）、`crates/sdkwork-intelligence-sandbox-service/src/service.rs`、`sandbox_session_lease` 表 | E2B 未公开等价机制。多控制器竞争下的 Provider 副作用去重是自建平台必须自证的 |
+| 稳定 `sandbox_operation_sequence` + 恢复重放校验 + 幂等 ledger | `crates/sdkwork-intelligence-sandbox-service/src/model.rs:276`（`replay_sandbox_operation`）、`REQ-2026-0020` | 恢复时先重放 Create/Start/Stop/Destroy 并校验组合，非法组合关闭失败。E2B 不对外承诺这一层 |
 | Tenant-scoped 加密的 Provider 恢复元数据 + 有界密钥轮换/重加密 | `crates/sdkwork-intelligence-sandbox-repository-sqlx/src/encryption.rs`、`REQ-2026-0006` | 已有候选实现**与测试**，是本仓少数可点的实现面 |
-| Provider 无关 SPI + fail-closed Capability/IsolationAssurance 协商 | `provider.rs:50`、`capability.rs:2` | 禁止静默降级到更弱隔离；E2B 是单一 microVM 层，不存在这层协商 |
-| 显式运行模式分层（Shared / Namespace / MicroVM）+ 禁止回退 | [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 2 节 | 成本分层能力；E2B 只有一种隔离强度 |
+| Provider 无关 SPI + fail-closed Capability/IsolationAssurance 协商 | `crates/sdkwork-sandbox-provider-spi/src/provider.rs:55`（`satisfies_sandbox_requirements`）、`crates/sdkwork-sandbox-provider-spi/src/capability.rs:2`（`RuntimeCapability`） | 禁止静默降级到更弱隔离；E2B 是单一 microVM 层，不存在这层协商 |
+| 显式运行模式分层（Shared / Namespace / MicroVM）+ 禁止回退 | `docs/product/prd/PRD-runtime-execution-model.md` 第 2 节 | 成本分层能力；E2B 只有一种隔离强度 |
 | 数据驻留与恢复 Gate（Local `device-local-persistence` / Cloud region tuple） | `REQ-2026-0022`、`REQ-2026-0026` | 企业私有化与合规场景的硬要求 |
 | 工作区业务权威在 `sdkwork-agents`，Sandbox 只拥有运行投影 | `REQ-2026-0004`、`ADR-20260728-agents-workspace-and-sandbox-attachment-ownership` | `Workspace ≠ Sandbox` 不等式：销毁执行环境不连带销毁用户数据 |
 | 跨仓不可变 Release Set 与多维兼容矩阵 | `REQ-2026-0027` | 四仓联合发布的可追溯性 |

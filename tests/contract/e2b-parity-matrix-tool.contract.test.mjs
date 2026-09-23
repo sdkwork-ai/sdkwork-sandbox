@@ -6,6 +6,8 @@ import { join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+  ADVANTAGE_COLUMNS,
+  ADVANTAGE_SECTION,
   ANSWER_COLUMNS,
   ANSWER_REQUIRED_FIGURES,
   CLAIM_CENSUS_COLUMNS,
@@ -29,6 +31,7 @@ import {
   listMarkdownFiles,
   listNamedContracts,
   markdownHeadingSpans,
+  parseAdvantageClaims,
   parseAnswerSection,
   parseClaimKeywords,
   parseClaimMarkers,
@@ -173,6 +176,20 @@ function rustTestSource(testName = "works") {
  */
 const RUST_TYPE_SOURCE = ["pub enum FixtureState {", "    Idle,", "}", ""].join("\n");
 
+/**
+ * The section 5 advantage table, the fixture's counterpart to the repository's own. Its one row
+ * pairs a line anchor with the identifier the anchor should show (`works`), and cites a requirement
+ * record -- the two citation forms the family resolves for every advantage row.
+ */
+const ADVANTAGE = [
+  ADVANTAGE_SECTION,
+  "",
+  `| ${ADVANTAGE_COLUMNS.join(" | ")} |`,
+  "| --- | --- | --- |",
+  "| fixture advantage | `crates/fixture/src/lib.rs:4`（`works`）、`REQ-2026-0003` | the fixture keeps what E2B does not offer |",
+  "",
+].join("\n");
+
 const COVERAGE = [
   "### 3.1 已实现面的覆盖",
   "",
@@ -278,6 +295,7 @@ function buildDocument({
   claims = CLAIMS,
   surface = CLAIM_SURFACE,
   shape = SHAPE,
+  advantage = ADVANTAGE,
   description = GATE_DESCRIPTION,
 } = {}) {
   return [
@@ -300,6 +318,8 @@ function buildDocument({
     claims,
     "",
     surface,
+    "",
+    advantage,
     "",
   ].join("\n");
 }
@@ -597,14 +617,15 @@ test("the repository's own residual-gap table is typed and every claim holds", (
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  // Three gaps were closed and moved to the closure record below the table: the PRD state machine
-  // marking (traceability gate family 5), the metric family join (family 6), and the capability
-  // matrix join (field gate family 8). Only these four remain, all genuinely open.
-  assert.equal(assessment.gapCount, 4);
+  // Four gaps were closed and moved to the closure record below the table: the PRD state machine
+  // marking (traceability gate family 5), the metric family join (family 6), the capability
+  // matrix join (field gate family 8), and the section 5 advantage claims (this gate's shape
+  // family, extended). Only these three remain, all genuinely open.
+  assert.equal(assessment.gapCount, 3);
 
   const gaps = parseCoverageGaps(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
   assert.deepEqual(gaps.header, [...GAP_COLUMNS]);
-  assert.equal(gaps.rows.length, 4);
+  assert.equal(gaps.rows.length, 3);
   assert.equal(gaps.malformed.length, 0);
   for (const row of gaps.rows) {
     assert.ok(GAP_KINDS.includes(row["性质"]), `gap row ${row.line} declares kind ${row["性质"]}`);
@@ -1523,6 +1544,168 @@ test("parseShapeEvidence is total on the real document and on one without the se
   assert.equal(parseShapeEvidence(real).rows.length, 11);
   assert.equal(parseShapeEvidence("# nothing to see\n"), null);
 });
+
+// ---- rule family 11: advantage claims (section 5)
+
+test("the repository's own advantage table resolves every citation it makes", () => {
+  const advantages = parseAdvantageClaims(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
+  assert.ok(advantages?.header, "section 5 must carry a table");
+  assert.equal(advantages.header.join("|"), ADVANTAGE_COLUMNS.join("|"));
+  assert.equal(advantages.rows.length, 9);
+
+  const assessment = assessE2bParityMatrix({ repoRoot });
+  assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
+  assert.equal(assessment.advantageRows, 9);
+  // Four lines across the three rows that cite numbered positions: identity.rs:97, model.rs:276,
+  // provider.rs:55 and capability.rs:2. Each is resolved into its file, kept inside its bounds and
+  // paired with another citation the row makes that is visible at the anchor.
+  assert.equal(assessment.advantageAnchors, 4);
+});
+
+test("a missing advantage section is reported rather than thrown", () => {
+  expectProblem(
+    inspect({ document: buildDocument({ advantage: "" }) }),
+    `has no "${ADVANTAGE_SECTION}" advantage section`,
+  );
+});
+
+test("an advantage table that describes no row is rejected", () => {
+  const advantage = [
+    ADVANTAGE_SECTION,
+    "",
+    `| ${ADVANTAGE_COLUMNS.join(" | ")} |`,
+    "| --- | --- | --- |",
+    "",
+  ].join("\n");
+
+  expectProblem(inspect({ document: buildDocument({ advantage }) }), "claims no advantage");
+});
+
+test("an advantage table with the wrong columns reports the header", () => {
+  const advantage = ADVANTAGE.replace(
+    `| ${ADVANTAGE_COLUMNS.join(" | ")} |`,
+    "| 能力 | 证据 | 理由 |",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ advantage }) }),
+    `expected [${ADVANTAGE_COLUMNS.join(", ")}]`,
+  );
+});
+
+test("an advantage row that cites nothing openable is rejected", () => {
+  const advantage = ADVANTAGE.replace(
+    "| fixture advantage | `crates/fixture/src/lib.rs:4`（`works`）、`REQ-2026-0003` |",
+    "| fixture advantage | nothing E2B could not also claim |",
+  );
+
+  expectProblem(inspect({ document: buildDocument({ advantage }) }), "cites no backticked evidence");
+});
+
+test("an advantage row with the wrong cell count is rejected", () => {
+  const advantage = ADVANTAGE.replace(
+    "| fixture advantage | `crates/fixture/src/lib.rs:4`（`works`）、`REQ-2026-0003` |",
+    "| fixture advantage | `crates/fixture/src/lib.rs:4`（`works`）、`REQ-2026-0003` | extra |",
+  );
+
+  expectProblem(inspect({ document: buildDocument({ advantage }) }), "advantage row has 4 cell(s)");
+});
+
+test("an advantage row that names no capability is rejected", () => {
+  const advantage = ADVANTAGE.replace(
+    "| fixture advantage | `crates/fixture/src/lib.rs:4`（`works`）、`REQ-2026-0003` |",
+    "|  | `crates/fixture/src/lib.rs:4`（`works`）、`REQ-2026-0003` |",
+  );
+
+  expectProblem(inspect({ document: buildDocument({ advantage }) }), "names no capability");
+});
+
+test("an advantage row whose evidence names nothing checkable is rejected", () => {
+  // `SomeFixtureWord` is neither a repository path, a Rust file, a record id, nor a snake_case
+  // identifier, so the row asserts an advantage nothing in the tree could refute.
+  const advantage = ADVANTAGE.replace(
+    "| fixture advantage | `crates/fixture/src/lib.rs:4`（`works`）、`REQ-2026-0003` |",
+    "| fixture advantage | `SomeFixtureWord` |",
+  );
+
+  expectProblem(inspect({ document: buildDocument({ advantage }) }), "names no checkable anchor");
+});
+
+test("an advantage row citing a bare Rust file name is rejected", () => {
+  // The defect the real table carried: `provider.rs:50` names no crate, so it survives every crate
+  // rename by pointing at nothing in particular.
+  const advantage = ADVANTAGE.replace("`crates/fixture/src/lib.rs:4`", "`lib.rs:4`");
+
+  expectProblem(inspect({ document: buildDocument({ advantage }) }), "cites the bare file name `lib.rs:4`");
+});
+
+test("an advantage row citing a path that does not exist is rejected", () => {
+  const advantage = ADVANTAGE.replace("`crates/fixture/src/lib.rs:4`", "`crates/fixture/src/absent.rs:4`");
+
+  expectProblem(
+    inspect({ document: buildDocument({ advantage }) }),
+    "`crates/fixture/src/absent.rs:4`, which resolves to no file",
+  );
+});
+
+test("an advantage row citing a non-anchor path that does not exist is rejected", () => {
+  // The path branch and the anchor branch are different judgements: a token with no line number is
+  // existence-checked as a file, so `specs/absent-thing.contract.json` must fail on existence even
+  // though no anchor is involved.
+  const advantage = ADVANTAGE.replace("`REQ-2026-0003`", "`specs/absent-thing.contract.json`");
+
+  expectProblem(
+    inspect({ document: buildDocument({ advantage }) }),
+    "`specs/absent-thing.contract.json`, which does not exist",
+  );
+});
+
+test("an advantage line anchor past the end of its file is rejected", () => {
+  const advantage = ADVANTAGE.replace("`crates/fixture/src/lib.rs:4`", "`crates/fixture/src/lib.rs:9999`");
+
+  expectProblem(inspect({ document: buildDocument({ advantage }) }), "has 5 line(s)");
+});
+
+test("an advantage line anchor that resolves but points at unrelated code is rejected", () => {
+  // The quiet half of the rot, which the real table carried twice: `identity.rs:88` and
+  // `model.rs:24` both still resolved inside their files while the constructs they name had moved.
+  // The anchor moves to the fixture's second source file, which the window shows is an enum
+  // declaration -- nothing the row cites (`works`, the requirement) is visible there.
+  const advantage = ADVANTAGE.replace("`crates/fixture/src/lib.rs:4`", "`crates/fixture/src/model.rs:1`");
+
+  expectProblem(
+    inspect({ document: buildDocument({ advantage }) }),
+    "nothing else the row cites is visible at `crates/fixture/src/model.rs:1`",
+  );
+});
+
+test("an advantage row citing a requirement that has no record is rejected", () => {
+  const advantage = ADVANTAGE.replace("`REQ-2026-0003`", "`REQ-2026-9999`");
+
+  expectProblem(
+    inspect({ document: buildDocument({ advantage }) }),
+    "`REQ-2026-9999`, which has no record in",
+  );
+});
+
+test("an advantage row citing an identifier the tree does not carry is rejected", () => {
+  const advantage = ADVANTAGE.replace(
+    "| fixture advantage | `crates/fixture/src/lib.rs:4`（`works`）、`REQ-2026-0003` |",
+    "| fixture advantage | `crates/fixture/src/lib.rs:4`（`works`）、`absent_identifier_name` |",
+  );
+
+  expectProblem(
+    inspect({ document: buildDocument({ advantage }) }),
+    "`absent_identifier_name`, which occurs nowhere under crates/ or database/",
+  );
+});
+
+test("parseAdvantageClaims is total on the real document and on one without the section", () => {
+  const real = readFileSync(path.join(repoRoot, PARITY_DOC), "utf8");
+  assert.equal(parseAdvantageClaims(real).rows.length, 9);
+  assert.equal(parseAdvantageClaims("# nothing to see\n"), null);
+});
+
 
 // ---- the audit document is a self-description surface, read line by line
 

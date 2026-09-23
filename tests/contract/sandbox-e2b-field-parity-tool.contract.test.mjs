@@ -34,7 +34,7 @@ const REAL_ROWS = 78;
 const REAL_CAPTURED_AT = "2026-09-22T09:36:31Z";
 const REAL_DOCUMENTED_OPERATIONS = 71;
 const REAL_CONTRACT_FILES = 41;
-const REAL_CONTRACT_TESTS = 644;
+const REAL_CONTRACT_TESTS = 660;
 const REAL_RUST_WORKSPACE = { command: "cargo test --workspace", passed: 78, failed: 0, ignored: 1 };
 const REAL_RULE_FAMILIES = 11;
 /** The product matrix join: PRD section 11 rows vs the baseline rows that map onto them. */
@@ -401,7 +401,7 @@ test("the gate's report names the coverage it verified", () => {
   assert.match(report, /0 row\(s\) rest on the documentation index \(ceiling 0\)/);
   assert.match(report, /71 operation\(s\), 70 judged by a row, 1 recorded unjudged/);
   assert.match(report, /34 product row\(s\), 57 baseline row\(s\) mapped, 21 registered unmapped, 9 product row\(s\) registered without a baseline row/);
-  assert.match(report, /644 contract test\(s\) recomputed from tests\/contract, 78 Rust test\(s\) recorded/);
+  assert.match(report, /660 contract test\(s\) recomputed from tests\/contract, 78 Rust test\(s\) recorded/);
   assert.match(report, /11 rule families declared consistently in 4 surface\(s\)/);
 });
 
