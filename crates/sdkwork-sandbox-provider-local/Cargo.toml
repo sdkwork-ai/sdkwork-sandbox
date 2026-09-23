@@ -12,10 +12,12 @@ repository.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+async-trait.workspace = true
 sdkwork-sandbox-provider-spi.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true

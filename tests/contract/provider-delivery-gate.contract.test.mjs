@@ -135,7 +135,7 @@ test("Gate 0 keeps the Local component free of public ports and entrypoints", ()
   // 2026-09-24: the authorized host-boundary slice ships one public module - the pure-data
   // boundary rules. No ports, entrypoints, or config keys: the provider adapter still exposes no
   // runtime surface.
-  assert.deepEqual(componentSpec.contracts.publicExports, ["command_admission", "host_boundary"]);
+  assert.deepEqual(componentSpec.contracts.publicExports, ["command_admission", "command_executor", "host_boundary"]);
   assert.deepEqual(componentSpec.contracts.providedPorts, []);
   assert.deepEqual(componentSpec.contracts.requiredPorts, []);
   assert.deepEqual(componentSpec.contracts.runtimeEntrypoints, []);
@@ -156,11 +156,12 @@ test("Gate 0 keeps deferred Provider crates out and command execution unimplemen
     false,
   );
 
-  // 2026-09-24: the SandboxCommandExecutor port and SandboxCommandExecution* DTOs are authorized
-  // in the provider SPI; what must still not exist is any Provider IMPLEMENTATION - a concrete
-  // executor type, or process-spawn code anywhere under crates/.
+  // 2026-09-24: the SandboxCommandExecutor port, SandboxCommandExecution* DTOs, and the local
+  // SandboxLocalCommandExecutor (admission plus runner delegation) are authorized; what must still
+  // not exist is a real OS process runner or process-spawn code anywhere under crates/ - those
+  // land with the evidence-gated execution slice.
   const rustSources = collectRustSources("crates").join("\n");
-  assert.doesNotMatch(rustSources, /\bSandboxLocalCommandExecutor\b/u);
+  assert.doesNotMatch(rustSources, /\bSandboxLocalOsProcessRunner\b/u);
   assert.doesNotMatch(rustSources, /\b(?:std::process|tokio::process|Command::new)\b/u);
 });
 

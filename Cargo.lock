@@ -1542,8 +1542,10 @@ version = "0.1.0"
 name = "sdkwork-sandbox-provider-local"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "sdkwork-sandbox-provider-spi",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

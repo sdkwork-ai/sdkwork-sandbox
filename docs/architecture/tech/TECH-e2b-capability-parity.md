@@ -66,7 +66,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | Lifecycle Service | `crates/sdkwork-intelligence-sandbox-service` | 9 模块 | `SandboxSessionState` 只有 `Created/Starting/Running/Stopping/Stopped/Failed/Destroying/Destroyed`（`model.rs:13`）；**无 `Pausing/Paused/Recovering`** |
 | Memory Repository | `crates/sdkwork-intelligence-sandbox-repository-memory` | 1 模块 | 内存适配器编译在树中，但**无任何消费点**：无 crate 在 `Cargo.toml` 里依赖它，也无测试引用它。这条消费空档即 §3.2 第 1 行登记的治理阻塞 |
 | PostgreSQL Repository | `crates/sdkwork-intelligence-sandbox-repository-sqlx` | candidate | 4 张表：`sandbox_session` / `sandbox_session_operation` / `sandbox_runtime_binding` / `sandbox_session_lease`；**无 template / snapshot / pool / quota / node / event 表** |
-| Local Provider | `crates/sdkwork-sandbox-provider-local` | 19 行 `lib.rs` | 生产模块 `pub mod command_admission;`（`lib.rs:12`）与 `pub mod host_boundary;`（`lib.rs:13`，2026-09-24 授权切片）；测试模块保留于 `#[cfg(test)]`（`lib.rs:15`） |
+| Local Provider | `crates/sdkwork-sandbox-provider-local` | 23 行 `lib.rs` | 生产模块 `pub mod command_admission;`（`lib.rs:12`）、`pub mod command_executor;`（`lib.rs:13`）、`pub mod host_boundary;`（`lib.rs:14`），测试模块 `#[cfg(test)]`（`lib.rs:16`） |
 | Service Host | `crates/sdkwork-sandbox-service-host` | 5 行 | 只有 doc comment（`crates/sdkwork-sandbox-service-host/src/lib.rs`），**无 composition、无 wiring** |
 | CLI | `crates/sdkwork-sandbox-cli` | 3 行 | `fn main() {}`（`main.rs:3`）——**零命令** |
 | API Assembly | `crates/sdkwork-api-sandbox-assembly` | 骨架 | `ROUTE_CRATE_COUNT: usize = 0`（`generated.rs:3`）+ `Router::new()`（`bootstrap.rs:26`）——**零路由** |
@@ -303,9 +303,10 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 | Local Fake Host Boundary：类型化参数、路径逃逸、环境上界 | `crates/sdkwork-sandbox-provider-local/src/fake_host_boundary/mod.rs` | `crates/sdkwork-sandbox-provider-local/src/fake_host_boundary/tests.rs` | `sandbox_fake_host_boundary_preserves_typed_arguments_without_shell_parsing`、`sandbox_fake_host_boundary_rejects_path_escape_and_windows_path_hazards`、`sandbox_fake_host_boundary_denies_command_strings_and_ambient_credentials`、`sandbox_fake_host_boundary_enforces_argument_and_environment_bounds`、`sandbox_fake_host_boundary_enforces_environment_entry_bound` |
 | Local Host Boundary 生产纯数据规则（2026-09-24 授权切片） | `crates/sdkwork-sandbox-provider-local/src/host_boundary/mod.rs` | `crates/sdkwork-sandbox-provider-local/src/host_boundary/tests.rs` | `accepts_a_well_formed_sandbox_command_request`、`rejects_an_executable_that_is_not_a_bare_name`、`rejects_an_executable_outside_the_allowlist`、`rejects_argument_overruns_and_forbidden_bytes`、`rejects_working_directory_escapes_and_windows_hazards`、`rejects_environment_entries_that_break_the_boundary`、`rejects_environment_count_overruns`、`displays_every_error_variant_without_panicking` |
 | Local Command Admission 准入门（2026-09-24 授权切片） | `crates/sdkwork-sandbox-provider-local/src/command_admission.rs` | `crates/sdkwork-sandbox-provider-local/src/command_admission_tests.rs` | `admits_a_request_whose_declared_fingerprint_matches`、`rejects_a_request_whose_declared_fingerprint_was_tampered_with`、`rejects_a_request_over_the_contract_limits_before_the_boundary`、`rejects_a_request_the_host_boundary_denies` |
+| Local Command Executor 执行器（2026-09-24 授权切片） | `crates/sdkwork-sandbox-provider-local/src/command_executor.rs` | `crates/sdkwork-sandbox-provider-local/src/command_executor_tests.rs` | `admitted_commands_reach_the_runner_and_map_the_outcome`、`boundary_denials_fail_before_the_runner_is_consulted`、`runner_failures_map_to_the_typed_execution_error` |
 | Command Execution 端口与规范指纹（2026-09-24 授权切片） | `crates/sdkwork-sandbox-provider-spi/src/command.rs` | `crates/sdkwork-sandbox-provider-spi/src/command.rs` | `fingerprint_is_deterministic_for_identical_requests`、`fingerprint_moves_when_any_covered_field_moves`、`limits_validation_enforces_the_contract_maxima`、`cancellation_fingerprint_is_deterministic_and_field_sensitive` |
 
-表内共 **95 个用例**（19 行），与工作区静态清点一致；其中 `sandbox_postgres_repository_enforces_durable_lifecycle_contract` 带 `#[ignore]`，是唯一不进默认运行的用例（它声明需要 `SDKWORK_DATABASE_TEST_POSTGRES_URL` 与一个已初始化的 PostgreSQL）。因此 `cargo test --workspace` 的读数是 **94 passed / 0 failed / 1 ignored**，95 = 94 + 1，两侧对得上。
+表内共 **98 个用例**（20 行），与工作区静态清点一致；其中 `sandbox_postgres_repository_enforces_durable_lifecycle_contract` 带 `#[ignore]`，是唯一不进默认运行的用例（它声明需要 `SDKWORK_DATABASE_TEST_POSTGRES_URL` 与一个已初始化的 PostgreSQL）。因此 `cargo test --workspace` 的读数是 **97 passed / 0 failed / 1 ignored**，98 = 97 + 1，两侧对得上。
 
 计数（2026-09-22 实测）：
 
@@ -313,7 +314,7 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 cargo test --workspace
 ```
 
-`94 passed / 1 ignored`（另 0 failed；1 ignored 是声明需要外部 PostgreSQL 的测试）。契约测试：
+`97 passed / 1 ignored`（另 0 failed；1 ignored 是声明需要外部 PostgreSQL 的测试）。契约测试：
 
 ```bash
 node --test tests/contract/*.test.mjs

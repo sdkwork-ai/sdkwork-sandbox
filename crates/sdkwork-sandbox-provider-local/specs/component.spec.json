@@ -84,6 +84,7 @@
     "layerRole": "backend-provider",
     "publicExports": [
       "command_admission",
+      "command_executor",
       "host_boundary"
     ],
     "providedPorts": [],
