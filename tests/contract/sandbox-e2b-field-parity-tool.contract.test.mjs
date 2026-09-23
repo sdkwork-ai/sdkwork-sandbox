@@ -33,8 +33,8 @@ const REAL_CATEGORIES = 17;
 const REAL_ROWS = 78;
 const REAL_CAPTURED_AT = "2026-09-22T09:36:31Z";
 const REAL_DOCUMENTED_OPERATIONS = 71;
-const REAL_CONTRACT_FILES = 40;
-const REAL_CONTRACT_TESTS = 619;
+const REAL_CONTRACT_FILES = 41;
+const REAL_CONTRACT_TESTS = 644;
 const REAL_RUST_WORKSPACE = { command: "cargo test --workspace", passed: 78, failed: 0, ignored: 1 };
 const REAL_RULE_FAMILIES = 11;
 /** The product matrix join: PRD section 11 rows vs the baseline rows that map onto them. */
@@ -401,7 +401,7 @@ test("the gate's report names the coverage it verified", () => {
   assert.match(report, /0 row\(s\) rest on the documentation index \(ceiling 0\)/);
   assert.match(report, /71 operation\(s\), 70 judged by a row, 1 recorded unjudged/);
   assert.match(report, /34 product row\(s\), 57 baseline row\(s\) mapped, 21 registered unmapped, 9 product row\(s\) registered without a baseline row/);
-  assert.match(report, /619 contract test\(s\) recomputed from tests\/contract, 78 Rust test\(s\) recorded/);
+  assert.match(report, /644 contract test\(s\) recomputed from tests\/contract, 78 Rust test\(s\) recorded/);
   assert.match(report, /11 rule families declared consistently in 4 surface\(s\)/);
 });
 
@@ -908,6 +908,48 @@ test("every rule family reddens on its own mutation while the unmutated control 
     },
     { rule: "document-join", document: () => documentFixture().replace("**4**", "**5**") },
     { rule: "document-join", document: () => documentFixture().replace("| Network | 1 |", "| Network | 3 |") },
+    // The `第 N 行（M 项）` clause: the per-row item count the document restates from the baseline.
+    // Five branches, because each is a different way for one notation to stop meaning one thing --
+    // and the count that was wrong in the real document (four rows counting `e2bFields` alone) was
+    // found by this rule on its first run, which is why the branches are enumerated rather than
+    // left to a single "the number is wrong" case.
+    {
+      rule: "document-join",
+      document: () =>
+        documentFixture().replace(
+          "| 1 | a1 | A | 🟡 | ev |",
+          "| 1 | a1 | A | 🟡 | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 1 行（9 项） |",
+        ),
+    },
+    {
+      rule: "document-join",
+      document: () =>
+        documentFixture().replace(
+          "| 1 | a1 | A | 🟡 | ev |",
+          "| 1 | a1 | A | 🟡 | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 2 行（1 项） |",
+        ),
+    },
+    {
+      rule: "document-join",
+      document: () =>
+        documentFixture().replace(
+          "| 1 | a1 | A | 🟡 | ev |",
+          "| 1 | a1 | A | 🟡 | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 1 行 |",
+        ),
+    },
+    {
+      rule: "document-join",
+      document: () =>
+        documentFixture().replace("| 1 | a1 | A | 🟡 | ev |", "| 1 | a1 | A | 🟡 | 第 1 行（1 项） |"),
+    },
+    {
+      rule: "document-join",
+      document: () =>
+        documentFixture().replace(
+          "| 1 | a1 | A | 🟡 | ev |",
+          "| 1 | a1 | A | 🟡 | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 9 行（1 项） |",
+        ),
+    },
     // 6. ratchet
     {
       rule: "ratchet",
@@ -1182,6 +1224,28 @@ test("every rule family reddens on its own mutation while the unmutated control 
 
 test("targeted rule messages are stable", () => {
   expectRule({ document: documentFixture().replace("| 2 | a2 | B | ❌ | ev |\n", "") }, "document-join", "matrix rows");
+
+  expectRule(
+    {
+      document: documentFixture().replace(
+        "| 1 | a1 | A | 🟡 | ev |",
+        "| 1 | a1 | A | 🟡 | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 1 行（9 项） |",
+      ),
+    },
+    "document-join",
+    "which holds 1",
+  );
+
+  expectRule(
+    {
+      document: documentFixture().replace(
+        "| 1 | a1 | A | 🟡 | ev |",
+        "| 1 | a1 | A | 🟡 | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 1 行 |",
+      ),
+    },
+    "document-join",
+    "states no item count",
+  );
 
   const misalignedRows = baselineFixture();
   misalignedRows.categories[0].rowCount = 9;

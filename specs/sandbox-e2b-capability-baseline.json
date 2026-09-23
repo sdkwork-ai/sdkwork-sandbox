@@ -6,7 +6,7 @@
   "authority": "https://docs.e2b.dev/openapi-public.yaml",
   "docsIndex": "https://docs.e2b.dev/llms.txt",
   "capturedAt": "2026-09-22T09:36:31Z",
-  "captureNote": "Derived inventory of the E2B public capability surface, captured from the URLs in sources[]. Only identifiers (operationIds, paths, schema field names, SDK method names, CLI command grammar, page section headings) are recorded; E2B page bodies are not vendored. Each source records the sha256 of the bytes actually fetched, so a re-capture can prove whether the baseline moved. The hashes are statements, not offline-verifiable digests: re-verification requires the re-capture command below.",
+  "captureNote": "Derived inventory of the E2B public capability surface, captured from the URLs in sources[]. Only identifiers (operationIds, paths, schema field names, SDK method names, CLI command grammar, page section headings) are recorded; E2B page bodies are not vendored. Each source records the sha256 of the bytes actually fetched, so a re-capture can prove whether the baseline moved. The hashes are statements, not offline-verifiable digests: re-verification requires the re-capture command below. Partial refresh 2026-09-23T09:38Z: the three sources whose bytes had moved since capture (`e2b-docs-index`, `e2b-network-byop`, `e2b-network-internet-access`) were re-fetched and their bytes/sha256 updated, together with row 61's e2bFacts, because the BYOP page renamed its title and gained a level-3 section (`Using a wildcard with BYOP`); a level-4 section such as the new `Catch-all wildcard` is out of scope for e2bFacts, which records levels 1-3 only, so rows 54-56 are unchanged. The other 98 sources keep their 2026-09-22 bytes, so capturedAt still names the full capture. `e2b-sdk-reference-python-sdk-v2-37-1-sandbox-async` now returns HTTP 404 upstream and keeps its recorded hash pending a decision on which page replaces it.",
   "recaptureCommand": "curl -sS -o target/e2b-baseline/openapi-public.yaml https://docs.e2b.dev/openapi-public.yaml && curl -sS -o target/e2b-baseline/llms.txt https://docs.e2b.dev/llms.txt && then re-fetch every sources[].url into target/e2b-baseline/<capturedFile> and compare sha256.",
   "ratchet": {
     "maxIndexOnlyRows": 0,
@@ -419,8 +419,8 @@
       "id": "e2b-docs-index",
       "url": "https://docs.e2b.dev/llms.txt",
       "kind": "index",
-      "bytes": 33167,
-      "sha256": "88725aeb33f69cdf474efb11b5c2c8510f967214e682016ff21bf0fad237dc73",
+      "bytes": 33174,
+      "sha256": "818d97f2040676ed4d9c2a1586e75afc135e4e47f70820c0e232d62e24fd23db",
       "capturedFile": "llms.txt"
     },
     {
@@ -579,8 +579,8 @@
       "id": "e2b-network-byop",
       "url": "https://docs.e2b.dev/network/byop.md",
       "kind": "doc-page",
-      "bytes": 10788,
-      "sha256": "b3aa2aa836d40f23fdb3bf2a1fc188bc8e60bf928449f424284e0c20d6c3f9d0",
+      "bytes": 12418,
+      "sha256": "e9bb0d03793659bd39ef10b6a5d67ca30d9e5f80395bf79340fb98df2c65549d",
       "capturedFile": "network_byop.md"
     },
     {
@@ -595,8 +595,8 @@
       "id": "e2b-network-internet-access",
       "url": "https://docs.e2b.dev/network/internet-access.md",
       "kind": "doc-page",
-      "bytes": 18921,
-      "sha256": "247b54ee1e30f528bb4955cfb3438f6897fa537e0e56d9a4409ff4e3d9b0f4c9",
+      "bytes": 19622,
+      "sha256": "2a788615d078e9d4111f9e79b0fb70d6575caa230891bbd3dd3aa60066fc277e",
       "capturedFile": "network_internet-access.md"
     },
     {
@@ -3270,7 +3270,7 @@
         "e2b import"
       ],
       "e2bFacts": [
-        "Bring your own proxy",
+        "Bring your own proxy (BYOP)",
         "Configuring a proxy",
         "Errors",
         "Fields",
@@ -3283,6 +3283,7 @@
         "Shadowsocks client setup (sandbox)",
         "Shadowsocks server setup (VM)",
         "Updating a running sandbox",
+        "Using a wildcard with BYOP",
         "Using the proxies"
       ],
       "capabilityMatrixRows": [
@@ -4301,8 +4302,8 @@
   ],
   "testInventory": {
     "suiteGlob": "tests/contract/*.test.mjs",
-    "files": 40,
-    "tests": 619,
+    "files": 41,
+    "tests": 644,
     "auditSuites": [
       {
         "file": "tests/contract/e2b-parity-matrix-tool.contract.test.mjs",
@@ -4319,7 +4320,7 @@
       "failed": 0,
       "ignored": 1,
       "measuredAt": "2026-09-23T00:00:00Z",
-      "note": "The Rust side cannot be recomputed from source the way the contract suite can: the number only exists after a build and a run, so this is a measurement recorded next to the command that produced it, in the same sense as the source sha256 values. `cargo test --workspace` was run twice while writing this record and reported 67 passed / 0 failed / 1 ignored both times; the ignored test is the one that declares it needs an external PostgreSQL."
+      "note": "The Rust side cannot be recomputed from source the way the contract suite can: the number only exists after a build and a run, so this is a measurement recorded next to the command that produced it, in the same sense as the source sha256 values. `cargo test --workspace` was run twice while writing this record and reported 78 passed / 0 failed / 1 ignored both times; the ignored test is the one that declares it needs an external PostgreSQL."
     },
     "note": "The contract suite's declared size, recomputed from the files. The audit document quotes these numbers in its test-coverage section, so a stale reading there is a documentation falsehood: this record fails the gate when either side moves without the other. `rustWorkspace` is a measurement, not a recomputation, and is compared against the document rather than the source."
   },

@@ -590,6 +590,11 @@ entries:
     layer: work
     audience: [architecture, engineering, review, operations]
     status: active
+  - id: REVIEW-20260923-UPSTREAM-SOURCE-PARITY
+    path: docs/engineering/reviews/REVIEW-20260923-sandbox-e2b-upstream-source-parity.md
+    layer: work
+    audience: [architecture, engineering, review, operations]
+    status: active
 domains:
   - name: intelligence
     path: docs/product/prd/

@@ -59,7 +59,15 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-const SKIPPED_DIRECTORIES = new Set([".git", "node_modules", "target", ".workbuddy"]);
+/**
+ * Directories this gate does not audit, because they hold no content this repository authors.
+ * The criterion is ownership, not interest: `.git` is version-control metadata; `node_modules`,
+ * `target` and `.workbuddy` are gitignored generated, build and agent-local state; and `external`
+ * holds gitignored read-only clones of upstream reference sources studied for capability parity.
+ * Auditing vendored upstream prose here would report defects this repository has no authority to
+ * fix, and a rule satisfiable only by editing someone else's files measures the wrong tree.
+ */
+const SKIPPED_DIRECTORIES = new Set([".git", "node_modules", "target", ".workbuddy", "external"]);
 
 /**
  * Point-in-time evidence records. Their commands are historical facts, not prescriptive

@@ -355,6 +355,49 @@ test("the assessment is never vacuous", () => {
   });
 });
 
+test("a vendored upstream clone under external/ is skipped, and would be reported elsewhere", () => {
+  const upstreamDocument = [
+    "# Upstream",
+    "",
+    "[missing](./no-such-file.md)",
+    "",
+    "```bash",
+    "node not-a-script.mjs",
+    "```",
+  ].join("\n");
+
+  // Control: the same bytes carry a dead link and an unrunnable command in a directory this
+  // repository owns. Without this arm the exclusion below would pass even if the rules had
+  // stopped firing for an unrelated reason.
+  withFixture({ documents: { "docs/upstream.md": upstreamDocument } }, ({ tree }) => {
+    const reasons = assessDocumentationIntegrity({ repoRoot: tree }).failures.map(
+      (failure) => failure.reason,
+    );
+    assert.ok(reasons.includes("dead-relative-link"), `control stayed green: ${reasons.join(", ")}`);
+    assert.ok(reasons.includes("unrunnable-command-target"), `control stayed green: ${reasons.join(", ")}`);
+  });
+
+  // Subject: under `external/` the document is upstream's, not this repository's, so it is not
+  // discovered at all — the clean repository-owned sibling is the only document audited.
+  withFixture(
+    {
+      documents: {
+        "docs/README.md": "# Clean\n",
+        "external/E2B/README.md": upstreamDocument,
+      },
+    },
+    ({ tree }) => {
+      const assessment = assessDocumentationIntegrity({ repoRoot: tree });
+      assert.deepEqual(assessment.failures, []);
+      assert.equal(
+        assessment.liveDocumentsChecked,
+        1,
+        "only the repository-owned document may be audited",
+      );
+    },
+  );
+});
+
 test("--root audits another tree and the CLI exits 1 on a defect and 0 on a clean tree", () => {
   const options = parseDocumentationIntegrityArgs(["--json", "--root", "."]);
   assert.equal(options.root, repoRoot);

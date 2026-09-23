@@ -43,3 +43,9 @@ Thumbs.db
 
 # Agent-local working state (memory, scratch); not repository content
 .workbuddy/
+
+# Vendored upstream reference sources (E2B alignment study).
+# Read-only local clones used for source-level parity analysis. Never
+# committed: upstream code is not this repository's property, and this
+# repository records parity via identifiers in specs/, not vendored bodies.
+/external/

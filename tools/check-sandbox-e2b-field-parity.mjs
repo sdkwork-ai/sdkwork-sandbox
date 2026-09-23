@@ -27,7 +27,13 @@
  *   4. CATEGORY ALIGNMENT. The category index covers every row exactly once, each declared
  *      `rowCount` equals the rows it owns, and the categories sum to the row total.
  *   5. DOCUMENT JOIN. The audit document's matrix rows and its per-category census must equal the
- *      baseline's, so a row cannot be re-scoped in prose without the baseline moving with it.
+ *      baseline's, so a row cannot be re-scoped in prose without the baseline moving with it. This
+ *      includes the per-row item count: a row that cites `specs/sandbox-e2b-capability-baseline.json`
+ *      must state `第 N 行（M 项）`, where N is that row's own number and M is the extracted surface
+ *      of the baseline row it names -- and a row that states a count without naming the baseline has
+ *      no source to be refuted by. That clause went unchecked until this family read it, and on its
+ *      first run it found four rows counting `e2bFields` alone while the rest counted the whole
+ *      surface: one notation carrying two meanings, which no reader and no gate could tell apart.
  *   6. RATCHET. Rows still marked baseline-incomplete must not exceed the recorded ceiling, and
  *      the ceiling must equal the recorded list, so an improvement is recorded rather than
  *      silently taken and a regression fails. This is the rule that stops the baseline from
@@ -97,6 +103,25 @@ export const SUPPORTED_SCHEMA_VERSIONS = Object.freeze([1]);
 export const SOURCE_KINDS = Object.freeze(["openapi", "index", "doc-page"]);
 /** The marker a row carries while it rests on the documentation index instead of a captured page. */
 export const BASELINE_INCOMPLETE_MARKER = "基准仅索引";
+
+/**
+ * The document restates, in a matrix row's evidence cell, how many extracted items the baseline row
+ * it cites holds: `第 61 行（30 项）`. Nothing checked it. The matrix gate's `headline-numbers` family
+ * covers section 1.1 only, and the per-row counts of section 2 sat outside every rule, so they could
+ * drift from the baseline while every figure around them was gated -- a number that is restated is a
+ * claim, and a claim nothing refutes is the shape this repository refuses. The clause is read from
+ * the row's own line, so it can only ever be about that row.
+ */
+export const BASELINE_ROW_CLAUSE = /第\s*(\d+)\s*行（\s*(\d+)\s*项/u;
+
+/**
+ * A baseline row's extracted surface: the number the document's `第 N 行（M 项）` clause restates.
+ * Defined once, because an item count and the row-evidence check that must agree with it cannot be
+ * allowed to drift apart by being written twice.
+ */
+export function baselineRowSurfaceCount(row) {
+  return (row.e2bFields ?? []).length + (row.e2bClis ?? []).length + (row.e2bFacts ?? []).length;
+}
 
 /**
  * The rule families this gate implements, in the order the header documents them. This list -- not
@@ -298,10 +323,15 @@ export function parseDocumentRows(documentText) {
     const match = line.match(/^\|\s*(\d+)\s*\|/);
     if (!match || !category) continue;
     const number = Number(match[1]);
+    const clause = BASELINE_ROW_CLAUSE.exec(line);
     rows.push({
       row: number,
       category,
       baselineIncomplete: line.includes(BASELINE_INCOMPLETE_MARKER),
+      citesBaseline: line.includes(BASELINE_PATH),
+      declaredSurface: clause
+        ? { number: Number(clause[1]), count: Number(clause[2]) }
+        : null,
     });
     categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
   }
@@ -427,7 +457,7 @@ export function assessE2bFieldParity({ repoRoot = "." } = {}) {
     }
     if (baselineRows.has(row.row)) add("row-evidence", `${label}: duplicate row number`);
     baselineRows.set(row.row, row);
-    const surface = (row.e2bFields ?? []).length + (row.e2bClis ?? []).length + (row.e2bFacts ?? []).length;
+    const surface = baselineRowSurfaceCount(row);
     if (surface === 0) {
       add("row-evidence", `${label}: no extracted surface (e2bFields, e2bClis, e2bFacts are all empty)`);
     }
@@ -492,6 +522,50 @@ export function assessE2bFieldParity({ repoRoot = "." } = {}) {
   for (const row of documentRows) {
     if (!baselineRows.has(row.row)) {
       add("document-join", `document row ${row.row} has no baseline entry`);
+    }
+  }
+
+  // A matrix row that cites the baseline restates how many extracted items that baseline row holds.
+  // The clause is checked in both directions against the row's own number: a count that has drifted
+  // from its source, a reference to a neighbouring line, and a citation that keeps the path while
+  // dropping the count all read the same way to a human and differently here. The two sets are
+  // currently identical -- every citing row states a count, and no row states one without citing --
+  // so this is a ratchet: it cannot loosen without an edit that says so out loud.
+  for (const row of documentRows) {
+    const clause = row.declaredSurface;
+    if (row.citesBaseline && !clause) {
+      add(
+        "document-join",
+        `document row ${row.row} cites ${BASELINE_PATH} but states no item count, so how much of that baseline row is accounted for cannot be told`,
+      );
+    }
+    if (!row.citesBaseline && clause) {
+      add(
+        "document-join",
+        `document row ${row.row} states an item count without naming ${BASELINE_PATH}, so the number has no source to be refuted by`,
+      );
+    }
+    if (!clause) continue;
+    if (clause.number !== row.row) {
+      add(
+        "document-join",
+        `document row ${row.row} restates baseline line ${clause.number}; a row's evidence may only restate its own line`,
+      );
+    }
+    const entry = baselineRows.get(clause.number);
+    if (!entry) {
+      add(
+        "document-join",
+        `document row ${row.row} restates baseline line ${clause.number}, which the baseline does not hold`,
+      );
+      continue;
+    }
+    const surface = baselineRowSurfaceCount(entry);
+    if (clause.count !== surface) {
+      add(
+        "document-join",
+        `document row ${row.row} states ${clause.count} item(s) for baseline line ${clause.number}, which holds ${surface}`,
+      );
     }
   }
   const headingToId = new Map(baseline.categories.map((c) => [c.documentHeading, c.id]));

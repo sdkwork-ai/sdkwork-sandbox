@@ -108,11 +108,13 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 
 每行的 `基准已取证 …` 引用指向 `specs/sandbox-e2b-capability-baseline.json` 的同一行号，那里给出该行 E2B 侧取自哪个来源、抽取到哪些标识符。`基准仅索引` 是**已退役的标记**：它曾表示该行只依据 `llms.txt` 的页面标题口径判定、未逐字核对字段名。全部分类现已逐页取证，该标记不得在本分节中再出现。
 
+`第 N 行（M 项）` 里的 `N` 只能是**本行自己的行号**，`M` 只表示一个量：**该基准行的整行抽取面**，即 `e2bFields` + `e2bFacts` + `e2bClis` 三者长度之和——与 `tools/check-sandbox-e2b-field-parity.mjs` 判定"该行有无抽取面"用的是同一个数，因此可被重算。要额外给出更窄的量（例如只数 `e2bFields`）必须写出来（`其中 M 个字段`）：同一个写法不许承载两个含义。本仓曾在此处有 **4 行**把 `e2bFields` 单独当作 `项`，与其余 23 行口径不同，而**没有任何门禁看得见**——这正是 `document-join` 规则族现在逐行核验这一对数字的理由。
+
 ### 2.1 Sandbox 生命周期
 
 | # | E2B 能力 | 本仓对应 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
-| 1 | `Sandbox.create()`（template / `envs` / `metadata` / `timeoutMs` / `network` 参数） | `SandboxSessionLifecyclePort::create_sandbox_session`（`port.rs:10`）+ 4 张 PG 表 | 🟡 | 领域服务候选；无 Provider 实现、无入口。E2B 的 `metadata` 在本仓**无对应字段**。基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 1 行（11 项，含 `GET /envs [getEnvVars]`） |
+| 1 | `Sandbox.create()`（template / `envs` / `metadata` / `timeoutMs` / `network` 参数） | `SandboxSessionLifecyclePort::create_sandbox_session`（`port.rs:10`）+ 4 张 PG 表 | 🟡 | 领域服务候选；无 Provider 实现、无入口。E2B 的 `metadata` 在本仓**无对应字段**。基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 1 行（25 项，其中 11 个字段，含 `GET /envs [getEnvVars]`） |
 | 2 | `Sandbox.connect()`（暂停自动恢复；TTL 只延长不缩短） | 无 | ❌ | — |
 | 3 | `setTimeout()` / `keepAlive`（运行中改 TTL） | 无 | ❌ | 本仓只有 **Lease** 过期时间（`repository.rs:57`），语义是生命周期控制权租约，不是沙箱 TTL，别混为一谈 |
 | 4 | `getInfo()`（`templateId`/`name`/`metadata`/`startedAt`/`endAt`） | 无 | ❌ | `get_sandbox_session` 只返回领域聚合，无查询 API，无 metadata |
@@ -154,10 +156,10 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 | # | E2B 能力 | 本仓对应 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
 | 25 | 声明式 Template 定义（`Template().fromBaseImage()` / `fromTemplate()` / `copy()` / `setEnvs()` / `setStartCmd()`） | **无任何承载** | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 4 节；`REQ-*` 为零〔§3.4/1〕 |
-| 26 | `e2b template init` / `build` / `deploy` | 无 CLI | ❌ | `crates/sdkwork-sandbox-cli/src/main.rs:3` = `fn main() {}`。基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 26 行（15 项：Templates REST 建 / 查 / 改 / 删 + 构建流水线与构建产物） |
+| 26 | `e2b template init` / `build` / `deploy` | 无 CLI | ❌ | `crates/sdkwork-sandbox-cli/src/main.rs:3` = `fn main() {}`。基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 26 行（38 项，其中 15 个字段：Templates REST 建 / 查 / 改 / 删 + 构建流水线与构建产物） |
 | 27 | Start / Ready command（沙箱创建时长驻进程**已在运行**，首命令零等待） | 无 | ❌ | — |
 | 28 | 构建缓存与层级复用（`fromTemplate()` 复用已缓存基础层） | 无 | ❌ | PRD 第 4 节要求 Template 缓存 Hot/Warm/Cold + 淘汰策略；无 `REQ-*`〔§3.4/2〕 |
-| 29 | Template tags / versioning / names | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 29 行（10 项：tags 端点 + `GET /templates/aliases/{alias} [getTemplatesAlias]`，alias 即版本化命名机制） |
+| 29 | Template tags / versioning / names | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 29 行（35 项，其中 10 个字段：tags 端点 + `GET /templates/aliases/{alias} [getTemplatesAlias]`，alias 即版本化命名机制） |
 | 30 | Base image / 私有 registry 接入 | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 30 行（30 项） |
 | 31 | 构建限额（1 h / 8 vCPU / 8 GiB / 10 GiB / 20 并发） | 无 | ❌ | — |
 | 32 | 以 Dockerfile 或构建脚本作为**构建输入** | 无（产品要求已写） | 🟡 | [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 4 节已写"构建输入允许使用 Dockerfile 或构建脚本"；无 `REQ-*`〔§3.4/3〕 |
@@ -219,7 +221,7 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 | 58 | 端口暴露（public URL / `getHost`） | 无 | ❌ | 产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 8 节；无 `REQ-*`〔§3.4/6〕 |
 | 59 | 限制公开访问（`allowPublicTraffic` / `maskRequestHost` / `httpsPorts`） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 59 行（12 项） |
 | 60 | 自定义域名 | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 60 行（6 项） |
-| 61 | 出网代理隧道 / BYOP SOCKS5 | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 61 行（30 项） |
+| 61 | 出网代理隧道 / BYOP SOCKS5 | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 61 行（31 项） |
 
 ### 2.11 Secrets 与 IAM
 
@@ -233,7 +235,7 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 
 | # | E2B 能力 | 本仓对应 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
-| 65 | `getMetrics()`（`cpuUsedPct` / `cpuCount` / `memUsed` / `memTotal` / `diskUsed` / `diskTotal`，5 s 采样） | `apis/async/sandbox-observability-catalog.json`（32 个指标契约） | 🟡 | 仅契约，无 runtime。[PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 13 节的 13 个指标族已与本契约建立机器映射（`metrics.productFamilies`：6 控制面 / 7 运行面），命名后缀与 `catalogMetrics` 解析由 `tools/check-sandbox-requirement-traceability.mjs` 第 6 条规则族核验；运行面族尚无契约对应物，已按层登记缺口归属。基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 65 行（6 项，含聚合端点 `GET /metrics [getMetrics]`） |
+| 65 | `getMetrics()`（`cpuUsedPct` / `cpuCount` / `memUsed` / `memTotal` / `diskUsed` / `diskTotal`，5 s 采样） | `apis/async/sandbox-observability-catalog.json`（32 个指标契约） | 🟡 | 仅契约，无 runtime。[PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 13 节的 13 个指标族已与本契约建立机器映射（`metrics.productFamilies`：6 控制面 / 7 运行面），命名后缀与 `catalogMetrics` 解析由 `tools/check-sandbox-requirement-traceability.mjs` 第 6 条规则族核验；运行面族尚无契约对应物，已按层登记缺口归属。基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 65 行（12 项，其中 6 个字段，含聚合端点 `GET /metrics [getMetrics]`） |
 | 66 | Team 级 metrics | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 66 行（3 项） |
 | 67 | OTel telemetry export | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 67 行（16 项） |
 
@@ -314,7 +316,7 @@ cargo test --workspace
 node --test tests/contract/*.test.mjs
 ```
 
-`619 pass / 0 fail`（其中 E2B 矩阵门禁 143 个、E2B 基准门禁 30 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
+`644 pass / 0 fail`（其中 E2B 矩阵门禁 143 个、E2B 基准门禁 30 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
 
 ### 3.2 覆盖空档
 
