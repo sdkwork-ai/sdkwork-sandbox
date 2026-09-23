@@ -1284,8 +1284,8 @@ test("the repository's own coverage table accounts for every test the workspace 
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  assert.equal(assessment.workspaceTests, 87);
-  assert.equal(assessment.coveredTests, 87);
+  assert.equal(assessment.workspaceTests, 90);
+  assert.equal(assessment.coveredTests, 90);
 
   const discovered = discoverWorkspaceTests(repoRoot);
   let runnable = 0;
@@ -1296,9 +1296,9 @@ test("the repository's own coverage table accounts for every test the workspace 
       else runnable += 1;
     }
   }
-  // The two readings the audit quotes have to agree with the code: 87 declared, 86 of them
+  // The two readings the audit quotes have to agree with the code: 90 declared, 89 of them
   // runnable because one declares it needs an external PostgreSQL.
-  assert.equal(runnable + ignored, 87);
+  assert.equal(runnable + ignored, 90);
   assert.equal(ignored, 1);
 });
 
@@ -1539,10 +1539,11 @@ test("the repository's own shape table resolves and its sizes recompute", () => 
   const assessment = assessE2bParityMatrix({ repoRoot });
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
   assert.equal(assessment.shapeRows, 11);
-  // Seven lines in the real table point the reader at a numbered line (the Local Provider row cites
-  // both its production module and its retained fake). Each is resolved into its file and checked to
-  // still carry the construct the row names.
-  assert.equal(assessment.shapeAnchors, 7);
+  // Nine lines in the real table point the reader at a numbered line (the Local Provider row cites
+  // both its production module and its retained fake; the Command Executor row cites its port and
+  // its fingerprint function). Each is resolved into its file and checked to still carry the
+  // construct the row names.
+  assert.equal(assessment.shapeAnchors, 9);
 });
 
 test("a module count that disagrees with the crate's sources is rejected", () => {

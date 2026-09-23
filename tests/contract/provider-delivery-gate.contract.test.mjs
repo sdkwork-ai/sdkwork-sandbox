@@ -146,7 +146,7 @@ test("Gate 0 keeps the Local component free of public ports and entrypoints", ()
   assert.doesNotMatch(localSource, /\b(?:std::process|tokio::process|Command::new)\b/u);
 });
 
-test("Gate 0 does not materialize deferred Provider crates or public command ports", () => {
+test("Gate 0 keeps deferred Provider crates out and command execution unimplemented", () => {
   assert.equal(
     existsSync(path.join(repoRoot, "crates/sdkwork-sandbox-provider-firecracker")),
     false,
@@ -156,9 +156,12 @@ test("Gate 0 does not materialize deferred Provider crates or public command por
     false,
   );
 
+  // 2026-09-24: the SandboxCommandExecutor port and SandboxCommandExecution* DTOs are authorized
+  // in the provider SPI; what must still not exist is any Provider IMPLEMENTATION - a concrete
+  // executor type, or process-spawn code anywhere under crates/.
   const rustSources = collectRustSources("crates").join("\n");
-  assert.doesNotMatch(rustSources, /\bSandboxCommandExecutor\b/u);
-  assert.doesNotMatch(rustSources, /\bSandboxCommandExecution(?:Request|Result|Error|Limits)\b/u);
+  assert.doesNotMatch(rustSources, /\bSandboxLocalCommandExecutor\b/u);
+  assert.doesNotMatch(rustSources, /\b(?:std::process|tokio::process|Command::new)\b/u);
 });
 
 test("Gate 0 review packet ownership decisions are recorded or still pending, never silent", () => {
