@@ -10,9 +10,13 @@
     "domain": "intelligence",
     "capability": "sandbox-local-execution",
     "surfaceNotRequiredReason": "This L4 local provider adapter owns no HTTP, SDK, UI, or admin surface.",
-    "languages": ["rust"],
+    "languages": [
+      "rust"
+    ],
     "generated": false,
-    "manifests": ["Cargo.toml"]
+    "manifests": [
+      "Cargo.toml"
+    ]
   },
   "canonicalSpecs": [
     {
@@ -78,7 +82,9 @@
   ],
   "contracts": {
     "layerRole": "backend-provider",
-    "publicExports": [],
+    "publicExports": [
+      "host_boundary"
+    ],
     "providedPorts": [],
     "requiredPorts": [],
     "runtimeEntrypoints": [],

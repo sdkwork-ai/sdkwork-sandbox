@@ -132,7 +132,10 @@ test("Gate 0 keeps the Local component free of public ports and entrypoints", ()
     readRepoFile("crates/sdkwork-sandbox-provider-local/specs/component.spec.json"),
   );
 
-  assert.deepEqual(componentSpec.contracts.publicExports, []);
+  // 2026-09-24: the authorized host-boundary slice ships one public module - the pure-data
+  // boundary rules. No ports, entrypoints, or config keys: the provider adapter still exposes no
+  // runtime surface.
+  assert.deepEqual(componentSpec.contracts.publicExports, ["host_boundary"]);
   assert.deepEqual(componentSpec.contracts.providedPorts, []);
   assert.deepEqual(componentSpec.contracts.requiredPorts, []);
   assert.deepEqual(componentSpec.contracts.runtimeEntrypoints, []);
