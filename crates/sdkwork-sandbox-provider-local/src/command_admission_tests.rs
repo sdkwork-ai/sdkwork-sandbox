@@ -43,7 +43,7 @@ fn admits_a_request_whose_declared_fingerprint_matches() {
     let request = sandbox_request();
     let fingerprint = sandbox_command_execution_fingerprint(&request);
     assert_eq!(
-        admit_sandbox_command(&sandbox_boundary(), &request, &fingerprint),
+        admit_sandbox_command(&sandbox_boundary(), &request, Some(&fingerprint)),
         Ok(())
     );
 }
@@ -52,7 +52,7 @@ fn admits_a_request_whose_declared_fingerprint_matches() {
 fn rejects_a_request_whose_declared_fingerprint_was_tampered_with() {
     let request = sandbox_request();
     assert_eq!(
-        admit_sandbox_command(&sandbox_boundary(), &request, "deadbeef"),
+        admit_sandbox_command(&sandbox_boundary(), &request, Some("deadbeef")),
         Err(SandboxLocalCommandAdmissionError::FingerprintMismatch)
     );
 }
@@ -63,7 +63,7 @@ fn rejects_a_request_over_the_contract_limits_before_the_boundary() {
     request.sandbox_command_limits.sandbox_timeout_ms = 86_400_001;
     let fingerprint = sandbox_command_execution_fingerprint(&request);
     assert_eq!(
-        admit_sandbox_command(&sandbox_boundary(), &request, &fingerprint),
+        admit_sandbox_command(&sandbox_boundary(), &request, Some(&fingerprint)),
         Err(SandboxLocalCommandAdmissionError::LimitsOverBound(
             SandboxCommandLimitsError::FieldOverBound
         ))
@@ -76,7 +76,7 @@ fn rejects_a_request_the_host_boundary_denies() {
     request.sandbox_executable = "curl".to_owned();
     let fingerprint = sandbox_command_execution_fingerprint(&request);
     assert!(matches!(
-        admit_sandbox_command(&sandbox_boundary(), &request, &fingerprint),
+        admit_sandbox_command(&sandbox_boundary(), &request, Some(&fingerprint)),
         Err(SandboxLocalCommandAdmissionError::BoundaryDenied(_))
     ));
 }

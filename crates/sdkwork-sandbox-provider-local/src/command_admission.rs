@@ -47,13 +47,13 @@ impl Error for SandboxLocalCommandAdmissionError {
     }
 }
 
-/// The local admission sequence: contract limits, then the pure-data host boundary, then the
-/// fingerprint the caller declared is recomputed and compared. Admission authorizes nothing by
+/// The local admission sequence: contract limits, then the pure-data host boundary, then - when
+/// the caller declared a fingerprint - the recomputed comparison. Admission authorizes nothing by
 /// itself - it is the precondition every execution slice must pass first.
 pub fn admit_sandbox_command(
     sandbox_boundary: &SandboxLocalHostBoundary,
     sandbox_request: &SandboxCommandExecutionRequest,
-    sandbox_declared_fingerprint: &str,
+    sandbox_declared_fingerprint: Option<&str>,
 ) -> Result<(), SandboxLocalCommandAdmissionError> {
     if let Err(limits_error) = sandbox_request.sandbox_command_limits.validate() {
         return Err(SandboxLocalCommandAdmissionError::LimitsOverBound(
@@ -78,8 +78,10 @@ pub fn admit_sandbox_command(
             &sandbox_environment,
         )
         .map_err(SandboxLocalCommandAdmissionError::BoundaryDenied)?;
-    if !sandbox_verify_request_fingerprint(sandbox_request, sandbox_declared_fingerprint) {
-        return Err(SandboxLocalCommandAdmissionError::FingerprintMismatch);
+    if let Some(declared) = sandbox_declared_fingerprint {
+        if !sandbox_verify_request_fingerprint(sandbox_request, declared) {
+            return Err(SandboxLocalCommandAdmissionError::FingerprintMismatch);
+        }
     }
     Ok(())
 }
