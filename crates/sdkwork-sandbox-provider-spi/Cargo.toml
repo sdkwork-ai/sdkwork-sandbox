@@ -16,6 +16,7 @@ uuid.workspace = true
 zeroize.workspace = true
 
 [lib]
+name = "sdkwork_sandbox_provider_spi"
 path = "src/lib.rs"
 
 [lints]

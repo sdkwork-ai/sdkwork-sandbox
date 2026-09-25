@@ -132,10 +132,11 @@ test("Gate 0 keeps the Local component free of public ports and entrypoints", ()
     readRepoFile("crates/sdkwork-sandbox-provider-local/specs/component.spec.json"),
   );
 
-  // 2026-09-24: the authorized host-boundary slice ships one public module - the pure-data
-  // boundary rules. No ports, entrypoints, or config keys: the provider adapter still exposes no
-  // runtime surface.
-  assert.deepEqual(componentSpec.contracts.publicExports, ["command_admission", "command_executor", "host_boundary"]);
+  // 2026-09-24: the authorized host-boundary slice ships the pure-data boundary rules, and the
+  // authorized command-execution slice (REQ-2026-0007, contract implementationAuthorized: true)
+  // ships the executor and the real process runner. Still no ports, entrypoints, or config keys:
+  // the provider adapter exposes modules, not a runtime surface.
+  assert.deepEqual(componentSpec.contracts.publicExports, ["command_admission", "command_executor", "host_boundary", "process_runner"]);
   assert.deepEqual(componentSpec.contracts.providedPorts, []);
   assert.deepEqual(componentSpec.contracts.requiredPorts, []);
   assert.deepEqual(componentSpec.contracts.runtimeEntrypoints, []);
@@ -143,10 +144,12 @@ test("Gate 0 keeps the Local component free of public ports and entrypoints", ()
 
   const localSource = collectRustSources("crates/sdkwork-sandbox-provider-local/src").join("\n");
   assert.match(localSource, /#\[cfg\(test\)\]/u);
-  assert.doesNotMatch(localSource, /\b(?:std::process|tokio::process|Command::new)\b/u);
+  // Process spawning is authorized only inside this provider crate's runner
+  // module; the control plane stays free of it (asserted in the next test).
+  assert.match(localSource, /tokio::process/u);
 });
 
-test("Gate 0 keeps deferred Provider crates out and command execution unimplemented", () => {
+test("Gate 0 keeps deferred Provider crates out and confines process spawning to the Local runner", () => {
   assert.equal(
     existsSync(path.join(repoRoot, "crates/sdkwork-sandbox-provider-firecracker")),
     false,
@@ -156,13 +159,32 @@ test("Gate 0 keeps deferred Provider crates out and command execution unimplemen
     false,
   );
 
-  // 2026-09-24: the SandboxCommandExecutor port, SandboxCommandExecution* DTOs, and the local
-  // SandboxLocalCommandExecutor (admission plus runner delegation) are authorized; what must still
-  // not exist is a real OS process runner or process-spawn code anywhere under crates/ - those
-  // land with the evidence-gated execution slice.
-  const rustSources = collectRustSources("crates").join("\n");
-  assert.doesNotMatch(rustSources, /\bSandboxLocalOsProcessRunner\b/u);
-  assert.doesNotMatch(rustSources, /\b(?:std::process|tokio::process|Command::new)\b/u);
+  // 2026-09-24: the SandboxCommandExecutor port, SandboxCommandExecution* DTOs, the local
+  // SandboxLocalCommandExecutor, and the real SandboxLocalTokioProcessRunner are authorized
+  // (REQ-2026-0007 is ready; its command contract declares implementationAuthorized). The
+  // containment boundary that remains: process-spawn code may exist ONLY inside the Local
+  // provider's process_runner module - never in the control plane (service, repositories,
+  // routes, assembly, gateway, SPI) - and the descendant-containment slice (Windows Job
+  // Object / Linux cgroup v2) is still pending its evidence gate, so the Terminal capability
+  // stays unclaimed.
+  assert.doesNotMatch(collectRustSources("crates").join("\n"), /\bSandboxLocalOsProcessRunner\b/u);
+
+  const processSpawnPattern = /\b(?:std::process|tokio::process|Command::new)\b/u;
+  const controlPlaneCrates = [
+    "crates/sdkwork-intelligence-sandbox-service",
+    "crates/sdkwork-intelligence-sandbox-repository-memory",
+    "crates/sdkwork-intelligence-sandbox-repository-sqlx",
+    "crates/sdkwork-routes-sandbox-internal-api",
+    "crates/sdkwork-api-sandbox-assembly",
+    "crates/sdkwork-api-sandbox-standalone-gateway",
+    "crates/sdkwork-sandbox-provider-spi",
+  ];
+  for (const controlPlaneCrate of controlPlaneCrates) {
+    const sources = collectRustSources(controlPlaneCrate).join("\n");
+    assert.doesNotMatch(sources, processSpawnPattern, `${controlPlaneCrate} must not spawn processes`);
+  }
+  const runnerSource = readRepoFile("crates/sdkwork-sandbox-provider-local/src/process_runner.rs");
+  assert.match(runnerSource, /tokio::process/u);
 });
 
 test("Gate 0 review packet ownership decisions are recorded or still pending, never silent", () => {

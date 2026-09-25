@@ -287,10 +287,19 @@ pub trait SandboxCommandExecutor: Send + Sync {
 }
 
 /// The terminal summary of one executed command.
+///
+/// Captured output is binary-safe and bounded by the request's
+/// `sandbox_stdout_byte_limit` / `sandbox_stderr_byte_limit`; the transport
+/// layer encodes it as `sandboxStdoutBase64` / `sandboxStderrBase64`
+/// (`sandbox-command-execution-result.schema.json`).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SandboxCommandOutcome {
     /// Process exit code, when the process reached a terminal state.
     pub sandbox_exit_code: Option<i32>,
+    /// Captured stdout, at most `sandbox_stdout_byte_limit` bytes.
+    pub sandbox_stdout: Vec<u8>,
+    /// Captured stderr, at most `sandbox_stderr_byte_limit` bytes.
+    pub sandbox_stderr: Vec<u8>,
     /// Whether stdout hit its byte bound and was truncated.
     pub sandbox_stdout_truncated: bool,
     /// Whether stderr hit its byte bound and was truncated.

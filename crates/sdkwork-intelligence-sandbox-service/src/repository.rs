@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 use std::fmt;
+use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -861,6 +862,153 @@ pub trait SandboxSessionRepository: Send + Sync {
         after_sandbox_session_id: Option<&SandboxSessionId>,
         sandbox_page_size: u16,
     ) -> SandboxSessionRepositoryResult<Vec<SandboxSessionReconciliationCandidate>>;
+}
+
+/// Wraps any [`SandboxSessionRepository`] so every call is bounded by a
+/// timeout. A wedged store (black-holed TCP, exhausted pool outside its own
+/// acquire timeout) must surface as a retryable `Repository(Unavailable)`
+/// instead of hanging a lease holder until the lease expires — every other
+/// controller for that session blocks behind the lease.
+///
+/// The composition root wraps the concrete adapter once, so every current and
+/// future call site inherits the bound without per-site timeouts.
+pub struct BoundedSandboxSessionRepository {
+    sandbox_session_repository: Arc<dyn SandboxSessionRepository>,
+    sandbox_call_timeout: Duration,
+}
+
+impl BoundedSandboxSessionRepository {
+    #[must_use]
+    pub fn new(
+        sandbox_session_repository: Arc<dyn SandboxSessionRepository>,
+        sandbox_call_timeout: Duration,
+    ) -> Self {
+        Self {
+            sandbox_session_repository,
+            sandbox_call_timeout,
+        }
+    }
+
+    async fn bounded<T>(
+        &self,
+        sandbox_repository_future: impl std::future::Future<Output = SandboxSessionRepositoryResult<T>>,
+    ) -> SandboxSessionRepositoryResult<T> {
+        match tokio::time::timeout(self.sandbox_call_timeout, sandbox_repository_future).await {
+            Ok(sandbox_repository_result) => sandbox_repository_result,
+            Err(_) => Err(SandboxSessionRepositoryError::Unavailable),
+        }
+    }
+}
+
+#[async_trait]
+impl SandboxSessionRepository for BoundedSandboxSessionRepository {
+    async fn find_by_sandbox_operation(
+        &self,
+        tenant_id: &TenantId,
+        sandbox_operation_id: &OperationId,
+    ) -> SandboxSessionRepositoryResult<Option<SandboxSession>> {
+        self.bounded(
+            self.sandbox_session_repository
+                .find_by_sandbox_operation(tenant_id, sandbox_operation_id),
+        )
+        .await
+    }
+
+    async fn get_sandbox_session(
+        &self,
+        tenant_id: &TenantId,
+        sandbox_session_id: &SandboxSessionId,
+    ) -> SandboxSessionRepositoryResult<Option<SandboxSession>> {
+        self.bounded(
+            self.sandbox_session_repository
+                .get_sandbox_session(tenant_id, sandbox_session_id),
+        )
+        .await
+    }
+
+    async fn insert_sandbox_session(
+        &self,
+        sandbox_session: SandboxSession,
+    ) -> SandboxSessionRepositoryResult<()> {
+        self.bounded(
+            self.sandbox_session_repository
+                .insert_sandbox_session(sandbox_session),
+        )
+        .await
+    }
+
+    async fn save_sandbox_session(
+        &self,
+        sandbox_session: SandboxSession,
+        expected_sandbox_version: u64,
+        sandbox_session_lease: &SandboxSessionLease,
+    ) -> SandboxSessionRepositoryResult<()> {
+        self.bounded(self.sandbox_session_repository.save_sandbox_session(
+            sandbox_session,
+            expected_sandbox_version,
+            sandbox_session_lease,
+        ))
+        .await
+    }
+
+    async fn acquire_sandbox_session_lease(
+        &self,
+        tenant_id: &TenantId,
+        sandbox_session_id: &SandboxSessionId,
+        sandbox_lease_owner_id: &SandboxLeaseOwnerId,
+        sandbox_lease_duration: Duration,
+    ) -> SandboxSessionRepositoryResult<Option<SandboxSessionLease>> {
+        self.bounded(
+            self.sandbox_session_repository
+                .acquire_sandbox_session_lease(
+                    tenant_id,
+                    sandbox_session_id,
+                    sandbox_lease_owner_id,
+                    sandbox_lease_duration,
+                ),
+        )
+        .await
+    }
+
+    async fn renew_sandbox_session_lease(
+        &self,
+        sandbox_session_lease: &SandboxSessionLease,
+        sandbox_lease_duration: Duration,
+    ) -> SandboxSessionRepositoryResult<Option<SandboxSessionLease>> {
+        self.bounded(
+            self.sandbox_session_repository
+                .renew_sandbox_session_lease(sandbox_session_lease, sandbox_lease_duration),
+        )
+        .await
+    }
+
+    async fn release_sandbox_session_lease(
+        &self,
+        sandbox_session_lease: &SandboxSessionLease,
+    ) -> SandboxSessionRepositoryResult<bool> {
+        self.bounded(
+            self.sandbox_session_repository
+                .release_sandbox_session_lease(sandbox_session_lease),
+        )
+        .await
+    }
+
+    async fn list_sandbox_sessions_requiring_reconciliation(
+        &self,
+        tenant_id: &TenantId,
+        after_sandbox_session_id: Option<&SandboxSessionId>,
+        sandbox_page_size: u16,
+    ) -> SandboxSessionRepositoryResult<Vec<SandboxSessionReconciliationCandidate>> {
+        self.bounded(
+            self.sandbox_session_repository
+                .list_sandbox_sessions_requiring_reconciliation(
+                    tenant_id,
+                    after_sandbox_session_id,
+                    sandbox_page_size,
+                ),
+        )
+        .await
+    }
 }
 
 /// Validates the persisted-state invariants of a sandbox session without

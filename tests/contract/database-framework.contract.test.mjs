@@ -67,7 +67,7 @@ test("Sandbox database is PostgreSQL authoritative-server only", () => {
   assert.equal(manifest.lifecycle.autoMigrate, false);
 });
 
-test("Sandbox lifecycle authority registers the exact four owned tables", () => {
+test("Sandbox lifecycle authority registers the exact five owned tables", () => {
   const registry = JSON.parse(
     readFileSync(path.join(repoRoot, "database/contract/table-registry.json"), "utf8"),
   );
@@ -78,6 +78,7 @@ test("Sandbox lifecycle authority registers the exact four owned tables", () => 
     "sandbox_session_operation",
     "sandbox_runtime_binding",
     "sandbox_session_lease",
+    "sandbox_instance",
   ]);
   assert.ok(registry.tables.every((entry) => entry.system_of_record === true));
 });

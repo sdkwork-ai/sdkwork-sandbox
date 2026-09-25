@@ -164,6 +164,11 @@ impl SandboxLifecycleService {
             .await
         {
             Ok(Some(renewed_sandbox_session_lease)) => renewed_sandbox_session_lease,
+            // PRD section 4 fixes the domain contract: a renewal that cannot
+            // confirm control (row gone, foreign owner, or repository failure)
+            // is `LeaseLost` — the provider call must not proceed unverified.
+            // The bounded repository turns a wedged store into `Unavailable`,
+            // so this arm can never hang.
             Ok(None) | Err(_) => return Err(SandboxLifecycleError::LeaseLost),
         };
         if renewed_sandbox_session_lease.tenant_id() != sandbox_session_lease.tenant_id()
@@ -358,6 +363,9 @@ impl SandboxLifecycleService {
         let mut sandbox_items = Vec::with_capacity(sandbox_sessions.len());
         for sandbox_session in sandbox_sessions {
             let sandbox_session_id = sandbox_session.sandbox_session_id().clone();
+            // Captured before any arm moves the session: the post-release
+            // degrade arms report the listed state when the row is gone.
+            let listed_sandbox_session_state = sandbox_session.sandbox_session_state();
             let sandbox_session_lease = match self
                 .sandbox_session_repository
                 .acquire_sandbox_session_lease(
@@ -378,6 +386,17 @@ impl SandboxLifecycleService {
                         sandbox_session_id,
                         sandbox_session.sandbox_session_state(),
                         SandboxSessionReconciliationOutcome::Vanished,
+                    ));
+                    continue;
+                }
+                // A transient acquire failure is a store outage, not a
+                // foreign-held lease: report the item as untouched this round
+                // so the page still converges and the next round retries it.
+                Err(SandboxSessionRepositoryError::Unavailable) => {
+                    sandbox_items.push(SandboxSessionReconciliationItem::new(
+                        sandbox_session_id,
+                        sandbox_session.sandbox_session_state(),
+                        SandboxSessionReconciliationOutcome::LeaseUnavailable,
                     ));
                     continue;
                 }
@@ -508,6 +527,32 @@ impl SandboxLifecycleService {
                         }
                     }
                 }
+                Err(SandboxLifecycleError::LeaseLost) => {
+                    // The lease was stolen mid-item, so this round did not
+                    // reconcile the session. Report the item from its
+                    // authoritative state and let the next round retry it
+                    // instead of aborting every remaining session in the page.
+                    match self
+                        .get_sandbox_session(tenant_id, &sandbox_session_id)
+                        .await
+                    {
+                        Ok(sandbox_session) => {
+                            sandbox_items.push(SandboxSessionReconciliationItem::new(
+                                sandbox_session_id,
+                                sandbox_session.sandbox_session_state(),
+                                SandboxSessionReconciliationOutcome::LeaseUnavailable,
+                            ));
+                        }
+                        Err(SandboxLifecycleError::SandboxSessionNotFound { .. }) => {
+                            sandbox_items.push(SandboxSessionReconciliationItem::new(
+                                sandbox_session_id,
+                                listed_sandbox_session_state,
+                                SandboxSessionReconciliationOutcome::Vanished,
+                            ));
+                        }
+                        Err(sandbox_get_error) => return Err(sandbox_get_error),
+                    }
+                }
                 Err(sandbox_lifecycle_error) => return Err(sandbox_lifecycle_error),
             }
         }
@@ -584,9 +629,43 @@ impl SandboxLifecycleService {
                         sandbox_allocation.sandbox_allocation_reference,
                     );
                     sandbox_session.set_sandbox_runtime_binding(sandbox_runtime_binding.clone());
-                    sandbox_session = self
+                    let sandbox_tenant_id = sandbox_session.tenant_id().clone();
+                    let sandbox_reconciled_session_id =
+                        sandbox_session.sandbox_session_id().clone();
+                    sandbox_session = match self
                         .persist_sandbox_session(sandbox_session, sandbox_session_lease)
-                        .await?;
+                        .await
+                    {
+                        Ok(sandbox_session) => sandbox_session,
+                        // The allocation exists but is recorded nowhere: a
+                        // retry would allocate again and orphan this one. The
+                        // compensating destroy mirrors the main start flow.
+                        Err(sandbox_lifecycle_error) => {
+                            let sandbox_cleanup_result = self
+                                .execute_sandbox_provider_call(
+                                    &sandbox_provider,
+                                    SandboxProviderOperation::Destroy,
+                                    sandbox_session_lease,
+                                    sandbox_provider.destroy(
+                                        Self::sandbox_destroy_request_for_values(
+                                            sandbox_tenant_id.clone(),
+                                            sandbox_reconciled_session_id.clone(),
+                                            &sandbox_runtime_binding,
+                                            sandbox_session_lease,
+                                        )?,
+                                    ),
+                                )
+                                .await;
+                            if sandbox_cleanup_result.is_err() {
+                                tracing::error!(
+                                    tenant = %sandbox_tenant_id.as_str(),
+                                    sandbox_session = %sandbox_reconciled_session_id.as_str(),
+                                    "reconciliation persist failed and the compensating                                      allocation destroy also failed; the provider allocation                                      may be orphaned"
+                                );
+                            }
+                            return Err(sandbox_lifecycle_error);
+                        }
+                    };
                 }
                 let sandbox_provider_readiness = match self
                     .execute_sandbox_provider_call(
@@ -893,7 +972,7 @@ impl SandboxLifecycleService {
                     sandbox_session.begin_sandbox_operation(
                         command.sandbox_operation_id.clone(),
                         SandboxSessionOperationKind::Start,
-                    );
+                    )?;
                     sandbox_session.transition_sandbox_session(
                         SandboxSessionState::Starting,
                         SandboxSessionOperationKind::Start,
@@ -933,7 +1012,7 @@ impl SandboxLifecycleService {
         sandbox_session.begin_sandbox_operation(
             command.sandbox_operation_id.clone(),
             SandboxSessionOperationKind::Start,
-        );
+        )?;
         sandbox_session.transition_sandbox_session(
             SandboxSessionState::Starting,
             SandboxSessionOperationKind::Start,
@@ -981,13 +1060,15 @@ impl SandboxLifecycleService {
         sandbox_runtime_binding
             .set_sandbox_allocation_reference(sandbox_allocation.sandbox_allocation_reference);
         sandbox_session.set_sandbox_runtime_binding(sandbox_runtime_binding.clone());
+        let sandbox_tenant_id = command.tenant_id.clone();
+        let sandbox_started_session_id = command.sandbox_session_id.clone();
         sandbox_session = match self
             .persist_sandbox_session(sandbox_session, sandbox_session_lease)
             .await
         {
             Ok(sandbox_session) => sandbox_session,
             Err(sandbox_lifecycle_error) => {
-                let _sandbox_cleanup_result = self
+                let sandbox_cleanup_result = self
                     .execute_sandbox_provider_call(
                         &sandbox_provider,
                         SandboxProviderOperation::Destroy,
@@ -1000,6 +1081,14 @@ impl SandboxLifecycleService {
                         )?),
                     )
                     .await;
+                if let Err(sandbox_cleanup_error) = sandbox_cleanup_result {
+                    tracing::error!(
+                        tenant = %sandbox_tenant_id.as_str(),
+                        sandbox_session = %sandbox_started_session_id.as_str(),
+                        cleanup_error = %sandbox_cleanup_error,
+                        "start persist failed and the compensating allocation destroy also failed;                          the provider allocation may be orphaned"
+                    );
+                }
                 return Err(sandbox_lifecycle_error);
             }
         };
@@ -1163,7 +1252,7 @@ impl SandboxLifecycleService {
         sandbox_session.begin_sandbox_operation(
             command.sandbox_operation_id.clone(),
             SandboxSessionOperationKind::Stop,
-        );
+        )?;
         sandbox_session.transition_sandbox_session(
             SandboxSessionState::Stopping,
             SandboxSessionOperationKind::Stop,
@@ -1261,7 +1350,7 @@ impl SandboxLifecycleService {
         sandbox_session.begin_sandbox_operation(
             command.sandbox_operation_id.clone(),
             SandboxSessionOperationKind::Destroy,
-        );
+        )?;
         sandbox_session.transition_sandbox_session(
             SandboxSessionState::Destroying,
             SandboxSessionOperationKind::Destroy,

@@ -1,0 +1,32 @@
+[package]
+rust-version.workspace = true
+name = "sdkwork-routes-sandbox-internal-api"
+description = "SDKWork Sandbox internal-api control surface for the sandbox instance registry."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+axum.workspace = true
+base64.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sdkwork-iam-web-adapter.workspace = true
+sdkwork-intelligence-sandbox-service.workspace = true
+sdkwork-sandbox-provider-spi.workspace = true
+sdkwork-utils-rust.workspace = true
+sdkwork-web-axum.workspace = true
+sdkwork-web-bootstrap.workspace = true
+sdkwork-web-core.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lib]
+name = "sdkwork_routes_sandbox_internal_api"
+path = "src/lib.rs"
+
+[lints]
+workspace = true

@@ -88,10 +88,12 @@ opaque_id!(SandboxWorkspaceId, "sandboxWorkspaceId");
 opaque_id!(SandboxSessionId, "sandboxSessionId");
 opaque_id!(SandboxProviderId, "sandboxProviderId");
 opaque_id!(SandboxProviderKind, "sandboxProviderKind");
+opaque_id!(SandboxInstanceOwnerId, "sandboxInstanceOwnerId");
 generated_opaque_id!(SandboxId, "sandboxId");
 generated_opaque_id!(SandboxRuntimeBindingId, "sandboxRuntimeBindingId");
 generated_opaque_id!(OperationId, "sandboxOperationId");
 generated_opaque_id!(SandboxLeaseOwnerId, "sandboxLeaseOwnerId");
+generated_opaque_id!(SandboxInstanceId, "sandboxInstanceId");
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct SandboxFencingToken(u64);

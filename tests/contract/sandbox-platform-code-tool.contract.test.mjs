@@ -133,10 +133,14 @@ function assertProblemMatching(problems, pattern) {
 
 // --- The real repository is the primary fixture -------------------------------------------------
 
-test("the repository's own platform regime passes", () => {
+test("the repository's own platform regime passes with every marker declared", () => {
   const result = assessPlatformRegimeAtRoot(repoRoot);
   assert.deepEqual(result.problems, []);
-  assert.equal(result.markerCount, 0);
+  // 2026-09-24: the authorized Local command-execution slice introduced real
+  // process spawning under the provider crate, and the standalone gateway
+  // carries POSIX shutdown handling. All ten markers are declared in
+  // TECH-platform-support.md section 3.1; the control plane stays clean.
+  assert.equal(result.markerCount, 10);
 });
 
 test("the rendered report prints every platform and its status", () => {
@@ -371,7 +375,19 @@ test("a missing census line is reported", () => {
 
 test("markers are collected from crates only, and test code counts", () => {
   const markers = collectPlatformMarkers(repoRoot);
-  assert.deepEqual(markers, []);
+  const summarized = markers.map(({ path, line, marker }) => ({ path, line, marker }));
+  assert.deepEqual(summarized, [
+    { path: "crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs", line: 50, marker: "cfg-unix" },
+    { path: "crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs", line: 58, marker: "cfg-unix" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 31, marker: "tokio-process" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 158, marker: "cfg-windows" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 165, marker: "cfg-windows" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 225, marker: "cfg-unix" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 308, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 341, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 351, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 374, marker: "cfg-macro" },
+  ]);
   withFixture(
     {
       rustSources: {

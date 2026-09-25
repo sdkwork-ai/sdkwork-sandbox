@@ -39,32 +39,15 @@ pub(crate) fn parse_sandbox_session_state(
 }
 
 fn sandbox_runtime_capability_value(sandbox_runtime_capability: RuntimeCapability) -> &'static str {
-    match sandbox_runtime_capability {
-        RuntimeCapability::Terminal => "terminal",
-        RuntimeCapability::Filesystem => "filesystem",
-        RuntimeCapability::Git => "git",
-        RuntimeCapability::Build => "build",
-        RuntimeCapability::Browser => "browser",
-        RuntimeCapability::PortForward => "port_forward",
-        RuntimeCapability::McpTransport => "mcp_transport",
-        RuntimeCapability::Environment => "environment",
-    }
+    // Delegates to the owning vocabulary so the wire spelling and the stored
+    // spelling cannot diverge.
+    sandbox_runtime_capability.as_str()
 }
 
 fn parse_sandbox_runtime_capability(
     value: &str,
 ) -> SandboxSessionRepositoryResult<RuntimeCapability> {
-    match value {
-        "terminal" => Ok(RuntimeCapability::Terminal),
-        "filesystem" => Ok(RuntimeCapability::Filesystem),
-        "git" => Ok(RuntimeCapability::Git),
-        "build" => Ok(RuntimeCapability::Build),
-        "browser" => Ok(RuntimeCapability::Browser),
-        "port_forward" => Ok(RuntimeCapability::PortForward),
-        "mcp_transport" => Ok(RuntimeCapability::McpTransport),
-        "environment" => Ok(RuntimeCapability::Environment),
-        _ => Err(SandboxSessionRepositoryError::InvalidStoredData),
-    }
+    RuntimeCapability::parse(value).ok_or(SandboxSessionRepositoryError::InvalidStoredData)
 }
 
 pub(crate) fn sandbox_runtime_capabilities_value(
@@ -103,26 +86,14 @@ pub(crate) fn parse_sandbox_runtime_capabilities(
 pub(crate) fn sandbox_isolation_assurance_value(
     sandbox_isolation_assurance: IsolationAssurance,
 ) -> &'static str {
-    match sandbox_isolation_assurance {
-        IsolationAssurance::HostUser => "host_user",
-        IsolationAssurance::Container => "container",
-        IsolationAssurance::UserSpaceKernel => "user_space_kernel",
-        IsolationAssurance::MicroVm => "micro_vm",
-        IsolationAssurance::DedicatedVm => "dedicated_vm",
-    }
+    // Delegates to the owning vocabulary; see `sandbox_runtime_capability_value`.
+    sandbox_isolation_assurance.as_str()
 }
 
 pub(crate) fn parse_sandbox_isolation_assurance(
     value: &str,
 ) -> SandboxSessionRepositoryResult<IsolationAssurance> {
-    match value {
-        "host_user" => Ok(IsolationAssurance::HostUser),
-        "container" => Ok(IsolationAssurance::Container),
-        "user_space_kernel" => Ok(IsolationAssurance::UserSpaceKernel),
-        "micro_vm" => Ok(IsolationAssurance::MicroVm),
-        "dedicated_vm" => Ok(IsolationAssurance::DedicatedVm),
-        _ => Err(SandboxSessionRepositoryError::InvalidStoredData),
-    }
+    IsolationAssurance::parse(value).ok_or(SandboxSessionRepositoryError::InvalidStoredData)
 }
 
 pub(crate) fn sandbox_session_failure_value(

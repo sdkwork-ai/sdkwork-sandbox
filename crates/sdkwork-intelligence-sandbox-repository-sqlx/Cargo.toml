@@ -22,6 +22,7 @@ zeroize.workspace = true
 tokio.workspace = true
 
 [lib]
+name = "sdkwork_intelligence_sandbox_repository_sqlx"
 path = "src/lib.rs"
 
 [lints]

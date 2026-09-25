@@ -37,6 +37,15 @@
       "system_of_record": true,
       "compliance_level": "L2",
       "lifecycle_status": "active"
+    },
+    {
+      "table_name": "sandbox_instance",
+      "profile": "tenant_entity",
+      "owner": "sdkwork-runtime-platform",
+      "write_owner": "sdkwork-intelligence-sandbox-repository-sqlx",
+      "system_of_record": true,
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     }
   ]
 }

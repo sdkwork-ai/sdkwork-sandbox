@@ -68,6 +68,7 @@ test("PostgreSQL is the only proposed authority and current tables stay unchange
     "sandbox_session_operation",
     "sandbox_runtime_binding",
     "sandbox_session_lease",
+    "sandbox_instance",
   ]);
   for (const sandboxProposedTable of sandboxContract.proposedTables) {
     assert.equal(sandboxRegisteredTables.includes(sandboxProposedTable.sandbox_table_name), false);

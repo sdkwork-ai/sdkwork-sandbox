@@ -28,16 +28,14 @@ use crate::codec::{
 
 /// Maximum lifecycle operations loaded for one sandbox session.
 ///
-/// Safety bound until REQ-2026-0020 (bounded lifecycle history and idempotency
-/// retention) authorizes a retention policy. A persisted session whose
-/// operation history exceeds this bound fails closed instead of loading an
-/// unbounded row set into process memory, keeping repository reads bounded.
-///
-/// REQ-2026-0005's Release And Review Boundary freezes the behavior behind
-/// this constant: until that requirement is authorized, no idempotency record
-/// may be deleted, truncated, or expired to stay under the bound — and this
-/// bound must not be relaxed to admit them.
-pub const MAX_SANDBOX_SESSION_OPERATIONS: usize = 10_000;
+/// Read-side use of the shared operation-history bound exported by the
+/// service crate: a persisted session whose operation history exceeds the
+/// bound fails closed instead of loading an unbounded row set into process
+/// memory. REQ-2026-0005's Release And Review Boundary freezes the behavior
+/// behind this bound: until REQ-2026-0020 authorizes a retention policy, no
+/// idempotency record may be deleted, truncated, or expired to stay under it
+/// — and the bound must not be relaxed to admit them.
+pub use sdkwork_intelligence_sandbox_service::MAX_SANDBOX_SESSION_OPERATIONS;
 
 /// Statement timeout applied to every sandbox repository transaction,
 /// matching the authoritative-server baseline header contract
@@ -183,12 +181,16 @@ impl SqlxSandboxSessionRepository {
     async fn enforce_sandbox_transaction_timeouts(
         sandbox_connection: &mut PgConnection,
     ) -> SandboxSessionRepositoryResult<()> {
-        sqlx::query("SET LOCAL statement_timeout = $1")
+        // `SET LOCAL ... = $1` cannot carry a bind parameter (the extended
+        // protocol rejects parameters in SET), so the transaction-local GUC is
+        // applied through `set_config(..., is_local => true)` instead, which
+        // accepts bound arguments and reverts at commit/rollback.
+        sqlx::query("SELECT set_config('statement_timeout', $1, true)")
             .bind(SANDBOX_DATABASE_STATEMENT_TIMEOUT)
             .execute(&mut *sandbox_connection)
             .await
             .map_err(Self::map_sandbox_sqlx_error)?;
-        sqlx::query("SET LOCAL lock_timeout = $1")
+        sqlx::query("SELECT set_config('lock_timeout', $1, true)")
             .bind(SANDBOX_DATABASE_LOCK_TIMEOUT)
             .execute(&mut *sandbox_connection)
             .await

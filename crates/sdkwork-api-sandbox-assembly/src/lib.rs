@@ -1,14 +1,15 @@
 //! API assembly for sdkwork-sandbox.
 //! Application bootstrap lives in `bootstrap.rs`; route inventory is in `assembly-manifest.json`.
+//! SDKWORK-ASSEMBLY-LIB-CUSTOM: exports beyond the canonical materializer template.
 
 mod bootstrap;
 mod generated;
 
 pub use bootstrap::{
-    assemble_api_router, web_module, web_module_with_context, ApiAssembly, ApiAssemblyContext,
+    assemble_api_router, assemble_api_router_with_pool, bootstrap_database_from_env, web_module,
+    web_module_with_pool, ApiAssembly, SandboxAssemblyError,
 };
 
-#[must_use]
 pub fn assembly_route_count() -> usize {
     generated::ROUTE_CRATE_COUNT
 }

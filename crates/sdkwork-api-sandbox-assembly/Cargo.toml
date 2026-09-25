@@ -1,14 +1,10 @@
 [package]
-rust-version.workspace = true
 name = "sdkwork-api-sandbox-assembly"
 edition.workspace = true
 license.workspace = true
 version.workspace = true
 description = "Generated API assembly for sdkwork-sandbox application HTTP plane."
 
-
-[lints]
-workspace = true
 [lib]
 name = "sdkwork_api_sandbox_assembly"
 path = "src/lib.rs"
@@ -16,5 +12,12 @@ path = "src/lib.rs"
 [dependencies]
 axum.workspace = true
 tokio.workspace = true
-sdkwork-web-bootstrap = { workspace = true }
-sdkwork-web-core = { workspace = true }
+sdkwork-web-bootstrap.workspace = true
+sdkwork-web-core.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+sdkwork-database-sqlx = { workspace = true }
+sdkwork-intelligence-sandbox-repository-sqlx = { workspace = true }
+sdkwork-intelligence-sandbox-service = { workspace = true }
+sdkwork-sandbox-database-host = { workspace = true }
+sdkwork-routes-sandbox-internal-api.workspace = true

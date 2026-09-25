@@ -9,23 +9,41 @@ members = [
     "crates/sdkwork-sandbox-provider-local",
     "crates/sdkwork-sandbox-service-host",
     "crates/sdkwork-sandbox-cli",
+    "crates/sdkwork-routes-sandbox-internal-api",
+    "crates/sdkwork-sandbox-database-host",
+    "crates/sdkwork-api-sandbox-standalone-gateway",
 ]
 
 [workspace.dependencies]
 sha2 = "0.10.9"
 sdkwork-web-core = { path = "../sdkwork-web-framework/crates/sdkwork-web-core" }
 sdkwork-web-bootstrap = { path = "../sdkwork-web-framework/crates/sdkwork-web-bootstrap" }
+sdkwork-web-axum = { path = "../sdkwork-web-framework/crates/sdkwork-web-axum" }
+sdkwork-iam-web-adapter = { path = "../sdkwork-iam/crates/sdkwork-iam-web-adapter" }
 async-trait = "0.1"
 axum = "0.8"
+base64 = "0.22"
+dotenvy = "0.15"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "json"] }
 thiserror = "2"
-tokio = { version = "1.53", features = ["macros", "rt", "rt-multi-thread", "sync", "time"] }
+tokio = { version = "1.53", features = ["io-util", "macros", "process", "rt", "rt-multi-thread", "net", "signal", "sync", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1", features = ["v4"] }
 zeroize = "1"
 
+sdkwork-api-sandbox-assembly = { path = "crates/sdkwork-api-sandbox-assembly" }
 sdkwork-sandbox-provider-spi = { path = "crates/sdkwork-sandbox-provider-spi" }
 sdkwork-intelligence-sandbox-service = { path = "crates/sdkwork-intelligence-sandbox-service" }
+sdkwork-intelligence-sandbox-repository-sqlx = { path = "crates/sdkwork-intelligence-sandbox-repository-sqlx" }
+sdkwork-routes-sandbox-internal-api = { path = "crates/sdkwork-routes-sandbox-internal-api" }
+sdkwork-sandbox-database-host = { path = "crates/sdkwork-sandbox-database-host" }
+sdkwork-database-config = { path = "../sdkwork-database/crates/sdkwork-database-config" }
+sdkwork-database-drift = { path = "../sdkwork-database/crates/sdkwork-database-drift" }
+sdkwork-database-lifecycle = { path = "../sdkwork-database/crates/sdkwork-database-lifecycle" }
+sdkwork-database-spi = { path = "../sdkwork-database/crates/sdkwork-database-spi" }
 sdkwork-database-sqlx = { path = "../sdkwork-database/crates/sdkwork-database-sqlx" }
 sdkwork-utils-rust = { path = "../sdkwork-utils/packages/sdkwork-utils-rust" }
 

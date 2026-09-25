@@ -1,0 +1,26 @@
+[package]
+rust-version.workspace = true
+name = "sdkwork-sandbox-database-host"
+description = "SDKWork Sandbox database lifecycle bootstrap."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+dotenvy.workspace = true
+sdkwork-database-config.workspace = true
+sdkwork-database-drift.workspace = true
+sdkwork-database-lifecycle.workspace = true
+sdkwork-database-spi.workspace = true
+sdkwork-database-sqlx.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+
+[lib]
+name = "sdkwork_sandbox_database_host"
+path = "src/lib.rs"
+
+[lints]
+workspace = true

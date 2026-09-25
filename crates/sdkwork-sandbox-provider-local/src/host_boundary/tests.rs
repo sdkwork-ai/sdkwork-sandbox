@@ -40,21 +40,11 @@ fn accepts_a_well_formed_sandbox_command_request() {
 fn rejects_an_executable_that_is_not_a_bare_name() {
     let boundary = sandbox_boundary();
     assert_eq!(
-        boundary.validate_sandbox_command(
-            "",
-            &[],
-            "workspace",
-            &sandbox_environment(),
-        ),
+        boundary.validate_sandbox_command("", &[], "workspace", &sandbox_environment(),),
         Err(SandboxLocalHostBoundaryError::ExecutableInvalid)
     );
     assert_eq!(
-        boundary.validate_sandbox_command(
-            "/bin/toybox",
-            &[],
-            "workspace",
-            &sandbox_environment(),
-        ),
+        boundary.validate_sandbox_command("/bin/toybox", &[], "workspace", &sandbox_environment(),),
         Err(SandboxLocalHostBoundaryError::ExecutableInvalid)
     );
 }
@@ -63,12 +53,7 @@ fn rejects_an_executable_that_is_not_a_bare_name() {
 fn rejects_an_executable_outside_the_allowlist() {
     let boundary = sandbox_boundary();
     assert_eq!(
-        boundary.validate_sandbox_command(
-            "curl",
-            &[],
-            "workspace",
-            &sandbox_environment(),
-        ),
+        boundary.validate_sandbox_command("curl", &[], "workspace", &sandbox_environment(),),
         Err(SandboxLocalHostBoundaryError::ExecutableDenied)
     );
 }

@@ -85,7 +85,8 @@
     "publicExports": [
       "command_admission",
       "command_executor",
-      "host_boundary"
+      "host_boundary",
+      "process_runner"
     ],
     "providedPorts": [],
     "requiredPorts": [],

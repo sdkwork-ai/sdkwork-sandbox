@@ -2,8 +2,20 @@
   "kind": "sdkwork.api.assembly",
   "schemaVersion": 1,
   "applicationCode": "sandbox",
-  "apiMode": "none",
+  "apiMode": "served",
   "packageName": "sdkwork-api-sandbox-assembly",
   "crateDir": "crates/sdkwork-api-sandbox-assembly",
-  "routeCrates": []
+  "routeCrates": [
+    {
+      "packageName": "sdkwork-routes-sandbox-internal-api",
+      "memberDir": "crates/sdkwork-routes-sandbox-internal-api",
+      "libName": "sdkwork_routes_sandbox_internal_api",
+      "surface": "internal-api",
+      "pathPrefix": null,
+      "mountOrder": 0,
+      "componentRef": "crates/sdkwork-routes-sandbox-internal-api/specs/component.spec.json",
+      "routeManifestRef": "crates/sdkwork-routes-sandbox-internal-api/src/http_route_manifest.rs#internal_route_manifest",
+      "sourceRef": "crates/sdkwork-routes-sandbox-internal-api/Cargo.toml"
+    }
+  ]
 }

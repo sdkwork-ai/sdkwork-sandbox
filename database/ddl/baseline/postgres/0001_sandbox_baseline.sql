@@ -152,3 +152,96 @@ CREATE TABLE IF NOT EXISTS sandbox_session_lease (
 CREATE INDEX IF NOT EXISTS idx_sandbox_session_lease_expiry
     ON sandbox_session_lease (tenant_id, sandbox_lease_expires_at, sandbox_session_id)
     WHERE sandbox_lease_owner_id IS NOT NULL;
+
+-- folded migration: migrations/postgres/0002_create_sandbox_instance_registry.up.sql
+-- sdkwork:migration
+-- id: 0002_create_sandbox_instance_registry
+-- engine: postgres
+-- module: sandbox
+-- purpose: Create the tenant- and owner-scoped Sandbox Instance registry the console provisions and manages
+-- reversible: false
+-- rollback: forward-fix
+-- transactional: true
+-- lock: new-tables-only
+-- lock_timeout: 2s
+-- statement_timeout: 30s
+-- rewrite: none
+-- replication_wal: bounded new-schema DDL with no backfill
+-- cancellation: cancel before transaction commit
+-- recovery: fix the migration forward or restore the empty pre-release schema
+-- contract_version: 0.1.0
+
+CREATE TABLE IF NOT EXISTS sandbox_instance (
+    tenant_id TEXT NOT NULL,
+    sandbox_instance_id TEXT NOT NULL,
+    sandbox_instance_owner_id TEXT NOT NULL,
+    sandbox_instance_name TEXT NOT NULL,
+    sandbox_instance_state TEXT NOT NULL,
+    sandbox_instance_profile TEXT NOT NULL,
+    sandbox_instance_base_image TEXT NOT NULL,
+    sandbox_instance_vcpu_count INTEGER NOT NULL,
+    sandbox_instance_memory_mb INTEGER NOT NULL,
+    sandbox_instance_disk_mb INTEGER NOT NULL,
+    sandbox_instance_required_capabilities JSONB NOT NULL DEFAULT '[]'::JSONB,
+    sandbox_instance_minimum_assurance TEXT NOT NULL,
+    sandbox_instance_auto_start BOOLEAN NOT NULL DEFAULT FALSE,
+    sandbox_instance_expires_at TIMESTAMPTZ,
+    sandbox_workspace_id TEXT,
+    sandbox_instance_last_failure TEXT,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_sandbox_instance PRIMARY KEY (tenant_id, sandbox_instance_id),
+    CONSTRAINT uk_sandbox_instance_owner_name UNIQUE (
+        tenant_id, sandbox_instance_owner_id, sandbox_instance_name
+    ),
+    CONSTRAINT ck_sandbox_instance_id CHECK (char_length(sandbox_instance_id) BETWEEN 1 AND 128),
+    CONSTRAINT ck_sandbox_instance_owner_id CHECK (char_length(sandbox_instance_owner_id) BETWEEN 1 AND 128),
+    CONSTRAINT ck_sandbox_instance_name CHECK (char_length(sandbox_instance_name) BETWEEN 1 AND 128),
+    CONSTRAINT ck_sandbox_instance_state CHECK (
+        sandbox_instance_state IN ('requested', 'active', 'suspended', 'terminated', 'failed')
+    ),
+    CONSTRAINT ck_sandbox_instance_profile CHECK (
+        sandbox_instance_profile IN ('standard', 'memory_optimized', 'compute_optimized')
+    ),
+    CONSTRAINT ck_sandbox_instance_base_image CHECK (char_length(sandbox_instance_base_image) BETWEEN 1 AND 256),
+    CONSTRAINT ck_sandbox_instance_vcpu_count CHECK (sandbox_instance_vcpu_count BETWEEN 1 AND 64),
+    CONSTRAINT ck_sandbox_instance_memory_mb CHECK (sandbox_instance_memory_mb BETWEEN 256 AND 262144),
+    CONSTRAINT ck_sandbox_instance_disk_mb CHECK (sandbox_instance_disk_mb BETWEEN 1024 AND 1048576),
+    CONSTRAINT ck_sandbox_instance_required_capabilities CHECK (
+        jsonb_typeof(sandbox_instance_required_capabilities) = 'array'
+        AND jsonb_array_length(sandbox_instance_required_capabilities) <= 32
+    ),
+    CONSTRAINT ck_sandbox_instance_minimum_assurance CHECK (
+        sandbox_instance_minimum_assurance IN ('host_user', 'container', 'user_space_kernel', 'micro_vm', 'dedicated_vm')
+    ),
+    CONSTRAINT ck_sandbox_instance_workspace_id CHECK (
+        sandbox_workspace_id IS NULL OR char_length(sandbox_workspace_id) BETWEEN 1 AND 128
+    ),
+    CONSTRAINT ck_sandbox_instance_last_failure CHECK (
+        sandbox_instance_last_failure IS NULL OR sandbox_instance_last_failure IN ('provider', 'readiness', 'cleanup')
+    ),
+    CONSTRAINT ck_sandbox_instance_version CHECK (version >= 0)
+);
+
+COMMENT ON TABLE sandbox_instance IS
+    'Tenant- and owner-scoped Sandbox Instance registry: the provisioning and ownership authority the console provisions, lists, updates and retires. Runtime lifecycle stays with sandbox_session; sandbox_workspace_id is an opaque authorized Agents mapping.';
+COMMENT ON COLUMN sandbox_instance.sandbox_instance_owner_id IS
+    'Authenticated subject that applied for and owns this instance; the console lists an owner''s instances under it.';
+COMMENT ON COLUMN sandbox_instance.sandbox_instance_state IS
+    'Provisioning state: requested -> active -> suspended|terminated; failed records the last unsuccessful transition.';
+COMMENT ON COLUMN sandbox_instance.version IS
+    'Optimistic concurrency version; every accepted mutation increments it.';
+
+CREATE INDEX IF NOT EXISTS idx_sandbox_instance_owner
+    ON sandbox_instance (tenant_id, sandbox_instance_owner_id, sandbox_instance_id);
+
+CREATE INDEX IF NOT EXISTS idx_sandbox_instance_state
+    ON sandbox_instance (tenant_id, sandbox_instance_state, sandbox_instance_id);
+
+-- Keyset (seek) listing on `(created_at, sandbox_instance_id)` descending
+-- (`PAGINATION_SPEC.md` sections 5-6, `DATABASE_SPEC.md` section 20.5): the
+-- tenant listing is the console's hottest read and the table is fast-growing,
+-- so every page must be one bounded index scan instead of OFFSET.
+CREATE INDEX IF NOT EXISTS idx_sandbox_instance_listing
+    ON sandbox_instance (tenant_id, created_at DESC, sandbox_instance_id DESC);

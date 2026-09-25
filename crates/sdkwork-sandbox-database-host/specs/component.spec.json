@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.component.spec",
+  "component": {
+    "name": "sdkwork-sandbox-database-host",
+    "displayName": "SDKWork Sandbox Database Host",
+    "version": "0.1.0",
+    "type": "rust-crate",
+    "root": "sdkwork-sandbox/crates/sdkwork-sandbox-database-host",
+    "domain": "intelligence",
+    "capability": "database-host",
+    "surfaceNotRequiredReason": "This database lifecycle host owns no HTTP, SDK, UI, or admin surface; it is consumed in-process by the Sandbox API assembly.",
+    "languages": ["rust"],
+    "generated": false,
+    "manifests": ["Cargo.toml"]
+  },
+  "canonicalSpecs": [
+    {
+      "file": "COMPONENT_SPEC.md",
+      "path": "../../../sdkwork-specs/COMPONENT_SPEC.md",
+      "purpose": "Component-local contract and discovery rules."
+    },
+    {
+      "file": "CODE_STYLE_SPEC.md",
+      "path": "../../../sdkwork-specs/CODE_STYLE_SPEC.md",
+      "purpose": "Authored source and public export rules."
+    },
+    {
+      "file": "NAMING_SPEC.md",
+      "path": "../../../sdkwork-specs/NAMING_SPEC.md",
+      "purpose": "Canonical component and capability naming."
+    },
+    {
+      "file": "RUST_CODE_SPEC.md",
+      "path": "../../../sdkwork-specs/RUST_CODE_SPEC.md",
+      "purpose": "Rust crate, error, and verification rules."
+    },
+    {
+      "file": "DATABASE_SPEC.md",
+      "path": "../../../sdkwork-specs/DATABASE_SPEC.md",
+      "purpose": "Sandbox relational schema and pool boundaries."
+    },
+    {
+      "file": "DATABASE_FRAMEWORK_SPEC.md",
+      "path": "../../../sdkwork-specs/DATABASE_FRAMEWORK_SPEC.md",
+      "purpose": "Lifecycle bootstrap, migration closure, and drift orchestration."
+    },
+    {
+      "file": "TEST_SPEC.md",
+      "path": "../../../sdkwork-specs/TEST_SPEC.md",
+      "purpose": "Database contract and lifecycle verification."
+    }
+  ],
+  "contracts": {
+    "layerRole": "runtime-service-host",
+    "publicExports": [
+      "sdkwork_sandbox_database_host::SandboxDatabaseHost",
+      "sdkwork_sandbox_database_host::bootstrap_sandbox_database",
+      "sdkwork_sandbox_database_host::bootstrap_sandbox_database_from_env"
+    ],
+    "providedPorts": [
+      {
+        "name": "sandboxDatabaseLifecycle",
+        "export": "sdkwork_sandbox_database_host::bootstrap_sandbox_database"
+      },
+      {
+        "name": "sandboxDatabaseEnvironmentBootstrap",
+        "export": "sdkwork_sandbox_database_host::bootstrap_sandbox_database_from_env"
+      }
+    ],
+    "requiredPorts": [],
+    "runtimeEntrypoints": ["src/lib.rs#bootstrap_sandbox_database_from_env"],
+    "routeManifest": null,
+    "sdkClients": [],
+    "sdkDependencies": [],
+    "permissionComposition": {},
+    "dependencyApiExports": [],
+    "dependencyApiSurfaces": [],
+    "events": [],
+    "configKeys": [
+      "SDKWORK_SANDBOX_APP_ROOT",
+      "SDKWORK_DATABASE_URL",
+      "SDKWORK_DATABASE_AUTO_MIGRATE",
+      "SDKWORK_DATABASE_SCHEMA"
+    ]
+  },
+  "integration": {
+    "authority": "The Sandbox database host owns lifecycle orchestration for the canonical sdkwork-sandbox database assets and does not own business persistence queries.",
+    "statePolicy": "Schema bootstrap and migrations complete before error-level drift validation passes, and a drift failure blocks the Sandbox runtime instead of surfacing per request."
+  },
+  "verification": {
+    "commands": [
+      "cargo test -p sdkwork-sandbox-database-host",
+      "pnpm run db:validate"
+    ]
+  }
+}

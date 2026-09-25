@@ -3,13 +3,10 @@
   "kind": "sdkwork.app.topology",
   "appId": "sdkwork-sandbox",
   "applicationCode": "sandbox",
-  "archetype": "application-client-root",
-  "archetypeNotes": "No owned HTTP public-ingress; nginx webserver profile remains disabled.",
-  "cloudPublicHosts": {
-    "platform.api-gateway": {
-      "httpHost": "api.sdkwork.com"
-    }
-  },
+  "archetype": "application-http-gateway",
+  "archetypeNotes": "Owns one HTTP public-ingress served by the standalone Sandbox gateway (standalone-only, SDKWORK_WEBSERVER_SPEC.md section 17.4). The Web Server edge composes the same API assembly in-process for the public domains, so this repository still ships no stock nginx profile of its own.",
+  "profileRoot": "etc/topology",
+  "profilePattern": "{deploymentProfile}.{environment}.env",
   "vocabulary": {
     "deploymentProfile": {
       "allowed": [
@@ -24,17 +21,30 @@
       ]
     }
   },
-  "profilePattern": "{deploymentProfile}.{environment}.env",
   "envKeys": {
+    "deploymentProfile": "SDKWORK_SANDBOX_DEPLOYMENT_PROFILE",
+    "environment": "SDKWORK_SANDBOX_ENVIRONMENT",
+    "profileId": "SDKWORK_SANDBOX_PROFILE_ID",
+    "standaloneGatewayBind": "SDKWORK_SANDBOX_APPLICATION_PUBLIC_INGRESS_BIND",
     "apiGatewayBaseUrl": "SDKWORK_SANDBOX_PLATFORM_API_GATEWAY_HTTP_URL",
     "clientApiGatewayBaseUrl": "VITE_SDKWORK_SANDBOX_PLATFORM_API_GATEWAY_HTTP_URL"
   },
   "defaults": {
     "productionProfileId": "cloud.production",
     "developmentProfileId": "standalone.development",
-    "desktopBuildProfileId": "cloud.production"
+    "desktopBuildProfileId": "cloud.production",
+    "gatewayBind": "127.0.0.1:18093"
   },
   "surfaces": {
+    "application.public-ingress": {
+      "connectivityPlane": "application",
+      "protocols": [
+        "http"
+      ],
+      "bindEnv": "SDKWORK_SANDBOX_APPLICATION_PUBLIC_INGRESS_BIND",
+      "httpUrlEnv": "SDKWORK_SANDBOX_APPLICATION_PUBLIC_HTTP_URL",
+      "clientHttpEnv": "VITE_SDKWORK_SANDBOX_APPLICATION_PUBLIC_HTTP_URL"
+    },
     "platform.api-gateway": {
       "connectivityPlane": "platform",
       "protocols": [
@@ -44,7 +54,17 @@
       "clientHttpEnv": "VITE_SDKWORK_SANDBOX_PLATFORM_API_GATEWAY_HTTP_URL"
     }
   },
-  "components": {},
+  "cloudPublicHosts": {
+    "platform.api-gateway": {
+      "httpHost": "api.sdkwork.com"
+    }
+  },
+  "components": {
+    "applicationServer": {
+      "crate": "sdkwork-api-sandbox-standalone-gateway",
+      "binary": "sdkwork-api-sandbox-standalone-gateway"
+    }
+  },
   "profileFiles": {
     "standalone.development": "etc/topology/standalone.development.env",
     "standalone.production": "etc/topology/standalone.production.env",
@@ -54,7 +74,18 @@
   "orchestration": {
     "profiles": {
       "standalone.development": {
-        "processes": []
+        "processes": [
+          {
+            "id": "application.public-ingress",
+            "crate": "sdkwork-api-sandbox-standalone-gateway",
+            "binary": "sdkwork-api-sandbox-standalone-gateway",
+            "required": true,
+            "role": "api-standalone-gateway"
+          }
+        ],
+        "healthSurfaces": [
+          "application.public-ingress"
+        ]
       },
       "cloud.development": {
         "processes": [],

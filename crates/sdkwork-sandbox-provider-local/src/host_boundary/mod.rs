@@ -171,7 +171,10 @@ impl SandboxLocalHostBoundary {
         ) {
             return Err(SandboxLocalHostBoundaryError::ExecutableInvalid);
         }
-        if !self.sandbox_allowed_executables.contains(sandbox_executable) {
+        if !self
+            .sandbox_allowed_executables
+            .contains(sandbox_executable)
+        {
             return Err(SandboxLocalHostBoundaryError::ExecutableDenied);
         }
 
@@ -208,7 +211,10 @@ impl SandboxLocalHostBoundary {
             if is_sensitive_sandbox_environment_name(sandbox_environment_name) {
                 return Err(SandboxLocalHostBoundaryError::EnvironmentSensitive);
             }
-            if !self.sandbox_allowed_environment.contains(*sandbox_environment_name) {
+            if !self
+                .sandbox_allowed_environment
+                .contains(*sandbox_environment_name)
+            {
                 return Err(SandboxLocalHostBoundaryError::EnvironmentDenied);
             }
             if contains_forbidden_sandbox_string_byte(sandbox_environment_value)
@@ -246,7 +252,10 @@ fn is_valid_sandbox_executable(
         })
 }
 
-fn is_valid_sandbox_logical_relative_path(sandbox_path: &str, sandbox_max_path_bytes: usize) -> bool {
+fn is_valid_sandbox_logical_relative_path(
+    sandbox_path: &str,
+    sandbox_max_path_bytes: usize,
+) -> bool {
     if sandbox_path.is_empty()
         || sandbox_path.len() > sandbox_max_path_bytes
         || sandbox_path.as_bytes().contains(&0)
@@ -327,6 +336,14 @@ fn is_protected_sandbox_environment_name(sandbox_environment_name: &str) -> bool
             | "USERPROFILE"
             | "TMP"
             | "TEMP"
+            // Dynamic-loader injection vectors: a request that could plant
+            // code into every spawned child must never pass, on any platform
+            // the runner may later support.
+            | "LD_PRELOAD"
+            | "LD_LIBRARY_PATH"
+            | "DYLD_INSERT_LIBRARIES"
+            | "DYLD_LIBRARY_PATH"
+            | "DYLD_FRAMEWORK_PATH"
     )
 }
 
@@ -347,6 +364,10 @@ fn is_sensitive_sandbox_environment_name(sandbox_environment_name: &str) -> bool
                     | "AZURE"
                     | "GOOGLE"
                     | "PROXY"
+                    // `API_KEY`/`GPG_KEY`-style names carry secrets exactly
+                    // like tokens do; the segment filter is the last line of
+                    // defense if an allowlist is mis-composed.
+                    | "KEY"
             )
         })
 }

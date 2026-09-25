@@ -13,10 +13,12 @@ async-trait.workspace = true
 sdkwork-sandbox-provider-spi.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 
 [lib]
+name = "sdkwork_intelligence_sandbox_service"
 path = "src/lib.rs"
 
 [lints]

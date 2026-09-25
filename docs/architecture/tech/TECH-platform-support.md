@@ -100,17 +100,28 @@ node tools/testing/sandbox-host-capability-evidence.mjs --target wsl:Ubuntu-22.0
 声明表与代码双向一致，且声明总数必须与 §表末的计数一致。测试代码同样计入，因为平台条件的**测试**
 也是一种平台声明。
 
-当前声明：0
+当前声明：10
 
 | 文件 | 标记 | 平台 | 理由 |
 | --- | --- | --- | --- |
-| （无） | | | |
+| `crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs` | `cfg-unix` | `linux-x64-wsl2` | 独立监听器的优雅停机：容器 stop 信号 SIGTERM 是 POSIX 进程语义（同一分支亦覆盖 macOS/Linux 原生）；非 Unix 平台退化为仅 Ctrl+C。属传输面运维语义，不是沙箱隔离能力 |
+| `crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs` | `cfg-unix` | `linux-x64-wsl2` | `shutdown_signal` 内第二处 `#[cfg(unix)]`（signal handler 安装），理由同上 |
+| `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `tokio-process` | `windows-x64` | Local Provider 已授权命令执行切片的真实进程派生（`tokio::process`，全部平台编译）；当前开发实测在 windows-x64。属 Provider 执行面，控制面代码不含进程创建 |
+| `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-windows` | `windows-x64` | 裸可执行名解析在 Windows 先尝试 `<name>.exe` 候选（provider-owned 根目录解析，请求环境不可影响解析） |
+| `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-windows` | `linux-x64-wsl2` | 同一解析函数的 `#[cfg(not(windows))]` 分支：仅尝试裸名本身 |
+| `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-unix` | `linux-x64-wsl2` | 子进程 `process_group(0)`：Unix 语义下子进程独立进程组，超时/取消的 kill 不波及 runner 自身进程组 |
+| `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-macro` | `windows-x64` | runner 测试以 `cfg!(windows)` 选平台可用解析根（System32 vs /usr/bin、/bin）；同一行在非 Windows 编译为另一分支 |
+| `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-macro` | `windows-x64` | runner 测试选平台可执行名（`cmd` vs `echo`），同上双态 |
+| `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-macro` | `windows-x64` | runner 回显测试的平台参数（`/c echo ok` vs `ok`），同上双态 |
+| `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-macro` | `windows-x64` | 硬超时测试的长任务选择（`ping -n 10` vs `sleep 10`），同上双态 |
 
-**为什么现在是空的，以及它为什么必须保持为空或被显式声明。** 控制面之所以可移植，是因为它把
+**这张表为什么必须与代码双向一致。** 控制面之所以可移植，是因为它把
 所有平台相关工作都留给 Provider SPI 背后的适配器，服务层只做编排。因此：
 新增任何平台条件代码前，必须先确定它属于"控制面"还是"某个 Provider 实现"。属于控制面的平台条件代码
 是架构缺陷，应改为 SPI 能力位（`RuntimeCapability` / `IsolationAssurance`）；属于具体 Provider 的，
-应在该 Provider 的 crate 内落地并在此登记。
+应在该 Provider 的 crate 内落地并在此登记。当前声明的 10 项全部属于两类豁免：独立网关监听器的
+停机信号（传输面运维语义，不是沙箱隔离能力），以及 Local Provider 已授权命令执行切片的进程派生
+（Provider 执行面）；没有任何平台条件代码出现在 service、repository 或 routes crate 中。
 
 性能测量所需的 OS 采样也被刻意留在仓库外
 （[`tools/bench-sandbox-lifecycle.mjs`](../../../tools/bench-sandbox-lifecycle.mjs) 的 Node 侧），

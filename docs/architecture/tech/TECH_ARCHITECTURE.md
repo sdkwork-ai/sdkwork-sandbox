@@ -109,7 +109,7 @@ flowchart TB
 
 ## 3. 系统边界与模块 (System Boundaries And Modules)
 
-当前已物化七个 Rust Crate，其中 Provider SPI、Lifecycle Service、Memory Repository 与 PostgreSQL Repository 已提供候选实现；Local 只有 Fake Host Boundary，Service Host 与 CLI 未激活。Command、Firecracker、Broker、Artifact、Workspace Device、Network/Resource、Scheduling/Capacity、Node Trust、Quota Persistence、Runtime Pool、Lifecycle Hot State、Workspace Runtime Transaction 与 Standalone Data Residency 均只有独立 REQ/ADR/机器契约，没有获批的公共 Port/Component、Storage/KMS、Node Agent、数据库 Schema 或 Runtime。REQ-2026-0021 只在服务层组合运行事务积木；REQ-2026-0022 只组合 Local Evidence，不成为新的数据权威。Agents 保留业务/Revision 权威，Workspace/Drive 保留 Bytes 权威，Sandbox 只拥有 Transaction、Lifecycle 与清理事实。详见 [TECH-modules-and-contracts.md](TECH-modules-and-contracts.md)。输入 PRD 的 `Runtime / Session / Workspace / Sandbox / Provider / Scheduler / Pool / Placement / Quota` 术语保持不变；实现标识使用以下唯一映射：
+当前已物化十一个 Rust Crate：Provider SPI、Lifecycle Service、Memory Repository、PostgreSQL Repository、Local Provider（含已授权的真实 tokio 命令执行切片）、internal-api Route（`sdkwork-routes-sandbox-internal-api`，ingress-token 门禁）、API Assembly、Standalone Gateway 与 Database Host；Service Host 与 CLI 仍是显式 Phase 0 边界，未激活。Command、Firecracker、Broker、Artifact、Workspace Device、Network/Resource、Scheduling/Capacity、Node Trust、Quota Persistence、Runtime Pool、Lifecycle Hot State、Workspace Runtime Transaction 与 Standalone Data Residency 均只有独立 REQ/ADR/机器契约，没有获批的公共 Port/Component、Storage/KMS、Node Agent、数据库 Schema 或 Runtime。REQ-2026-0021 只在服务层组合运行事务积木；REQ-2026-0022 只组合 Local Evidence，不成为新的数据权威。Agents 保留业务/Revision 权威，Workspace/Drive 保留 Bytes 权威，Sandbox 只拥有 Transaction、Lifecycle 与清理事实。详见 [TECH-modules-and-contracts.md](TECH-modules-and-contracts.md)。输入 PRD 的 `Runtime / Session / Workspace / Sandbox / Provider / Scheduler / Pool / Placement / Quota` 术语保持不变；实现标识使用以下唯一映射：
 
 | 架构关注点 | Canonical Type/Port | Canonical Rust 字段/变量 | 预留 Wire 映射 |
 | --- | --- | --- | --- |
@@ -145,7 +145,7 @@ Lease 竞争和丢失分别使用 `SandboxLifecycleError::LeaseUnavailable` 与 
 
 ## 5. API、SDK 与数据所有权 (API, SDK, And Data Ownership)
 
-- 当前候选实现不包含 HTTP API、RPC Service、Event Runtime、Exporter、Outbox Worker、Migration 或 SDK；`apis/async/` 仅提供 REQ-2026-0010 的 draft Event/Outbox/Audit/Observability Contract。
+- 候选实现包含一个 internal-api HTTP 面（`sdkwork-routes-sandbox-internal-api`：`/internal/v3/api/intelligence/sandbox/sandbox_instances` CRUD，ingress-token 门禁、`data.items`/`data.pageInfo` cursor 分页、int64-as-string），由 `sdkwork-api-sandbox-assembly` 组装、`sdkwork-api-sandbox-standalone-gateway` 承载；仍不包含 RPC Service、Event Runtime、Exporter、Outbox Worker、Migration Runtime 或生成 SDK；`apis/async/` 仅提供 REQ-2026-0010 的 draft Event/Outbox/Audit/Observability Contract。
 - 第一套 Application-local HTTP Control Surface 若获批，必须是 `internal-api`，不能使用 `backend-api` 或自定义 `/api/*` Prefix。
 - Authoritative Input 位于 `apis/internal-api/intelligence/`；Materialized Authority 与 Generated Output 位于 `sdks/sdkwork-intelligence-internal-sdk/`。
 - Rust Route 使用 `sdkwork-routes-sandbox-internal-api`；Host-neutral Composition 使用 `sdkwork-api-sandbox-assembly`；Standalone Listener 使用 `sdkwork-api-sandbox-standalone-gateway`。

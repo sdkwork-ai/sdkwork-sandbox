@@ -9,6 +9,12 @@ use crate::{SandboxLifecycleError, SandboxLifecycleResult};
 
 pub(crate) const MAX_SANDBOX_SESSION_VERSION: u64 = i64::MAX as u64;
 
+/// Single source of the session operation-history bound. Writes fail closed at
+/// the bound instead of growing a history the authoritative store refuses to
+/// load; the PostgreSQL adapter reuses this constant for its read bound. A
+/// dedicated retention policy is owned by REQ-2026-0020.
+pub const MAX_SANDBOX_SESSION_OPERATIONS: usize = 10_000;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SandboxSessionState {
     Created,
@@ -293,16 +299,30 @@ impl SandboxSession {
         Ok(Some(sandbox_operation.sandbox_operation_outcome))
     }
 
+    /// Appends one in-progress operation to the session's ledger.
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxLifecycleError::InvariantViolation` when the ledger is
+    /// already at the retention bound: writes fail closed instead of growing
+    /// the history without limit, matching the repository read bound that
+    /// refuses to load a session above it.
     pub(crate) fn begin_sandbox_operation(
         &mut self,
         sandbox_operation_id: OperationId,
         sandbox_operation_kind: SandboxSessionOperationKind,
-    ) {
+    ) -> SandboxLifecycleResult<()> {
+        if self.sandbox_operations.len() >= MAX_SANDBOX_SESSION_OPERATIONS {
+            return Err(SandboxLifecycleError::InvariantViolation(
+                "sandbox operation ledger is at the retention bound",
+            ));
+        }
         self.sandbox_operations.push(SandboxSessionOperation {
             sandbox_operation_id,
             sandbox_operation_kind,
             sandbox_operation_outcome: SandboxOperationOutcome::InProgress,
         });
+        Ok(())
     }
 
     pub(crate) fn complete_sandbox_operation(&mut self, sandbox_operation_id: &OperationId) {
@@ -521,10 +541,12 @@ mod tests {
     fn sandbox_session_replay_distinguishes_matching_conflicting_and_missing_operations() {
         let mut sandbox_session = sandbox_session_in_state(SandboxSessionState::Created);
         let sandbox_start_operation_id = OperationId::generate();
-        sandbox_session.begin_sandbox_operation(
-            sandbox_start_operation_id.clone(),
-            SandboxSessionOperationKind::Start,
-        );
+        sandbox_session
+            .begin_sandbox_operation(
+                sandbox_start_operation_id.clone(),
+                SandboxSessionOperationKind::Start,
+            )
+            .expect("first begin below the retention bound");
 
         assert!(matches!(
             sandbox_session.replay_sandbox_operation(

@@ -18,9 +18,9 @@ pub use error::{
     SandboxProviderError, SandboxProviderErrorKind, SandboxProviderOperation, SandboxProviderResult,
 };
 pub use identity::{
-    OperationId, SandboxFencingToken, SandboxId, SandboxIdentifierError, SandboxLeaseOwnerId,
-    SandboxProviderAllocationRef, SandboxProviderId, SandboxProviderKind, SandboxRuntimeBindingId,
-    SandboxSessionId, SandboxWorkspaceId, TenantId,
+    OperationId, SandboxFencingToken, SandboxId, SandboxIdentifierError, SandboxInstanceId,
+    SandboxInstanceOwnerId, SandboxLeaseOwnerId, SandboxProviderAllocationRef, SandboxProviderId,
+    SandboxProviderKind, SandboxRuntimeBindingId, SandboxSessionId, SandboxWorkspaceId, TenantId,
 };
 pub use provider::{
     SandboxProvider, SandboxProviderAllocation, SandboxProviderAllocationRequest,

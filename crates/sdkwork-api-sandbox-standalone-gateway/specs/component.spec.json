@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.component.spec",
+  "component": {
+    "name": "sdkwork-api-sandbox-standalone-gateway",
+    "displayName": "SDKWork Sandbox Standalone API Gateway",
+    "version": "0.1.0",
+    "type": "rust-api-standalone-gateway",
+    "root": "sdkwork-sandbox/crates/sdkwork-api-sandbox-standalone-gateway",
+    "domain": "intelligence",
+    "capability": "api-gateway",
+    "surface": "gateway-api",
+    "languages": ["rust"],
+    "generated": false,
+    "manifests": ["Cargo.toml"]
+  },
+  "canonicalSpecs": [
+    {
+      "file": "API_ASSEMBLY_SPEC.md",
+      "path": "../../../sdkwork-specs/API_ASSEMBLY_SPEC.md"
+    },
+    {
+      "file": "APPLICATION_GATEWAY_SPEC.md",
+      "path": "../../../sdkwork-specs/APPLICATION_GATEWAY_SPEC.md"
+    },
+    {
+      "file": "WEB_FRAMEWORK_SPEC.md",
+      "path": "../../../sdkwork-specs/WEB_FRAMEWORK_SPEC.md"
+    },
+    {
+      "file": "RUST_CODE_SPEC.md",
+      "path": "../../../sdkwork-specs/RUST_CODE_SPEC.md",
+      "purpose": "Rust crate rules for the standalone listener."
+    },
+    {
+      "file": "NAMING_SPEC.md",
+      "path": "../../../sdkwork-specs/NAMING_SPEC.md",
+      "purpose": "Canonical SDKWork naming rules."
+    },
+    {
+      "file": "CODE_STYLE_SPEC.md",
+      "path": "../../../sdkwork-specs/CODE_STYLE_SPEC.md",
+      "purpose": "Authored source structure rules."
+    },
+    {
+      "file": "TEST_SPEC.md",
+      "path": "../../../sdkwork-specs/TEST_SPEC.md"
+    }
+  ],
+  "contracts": {
+    "layerRole": "runtime-gateway",
+    "publicExports": [],
+    "providedPorts": [],
+    "requiredPorts": [
+      {
+        "name": "sandboxApiAssembly",
+        "export": "sdkwork_api_sandbox_assembly::assemble_api_router",
+        "provider": "sdkwork-api-sandbox-assembly"
+      }
+    ],
+    "runtimeEntrypoints": ["src/bin/app_main.rs"],
+    "routeManifest": null,
+    "sdkClients": [],
+    "sdkDependencies": [],
+    "permissionComposition": {},
+    "dependencyApiExports": [],
+    "dependencyApiSurfaces": [],
+    "events": [],
+    "configKeys": [
+      "SDKWORK_SANDBOX_APPLICATION_PUBLIC_INGRESS_BIND",
+      "SDKWORK_SANDBOX_DATABASE_URL",
+      "SDKWORK_ENVIRONMENT",
+      "SDKWORK_CORS_ALLOWED_ORIGINS"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "cargo check -p sdkwork-api-sandbox-standalone-gateway",
+      "cargo test -p sdkwork-api-sandbox-standalone-gateway"
+    ]
+  }
+}

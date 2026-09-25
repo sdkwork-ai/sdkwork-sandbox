@@ -9,6 +9,7 @@ authors.workspace = true
 repository.workspace = true
 
 [lib]
+name = "sdkwork_sandbox_service_host"
 path = "src/lib.rs"
 
 [lints]

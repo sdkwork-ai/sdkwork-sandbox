@@ -4316,11 +4316,11 @@
     ],
     "rustWorkspace": {
       "command": "cargo test --workspace",
-      "passed": 97,
+      "passed": 123,
       "failed": 0,
       "ignored": 1,
-      "measuredAt": "2026-09-23T00:00:00Z",
-      "note": "The Rust side cannot be recomputed from source the way the contract suite can: the number only exists after a build and a run, so this is a measurement recorded next to the command that produced it, in the same sense as the source sha256 values. `cargo test --workspace` was run twice while writing this record and reported 78 passed / 0 failed / 1 ignored both times; the ignored test is the one that declares it needs an external PostgreSQL."
+      "measuredAt": "2026-09-24T16:40:00Z",
+      "note": "The Rust side cannot be recomputed from source the way the contract suite can: the number only exists after a build and a run, so this is a measurement recorded next to the command that produced it, in the same sense as the source sha256 values. `cargo test --workspace` reported 123 passed / 0 failed / 1 ignored on 2026-09-24; the reading before that was 97 passed, then 73/74 while the Sandbox Instance registry slice was being written (each earlier figure was true for its own tree). The ignored test is the one that declares it needs an external PostgreSQL."
     },
     "note": "The contract suite's declared size, recomputed from the files. The audit document quotes these numbers in its test-coverage section, so a stale reading there is a documentation falsehood: this record fails the gate when either side moves without the other. `rustWorkspace` is a measurement, not a recomputation, and is compared against the document rather than the source."
   },

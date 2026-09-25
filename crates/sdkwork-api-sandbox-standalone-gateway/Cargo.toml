@@ -1,0 +1,26 @@
+[package]
+rust-version.workspace = true
+name = "sdkwork-api-sandbox-standalone-gateway"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+name = "sdkwork_api_sandbox_standalone_gateway"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sdkwork-api-sandbox-standalone-gateway"
+path = "src/bin/app_main.rs"
+
+[dependencies]
+sdkwork-api-sandbox-assembly.workspace = true
+sdkwork-iam-web-adapter.workspace = true
+sdkwork-web-bootstrap.workspace = true
+axum.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

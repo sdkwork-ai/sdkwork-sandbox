@@ -36,6 +36,11 @@ tables:
     lifecycle_status: active
     owner: sdkwork-runtime-platform
     description: Database-clock Session recovery lease and monotonically increasing fencing token.
+  - name: sandbox_instance
+    profile: tenant_entity
+    lifecycle_status: active
+    owner: sdkwork-runtime-platform
+    description: Tenant- and owner-scoped provisioning and ownership authority for a console-provisioned Sandbox Instance; runtime lifecycle stays with sandbox_session.
 external_references:
   - module: sdkwork-agents
     columns: [sandbox_workspace_id, sandbox_session_id]

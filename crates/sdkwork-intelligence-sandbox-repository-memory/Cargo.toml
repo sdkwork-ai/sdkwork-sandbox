@@ -16,6 +16,7 @@ sdkwork-utils-rust.workspace = true
 tokio.workspace = true
 
 [lib]
+name = "sdkwork_intelligence_sandbox_repository_memory"
 path = "src/lib.rs"
 
 [lints]

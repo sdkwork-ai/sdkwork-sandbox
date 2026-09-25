@@ -8,12 +8,13 @@
       "domain": "intelligence",
       "capability": "sandbox",
       "sub_namespace": "sandbox",
-      "description": "Sandbox-owned Session lifecycle, Operation, Runtime Binding, encrypted Provider recovery metadata, and Lease/Fencing state.",
+      "description": "Sandbox-owned Session lifecycle, Operation, Runtime Binding, encrypted Provider recovery metadata, Lease/Fencing state, and the console-facing Sandbox Instance registry.",
       "table_examples": [
         "sandbox_session",
         "sandbox_session_operation",
         "sandbox_runtime_binding",
-        "sandbox_session_lease"
+        "sandbox_session_lease",
+        "sandbox_instance"
       ],
       "forbidden_aliases": [
         "app_",

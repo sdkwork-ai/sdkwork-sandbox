@@ -1284,8 +1284,12 @@ test("the repository's own coverage table accounts for every test the workspace 
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  assert.equal(assessment.workspaceTests, 98);
-  assert.equal(assessment.coveredTests, 98);
+  // 2026-09-24: 124 declared tests (123 runnable + the external-PostgreSQL
+  // ignored one) after the internal-api rename, cursor pagination, and the
+  // authorized real command-execution slice landed; the evidence table in the
+  // audit document accounts for each of them.
+  assert.equal(assessment.workspaceTests, 124);
+  assert.equal(assessment.coveredTests, 124);
 
   const discovered = discoverWorkspaceTests(repoRoot);
   let runnable = 0;
@@ -1296,9 +1300,9 @@ test("the repository's own coverage table accounts for every test the workspace 
       else runnable += 1;
     }
   }
-  // The two readings the audit quotes have to agree with the code: 90 declared, 89 of them
+  // The two readings the audit quotes have to agree with the code: 124 declared, 123 of them
   // runnable because one declares it needs an external PostgreSQL.
-  assert.equal(runnable + ignored, 98);
+  assert.equal(runnable + ignored, 124);
   assert.equal(ignored, 1);
 });
 
@@ -1534,16 +1538,17 @@ test("the repository's own shape table resolves and its sizes recompute", () => 
   const shape = parseShapeEvidence(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
   assert.ok(shape?.header, "section 1.2 must carry a table");
   assert.equal(shape.header.join("|"), SHAPE_COLUMNS.join("|"));
-  assert.equal(shape.rows.length, 11);
+  assert.equal(shape.rows.length, 13);
 
   const assessment = assessE2bParityMatrix({ repoRoot });
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  assert.equal(assessment.shapeRows, 11);
-  // Ten lines in the real table point the reader at a numbered line (the Local Provider row cites
-  // its two production modules and a test module; the Command Executor row cites its port and its
-  // fingerprint function). Each is resolved into its file and checked to still carry the construct
-  // the row names.
-  assert.equal(assessment.shapeAnchors, 11);
+  assert.equal(assessment.shapeRows, 13);
+  // Twelve lines in the real table point the reader at a numbered line (the Local Provider row
+  // cites its production modules including the authorized process runner; the Command Executor
+  // row cites its port and its fingerprint function; the Database Host row cites its lifecycle
+  // orchestrator and its module id). Each is resolved into its file and checked to still carry
+  // the construct the row names.
+  assert.equal(assessment.shapeAnchors, 14);
 });
 
 test("a module count that disagrees with the crate's sources is rejected", () => {
@@ -1699,7 +1704,7 @@ test("a missing shape section is reported rather than thrown", () => {
 
 test("parseShapeEvidence is total on the real document and on one without the section", () => {
   const real = readFileSync(path.join(repoRoot, PARITY_DOC), "utf8");
-  assert.equal(parseShapeEvidence(real).rows.length, 11);
+  assert.equal(parseShapeEvidence(real).rows.length, 13);
   assert.equal(parseShapeEvidence("# nothing to see\n"), null);
 });
 
