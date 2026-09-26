@@ -704,6 +704,65 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn list_cursor_pages_across_same_second_fraction_boundaries_without_loss() {
+        let store = Arc::new(InMemorySandboxInstances::default());
+        let service = SandboxInstanceService::new(store.clone());
+        // All three rows share one wall-clock second and differ only in their
+        // microsecond fraction — the exact shape the PostgreSQL adapter's
+        // `to_char` projection re-emits. A cursor that truncates the fraction
+        // would move the seek boundary earlier and silently skip rows on the
+        // next page, so every cursor crossing here must carry the fraction.
+        let fractions = [
+            ("fraction-early", "2026-09-24T00:00:00.100000Z"),
+            ("fraction-middle", "2026-09-24T00:00:00.400000Z"),
+            ("fraction-late", "2026-09-24T00:00:00.900000Z"),
+        ];
+        for (name, created_at) in fractions {
+            let instance = SandboxInstance::request(create_command(name))
+                .unwrap_or_else(|error| panic!("request: {error}"))
+                .with_persistence_timestamps(created_at.to_owned(), created_at.to_owned());
+            store.rows.lock().expect("instance store lock").insert(
+                (
+                    instance.tenant_id().as_str().to_owned(),
+                    instance.sandbox_instance_id().as_str().to_owned(),
+                ),
+                instance,
+            );
+        }
+
+        let mut visited = Vec::new();
+        let mut cursor = None;
+        loop {
+            let page = service
+                .list(&tenant(), None, None, cursor.as_ref(), 2)
+                .await
+                .unwrap_or_else(|error| panic!("list: {error}"));
+            for item in &page.items {
+                visited.push(item.created_at().expect("stored created_at").to_owned());
+            }
+            if let Some(next_cursor) = page.next_cursor {
+                assert!(
+                    next_cursor.created_at().as_bytes()[19] == b'.',
+                    "a same-second boundary cursor must carry the fraction, got {}",
+                    next_cursor.created_at()
+                );
+                cursor = Some(next_cursor);
+            } else {
+                break;
+            }
+        }
+        assert_eq!(
+            vec![
+                "2026-09-24T00:00:00.900000Z",
+                "2026-09-24T00:00:00.400000Z",
+                "2026-09-24T00:00:00.100000Z",
+            ],
+            visited,
+            "same-second rows must be visited exactly once, newest fraction first"
+        );
+    }
+
     #[test]
     fn cursor_rejects_a_timestamp_outside_the_stored_shape() {
         let cursor = SandboxInstanceListCursor::new(

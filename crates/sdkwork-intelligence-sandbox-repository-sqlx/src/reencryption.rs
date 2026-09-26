@@ -1,3 +1,16 @@
+//! Tenant-scoped re-encryption sweep for stored provider allocation
+//! references (REQ-2026-0006).
+//!
+//! One [`SandboxProviderAllocationReencryptionPage`] re-encrypts one bounded
+//! keyset window of `sandbox_runtime_binding` rows onto the key source's
+//! current version and reports `sandbox_conflict_count` for rows whose full
+//! old-ciphertext CAS failed. The sweep is intentionally single-pass and
+//! forward-only: a conflicted row is never retried inside the page that
+//! detected it, so an orchestration loop must keep re-running pages from the
+//! returned cursor — and restart the whole scan when a page reports a nonzero
+//! conflict count — until one full pass reports zero conflicts before any old
+//! key is revoked.
+
 use sdkwork_intelligence_sandbox_service::{
     SandboxProtectedProviderAllocationRef, SandboxProviderAllocationProtectionContext,
     SandboxProviderAllocationProtectionVersion, SandboxSessionRepositoryError,

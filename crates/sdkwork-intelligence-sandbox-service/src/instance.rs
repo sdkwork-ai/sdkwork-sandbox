@@ -685,36 +685,71 @@ fn validate_capabilities(
     Ok(())
 }
 
-/// Accepts only the exact `YYYY-MM-DDTHH:MM:SS(.fff)?Z` RFC 3339 UTC shape the
-/// column and the wire contract both use, so an expiry can never be persisted
-/// in a format the read path cannot re-emit.
+/// The timestamp grammar every stored RFC 3339 UTC value obeys: uppercase
+/// `Z` spelling, no numeric offset, and at most six fraction digits, so a
+/// value survives the PostgreSQL `TIMESTAMPTZ` cast and the read projection's
+/// six-digit `to_char` re-emission without drifting from its stored instant.
+///
+/// Shape is checked byte by byte; semantic validity (a real calendar date,
+/// `hour <= 23`, `minute <= 59`, `second <= 59` — leap second `:60` is
+/// rejected because the store cast cannot represent it) is delegated to
+/// `sdkwork_utils_rust::datetime::parse_datetime`. `2026-99-99T99:99:99Z` is
+/// therefore a validation error at this boundary, never a database cast
+/// failure.
 fn validate_expires_at(expires_at: &str) -> SandboxInstanceResult<()> {
+    fn invalid() -> SandboxInstanceError {
+        SandboxInstanceError::Validation {
+            field: "sandboxInstanceExpiresAt",
+            detail: "must be an RFC 3339 UTC timestamp",
+        }
+    }
     let bytes = expires_at.as_bytes();
-    let shape_ok = bytes.len() == 20 || bytes.len() == 24;
-    let separators_ok = shape_ok
-        && bytes[4] == b'-'
+    // Fixed positions: `YYYY-MM-DDTHH:MM:SS` occupies indices 0..19; the
+    // grammar is either that followed directly by `Z` (20 bytes) or by `.`
+    // plus one to six fraction digits and then `Z` (22..=27 bytes).
+    let fraction_digits = match bytes.len() {
+        20 => 0_usize,
+        length @ 22..=27 => {
+            if bytes[19] != b'.' {
+                return Err(invalid());
+            }
+            length - 21
+        }
+        _ => return Err(invalid()),
+    };
+    let separators_ok = bytes[4] == b'-'
         && bytes[7] == b'-'
         && bytes[10] == b'T'
         && bytes[13] == b':'
         && bytes[16] == b':'
         && *bytes.last().unwrap_or(&b' ') == b'Z';
-    let digits_ok = shape_ok
-        && [0usize, 1, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18]
-            .iter()
-            .all(|index| bytes.get(*index).is_some_and(u8::is_ascii_digit));
-    // A fractional form must carry exactly three fraction digits, so a
-    // truncated or malformed fraction cannot be persisted and re-emitted.
-    let fraction_ok = bytes.len() == 20
-        || (bytes.len() == 24
-            && bytes[19] == b'.'
-            && [20usize, 21, 22]
-                .iter()
-                .all(|index| bytes.get(*index).is_some_and(u8::is_ascii_digit)));
-    if !separators_ok || !digits_ok || !fraction_ok {
-        return Err(SandboxInstanceError::Validation {
-            field: "sandboxInstanceExpiresAt",
-            detail: "must be an RFC 3339 UTC timestamp",
-        });
+    let mut digits_ok = [0usize, 1, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18]
+        .iter()
+        .all(|index| bytes.get(*index).is_some_and(u8::is_ascii_digit));
+    for fraction_index in 20..20 + fraction_digits {
+        digits_ok &= bytes.get(fraction_index).is_some_and(u8::is_ascii_digit);
+    }
+    if !separators_ok || !digits_ok {
+        return Err(invalid());
+    }
+    let two_digit_field = |index: usize| -> Option<u32> {
+        let tens = u32::from(bytes[index] - b'0');
+        let ones = u32::from(bytes[index + 1] - b'0');
+        (tens <= 9 && ones <= 9).then_some(tens * 10 + ones)
+    };
+    let calendar_shape_ok = two_digit_field(5).is_some_and(|month| (1..=12).contains(&month))
+        && two_digit_field(8).is_some_and(|day| (1..=31).contains(&day))
+        && two_digit_field(11).is_some_and(|hour| hour <= 23)
+        && two_digit_field(14).is_some_and(|minute| minute <= 59)
+        && two_digit_field(17).is_some_and(|second| second <= 59);
+    if !calendar_shape_ok {
+        return Err(invalid());
+    }
+    // The grammar above is deliberately stricter than RFC 3339 (no offsets, no
+    // lowercase spellings); the parse pass adds what the grammar cannot carry:
+    // real month lengths, leap years, and day-of-month bounds.
+    if sdkwork_utils_rust::datetime::parse_datetime(expires_at, None).is_none() {
+        return Err(invalid());
     }
     Ok(())
 }
@@ -724,8 +759,9 @@ fn validate_expires_at(expires_at: &str) -> SandboxInstanceResult<()> {
 /// The listing sorts by `(created_at, sandbox_instance_id)` descending and the
 /// cursor carries the last returned row's key, so the next page starts strictly
 /// after it. `created_at` is the storage-assigned RFC 3339 UTC string the read
-/// path re-emits, validated here with the same shape rule the column enforces,
-/// so a hand-forged cursor cannot smuggle a format the database cannot cast.
+/// path re-emits, validated here with the same grammar and semantic rule the
+/// stored column obeys, so a hand-forged cursor can neither smuggle a format
+/// the database cannot cast nor shift the seek boundary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SandboxInstanceListCursor {
     created_at: String,
@@ -823,4 +859,55 @@ pub trait SandboxInstanceRepository: Send + Sync {
         sandbox_instance_id: &SandboxInstanceId,
         expected_sandbox_version: u64,
     ) -> SandboxInstanceRepositoryResult<bool>;
+}
+
+#[cfg(test)]
+mod timestamp_grammar_tests {
+    use super::{validate_expires_at, SandboxInstanceError};
+
+    fn accepted(timestamp: &str) {
+        validate_expires_at(timestamp)
+            .unwrap_or_else(|error| panic!("`{timestamp}` must be accepted: {error}"));
+    }
+
+    fn rejected(timestamp: &str) {
+        assert!(
+            matches!(
+                validate_expires_at(timestamp),
+                Err(SandboxInstanceError::Validation { field, .. }) if field == "sandboxInstanceExpiresAt"
+            ),
+            "`{timestamp}` must be rejected"
+        );
+    }
+
+    #[test]
+    fn second_and_fraction_shapes_within_six_digits_are_accepted() {
+        accepted("2030-01-01T00:00:00Z");
+        accepted("2024-02-29T12:34:56.1Z");
+        accepted("2024-02-29T12:34:56.123Z");
+        accepted("2024-02-29T12:34:56.123456Z");
+    }
+
+    #[test]
+    fn calendar_semantics_are_rejected_at_the_boundary() {
+        rejected("2026-99-99T99:99:99Z");
+        rejected("2026-13-01T00:00:00Z");
+        rejected("2026-00-10T00:00:00Z");
+        rejected("2026-04-31T00:00:00Z");
+        rejected("2023-02-29T00:00:00Z");
+        rejected("2026-01-02T24:00:00Z");
+        rejected("2026-01-02T00:60:00Z");
+        rejected("2026-01-02T00:00:60Z");
+    }
+
+    #[test]
+    fn offset_lowercase_and_overlong_fraction_forms_are_rejected() {
+        rejected("2030-01-01T00:00:00");
+        rejected("2030-01-01 00:00:00Z");
+        rejected("2030-01-01t00:00:00z");
+        rejected("2030-01-01T00:00:00.1234567Z");
+        rejected("2030-01-01T00:00:00.Z");
+        rejected("2030-01-01T00:00:00+00:00");
+        rejected("");
+    }
 }

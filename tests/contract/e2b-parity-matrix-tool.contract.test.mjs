@@ -1284,12 +1284,13 @@ test("the repository's own coverage table accounts for every test the workspace 
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  // 2026-09-24: 124 declared tests (123 runnable + the external-PostgreSQL
-  // ignored one) after the internal-api rename, cursor pagination, and the
-  // authorized real command-execution slice landed; the evidence table in the
+  // 2026-09-27: 129 declared tests (128 runnable + the external-PostgreSQL
+  // ignored one) after the microsecond-pagination and timestamp-grammar
+  // slice landed on top of the internal-api rename, cursor pagination, and
+  // the authorized real command-execution slice; the evidence table in the
   // audit document accounts for each of them.
-  assert.equal(assessment.workspaceTests, 124);
-  assert.equal(assessment.coveredTests, 124);
+  assert.equal(assessment.workspaceTests, 129);
+  assert.equal(assessment.coveredTests, 129);
 
   const discovered = discoverWorkspaceTests(repoRoot);
   let runnable = 0;
@@ -1300,9 +1301,9 @@ test("the repository's own coverage table accounts for every test the workspace 
       else runnable += 1;
     }
   }
-  // The two readings the audit quotes have to agree with the code: 124 declared, 123 of them
+  // The two readings the audit quotes have to agree with the code: 129 declared, 128 of them
   // runnable because one declares it needs an external PostgreSQL.
-  assert.equal(runnable + ignored, 124);
+  assert.equal(runnable + ignored, 129);
   assert.equal(ignored, 1);
 });
 

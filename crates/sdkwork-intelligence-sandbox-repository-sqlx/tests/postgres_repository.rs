@@ -7,19 +7,22 @@ use async_trait::async_trait;
 use sdkwork_database_sqlx::PoolBuilder;
 use sdkwork_intelligence_sandbox_repository_sqlx::{
     SandboxProviderAllocationKey, SandboxProviderAllocationKeySource,
-    SdkworkUtilsSandboxProviderAllocationProtector, SqlxSandboxSessionRepository,
+    SdkworkUtilsSandboxProviderAllocationProtector, SqlxSandboxInstanceRepository,
+    SqlxSandboxSessionRepository,
 };
 use sdkwork_intelligence_sandbox_service::{
-    SandboxOperationOutcome, SandboxProtectedProviderAllocationRef,
-    SandboxProviderAllocationProtectionContext, SandboxProviderAllocationProtectionVersion,
-    SandboxProviderAllocationProtector, SandboxRuntimeBindingRepositorySnapshot, SandboxSession,
-    SandboxSessionOperationKind, SandboxSessionOperationRepositorySnapshot,
-    SandboxSessionReconciliationOutcome, SandboxSessionRepository, SandboxSessionRepositoryError,
-    SandboxSessionRepositoryResult, SandboxSessionRepositorySnapshot, SandboxSessionState,
+    CreateSandboxInstanceCommand, SandboxInstance, SandboxInstanceListCursor,
+    SandboxInstanceProfile, SandboxInstanceRepository, SandboxOperationOutcome,
+    SandboxProtectedProviderAllocationRef, SandboxProviderAllocationProtectionContext,
+    SandboxProviderAllocationProtectionVersion, SandboxProviderAllocationProtector,
+    SandboxRuntimeBindingRepositorySnapshot, SandboxSession, SandboxSessionOperationKind,
+    SandboxSessionOperationRepositorySnapshot, SandboxSessionReconciliationOutcome,
+    SandboxSessionRepository, SandboxSessionRepositoryError, SandboxSessionRepositoryResult,
+    SandboxSessionRepositorySnapshot, SandboxSessionState,
 };
 use sdkwork_sandbox_provider_spi::{
-    IsolationAssurance, OperationId, RuntimeCapability, SandboxId, SandboxLeaseOwnerId,
-    SandboxProvider, SandboxProviderAllocation, SandboxProviderAllocationRef,
+    IsolationAssurance, OperationId, RuntimeCapability, SandboxId, SandboxInstanceOwnerId,
+    SandboxLeaseOwnerId, SandboxProvider, SandboxProviderAllocation, SandboxProviderAllocationRef,
     SandboxProviderAllocationRequest, SandboxProviderDescriptor, SandboxProviderDestroyRequest,
     SandboxProviderHealth, SandboxProviderHealthStatus, SandboxProviderId, SandboxProviderKind,
     SandboxProviderReadiness, SandboxProviderResult, SandboxProviderStartRequest,
@@ -448,7 +451,7 @@ async fn sandbox_postgres_repository_enforces_durable_lifecycle_contract() {
         .unwrap_or_else(|| panic!("sandbox test database must be PostgreSQL"));
     sqlx::raw_sql(
         "TRUNCATE TABLE sandbox_session_operation, sandbox_runtime_binding, \
-         sandbox_session_lease, sandbox_session CASCADE",
+         sandbox_session_lease, sandbox_session, sandbox_instance CASCADE",
     )
     .execute(sandbox_postgres_pool)
     .await
@@ -1434,6 +1437,90 @@ async fn sandbox_postgres_repository_enforces_durable_lifecycle_contract() {
     .await
     .unwrap_or_else(|error| panic!("sandbox reconciliation query plan failed: {error}"));
     assert!(sandbox_query_plan.is_array());
+
+    // Instance-registry section: the console listing is the hottest read and
+    // its keyset seek compares the cursor against the stored microsecond
+    // `created_at`. A second-truncated cursor would move the page boundary
+    // earlier and silently skip rows created later within the same second
+    // (`PAGINATION_SPEC.md` sections 5-6), so this section enumerates a
+    // same-second batch through two-row pages and asserts the canonical
+    // six-digit fraction survives every read path.
+    sqlx::raw_sql("TRUNCATE TABLE sandbox_instance")
+        .execute(sandbox_postgres_pool)
+        .await
+        .unwrap_or_else(|error| panic!("sandbox instance cleanup failed: {error}"));
+    let sandbox_instance_repository =
+        SqlxSandboxInstanceRepository::new(sandbox_database_pool.clone())
+            .unwrap_or_else(|error| panic!("sandbox instance repository creation failed: {error}"));
+    let sandbox_listing_owner = SandboxInstanceOwnerId::parse("owner-instance-listing")
+        .unwrap_or_else(|error| panic!("invalid test sandbox instance owner id: {error}"));
+    let mut sandbox_expected_listing_ids = Vec::new();
+    for sandbox_ordinal in 0..6 {
+        let sandbox_instance = SandboxInstance::request(CreateSandboxInstanceCommand {
+            tenant_id: tenant_a.clone(),
+            sandbox_instance_owner_id: sandbox_listing_owner.clone(),
+            sandbox_instance_name: format!("listing-{sandbox_ordinal}"),
+            sandbox_instance_profile: SandboxInstanceProfile::Standard,
+            sandbox_instance_base_image: "sdkwork/sandbox:0.1.0".to_owned(),
+            sandbox_instance_vcpu_count: 2,
+            sandbox_instance_memory_mb: 4_096,
+            sandbox_instance_disk_mb: 20_480,
+            sandbox_instance_required_capabilities: BTreeSet::new(),
+            sandbox_instance_minimum_assurance: IsolationAssurance::HostUser,
+            sandbox_instance_auto_start: false,
+            sandbox_instance_expires_at: None,
+            sandbox_workspace_id: None,
+        })
+        .unwrap_or_else(|error| panic!("sandbox instance request failed: {error}"));
+        let sandbox_stored_instance = sandbox_instance_repository
+            .insert_sandbox_instance(&sandbox_instance)
+            .await
+            .unwrap_or_else(|error| panic!("sandbox instance insert failed: {error}"));
+        let sandbox_stored_created_at = sandbox_stored_instance
+            .created_at()
+            .unwrap_or_else(|| panic!("stored sandbox instance must carry created_at"));
+        assert_eq!(
+            27,
+            sandbox_stored_created_at.len(),
+            "created_at must re-emit with the six-digit fraction: {sandbox_stored_created_at}"
+        );
+        assert!(
+            sandbox_stored_created_at.as_bytes()[19] == b'.',
+            "created_at must carry a fraction, not a second-truncated shape: \
+             {sandbox_stored_created_at}"
+        );
+        sandbox_expected_listing_ids.push(
+            sandbox_stored_instance
+                .sandbox_instance_id()
+                .as_str()
+                .to_owned(),
+        );
+    }
+    let mut sandbox_visited_listing_ids = Vec::new();
+    let mut sandbox_listing_cursor: Option<SandboxInstanceListCursor> = None;
+    loop {
+        let sandbox_listing_page = sandbox_instance_repository
+            .list_sandbox_instances(&tenant_a, None, None, sandbox_listing_cursor.as_ref(), 2)
+            .await
+            .unwrap_or_else(|error| panic!("sandbox instance listing failed: {error}"));
+        for sandbox_instance in &sandbox_listing_page.items {
+            sandbox_visited_listing_ids
+                .push(sandbox_instance.sandbox_instance_id().as_str().to_owned());
+        }
+        match sandbox_listing_page.next_cursor {
+            Some(sandbox_next_cursor) => sandbox_listing_cursor = Some(sandbox_next_cursor),
+            None => break,
+        }
+    }
+    let mut sandbox_sorted_expected = sandbox_expected_listing_ids.clone();
+    sandbox_sorted_expected.sort();
+    let mut sandbox_sorted_visited = sandbox_visited_listing_ids.clone();
+    sandbox_sorted_visited.sort();
+    assert_eq!(
+        sandbox_sorted_expected, sandbox_sorted_visited,
+        "cursor paging must visit every same-second instance exactly once"
+    );
+    assert_eq!(6, sandbox_visited_listing_ids.len());
 
     sandbox_database_pool.close().await;
 }

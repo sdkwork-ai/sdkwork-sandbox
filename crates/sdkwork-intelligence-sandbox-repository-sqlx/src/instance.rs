@@ -1,10 +1,14 @@
 //! PostgreSQL adapter for the console-facing Sandbox Instance registry.
 //!
 //! All values are bound; only fixed clauses are concatenated. Timestamps are
-//! projected with `to_char(... AT TIME ZONE 'UTC')` so the adapter does not
-//! depend on a Rust datetime feature that the workspace `sqlx` dependency does
-//! not enable, and the re-emitted string is exactly the RFC 3339 shape the wire
-//! contract and the service validator both accept.
+//! projected with `to_char(... AT TIME ZONE 'UTC')` in the canonical six-digit
+//! fraction shape so the adapter does not depend on a Rust datetime feature
+//! that the workspace `sqlx` dependency does not enable. The fraction digits
+//! are load-bearing: `created_at` is a microsecond `TIMESTAMPTZ`, and the
+//! keyset seek compares the cursor against the stored column, so a
+//! second-truncated cursor would move the page boundary earlier and silently
+//! skip rows created later within the same second (`PAGINATION_SPEC.md`
+//! sections 5-6).
 
 use async_trait::async_trait;
 use sdkwork_database_sqlx::DatabasePool;
@@ -31,7 +35,9 @@ const SQLSTATE_UNIQUE_VIOLATION: &str = "23505";
 const SQLSTATE_INVALID_TEXT_REPRESENTATION: &str = "22P02";
 
 /// Projection shared by every read path, so a column added to one read cannot
-/// silently drift from the others.
+/// silently drift from the others. Every timestamp re-emits with six fraction
+/// digits: the keyset cursor must reproduce the stored `TIMESTAMPTZ` exactly,
+/// and `created_at` carries sub-second values.
 const SANDBOX_INSTANCE_COLUMNS: &str = "tenant_id, \
      sandbox_instance_id, \
      sandbox_instance_owner_id, \
@@ -45,13 +51,13 @@ const SANDBOX_INSTANCE_COLUMNS: &str = "tenant_id, \
      sandbox_instance_required_capabilities, \
      sandbox_instance_minimum_assurance, \
      sandbox_instance_auto_start, \
-     to_char(sandbox_instance_expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
+     to_char(sandbox_instance_expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') \
         AS sandbox_instance_expires_at, \
      sandbox_workspace_id, \
      sandbox_instance_last_failure, \
      version, \
-     to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at, \
-     to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS updated_at";
+     to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS created_at, \
+     to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS updated_at";
 
 /// PostgreSQL-backed [`SandboxInstanceRepository`]. Cheap to clone: the wrapped
 /// pool is itself a handle, so every clone shares one connection pool.
@@ -85,10 +91,15 @@ impl SqlxSandboxInstanceRepository {
         match &error {
             sqlx::Error::Database(database_error) => match database_error.code().as_deref() {
                 Some(SQLSTATE_UNIQUE_VIOLATION) => SandboxInstanceRepositoryError::DuplicateName,
-                // A cast failure can only come from a timestamp-shaped bind
-                // (the cursor timestamp), which is a malformed page request.
+                // A cast failure cannot originate from a request value: both
+                // timestamp-shaped binds (the keyset cursor and
+                // `sandbox_instance_expires_at`) pass the service's grammar and
+                // semantic validation before they reach a `CAST`. A cast
+                // failure therefore means stored data or a bind this adapter
+                // cannot reconstruct, which is a store anomaly, not a page
+                // fault.
                 Some(SQLSTATE_INVALID_TEXT_REPRESENTATION) => {
-                    SandboxInstanceRepositoryError::InvalidPageRequest
+                    SandboxInstanceRepositoryError::InvalidStoredData
                 }
                 _ => SandboxInstanceRepositoryError::Unavailable,
             },
@@ -448,4 +459,29 @@ impl SandboxInstanceRepository for SqlxSandboxInstanceRepository {
 /// request input into the SQL text.
 fn audited_sql(sql: &str) -> sqlx::AssertSqlSafe<&str> {
     sqlx::AssertSqlSafe(sql)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SANDBOX_INSTANCE_COLUMNS;
+
+    /// The keyset seek compares the returned cursor against the stored
+    /// microsecond `created_at`, so every timestamp in the shared projection
+    /// must re-emit with the six-digit `to_char` fraction: a second-truncated
+    /// value moves the page boundary earlier and silently skips rows created
+    /// later within the same second (`PAGINATION_SPEC.md` sections 5-6).
+    #[test]
+    fn listing_projection_re_emits_every_timestamp_with_microsecond_fraction() {
+        assert_eq!(
+            3,
+            SANDBOX_INSTANCE_COLUMNS
+                .matches("HH24:MI:SS.US\"Z\"")
+                .count(),
+            "expires_at, created_at and updated_at must all carry the six-digit fraction"
+        );
+        assert!(
+            !SANDBOX_INSTANCE_COLUMNS.contains("HH24:MI:SS\""),
+            "a second-truncated to_char shape must not survive in the projection"
+        );
+    }
 }
