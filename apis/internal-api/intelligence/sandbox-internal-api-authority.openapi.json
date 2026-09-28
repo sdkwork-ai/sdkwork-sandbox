@@ -1,0 +1,255 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SDKWork Sandbox Internal API Authority (E2B-Referenced)",
+    "version": "0.1.0",
+    "description": "Authoritative OpenAPI contract for the SDKWork Sandbox internal-api control plane. REQ-2026-0028 authority slice v0: it covers the surface this repository owns today (the sandbox instance registry). Every operation carries an x-e2b-reference mapping to the pinned E2B reference (specs/sandbox-e2b-capability-baseline.json); capabilities without an owned implementation are deliberately absent here and recorded as pending-gate entries in sandbox-e2b-parity-ledger.json. Root posture overrides the reference where noted: int64 wire fields are strings (API_SPEC.md section 13.6), and no capability widens isolation or egress beyond the governing requirements.",
+    "x-sdkwork-authority": {
+      "requirementId": "REQ-2026-0028",
+      "decisionId": "ADR-20260924",
+      "reviewId": "REVIEW-20260924-sandbox-e2b-api-sdk-authority",
+      "referenceBaseline": "../../../specs/sandbox-e2b-capability-baseline.json",
+      "parityLedger": "sandbox-e2b-parity-ledger.json"
+    }
+  },
+  "servers": [
+    {
+      "url": "/internal/v3/api/intelligence/sandbox",
+      "description": "SDKWork v3 internal-api sandbox prefix; ingress-token secured, private ingress only"
+    }
+  ],
+  "security": [{ "ingressToken": [] }],
+  "tags": [
+    { "name": "sandbox-instances", "description": "E2B-referenced sandbox instance registry (control plane)" }
+  ],
+  "paths": {
+    "/sandbox_instances": {
+      "get": {
+        "tags": ["sandbox-instances"],
+        "operationId": "listSandboxInstances",
+        "summary": "Cursor-paged instance listing (store-level keyset seek; PAGINATION_SPEC.md)",
+        "x-e2b-reference": { "path": "GET /sandboxes", "operationId": "listSandboxes", "compatibility": "capability-level" },
+        "parameters": [
+          { "$ref": "#/components/parameters/PageCursor" },
+          { "$ref": "#/components/parameters/PageSize" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/SandboxInstancePage" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      },
+      "post": {
+        "tags": ["sandbox-instances"],
+        "operationId": "createSandboxInstance",
+        "summary": "Creates one sandbox instance registry record",
+        "x-e2b-reference": { "path": "POST /sandboxes", "operationId": "postSandboxes", "compatibility": "capability-level" },
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateSandboxInstanceRequest" } } }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/SandboxInstance" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/sandbox_instances/{sandboxInstanceId}": {
+      "parameters": [{ "$ref": "#/components/parameters/SandboxInstanceId" }],
+      "get": {
+        "tags": ["sandbox-instances"],
+        "operationId": "retrieveSandboxInstance",
+        "summary": "Retrieves one sandbox instance",
+        "x-e2b-reference": { "path": "GET /sandboxes/{sandboxID}", "operationId": "getSandbox", "compatibility": "capability-level" },
+        "responses": {
+          "200": { "$ref": "#/components/responses/SandboxInstance" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "patch": {
+        "tags": ["sandbox-instances"],
+        "operationId": "updateSandboxInstance",
+        "summary": "Updates mutable instance fields (name, expiry)",
+        "x-e2b-reference": { "path": "POST /sandboxes/{sandboxID}/timeout", "operationId": "postSandboxTimeout", "compatibility": "capability-level; the authority widens the mutable field set beyond E2B's timeout-only semantics" },
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateSandboxInstanceRequest" } } }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/SandboxInstance" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      },
+      "delete": {
+        "tags": ["sandbox-instances"],
+        "operationId": "deleteSandboxInstance",
+        "summary": "Deletes one sandbox instance",
+        "x-e2b-reference": { "path": "DELETE /sandboxes/{sandboxID}", "operationId": "deleteSandbox", "compatibility": "capability-level" },
+        "responses": {
+          "200": { "$ref": "#/components/responses/SandboxInstance" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ingressToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-SDKWork-Ingress-Token",
+        "description": "Internal-api ingress token (SHA-256 hashed, IAM-owned). This scheme never appears on a data-plane surface, and no data-plane credential schema may appear here."
+      }
+    },
+    "parameters": {
+      "SandboxInstanceId": {
+        "name": "sandboxInstanceId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1, "maxLength": 128 }
+      },
+      "PageCursor": {
+        "name": "cursor",
+        "in": "query",
+        "required": false,
+        "schema": { "type": "string" },
+        "description": "Opaque continuation token; clients must not parse or construct it (PAGINATION_SPEC.md section 3)"
+      },
+      "PageSize": {
+        "name": "page_size",
+        "in": "query",
+        "required": false,
+        "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 20 },
+        "description": "Out of range rejects with 400; never clamped. Aliases (pageSize, limit, page_no, pageNo, per_page, size, page, offset) are forbidden."
+      }
+    },
+    "schemas": {
+      "SandboxInstanceId": { "type": "string", "minLength": 1, "maxLength": 128 },
+      "SandboxVersion": {
+        "type": "string",
+        "format": "int64",
+        "pattern": "^-?[0-9]+$",
+        "x-sdkwork-int64-string": true,
+        "description": "Optimistic-concurrency version; int64-as-string per API_SPEC.md section 13.6"
+      },
+      "SandboxInstanceName": { "type": "string", "minLength": 1, "maxLength": 128 },
+      "SandboxInstanceState": {
+        "type": "string",
+        "enum": ["created", "starting", "running", "stopping", "stopped", "failed", "destroying", "destroyed"]
+      },
+      "CreateSandboxInstanceRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sandbox_instance_name"],
+        "properties": {
+          "sandbox_instance_name": { "$ref": "#/components/schemas/SandboxInstanceName" }
+        }
+      },
+      "UpdateSandboxInstanceRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "sandbox_instance_name": { "$ref": "#/components/schemas/SandboxInstanceName" }
+        }
+      },
+      "SandboxInstance": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sandbox_instance_id", "sandbox_instance_state", "sandbox_version"],
+        "properties": {
+          "sandbox_instance_id": { "$ref": "#/components/schemas/SandboxInstanceId" },
+          "sandbox_instance_name": { "$ref": "#/components/schemas/SandboxInstanceName" },
+          "sandbox_instance_owner_id": { "type": "string" },
+          "sandbox_instance_state": { "$ref": "#/components/schemas/SandboxInstanceState" },
+          "sandbox_instance_created_at": { "type": "string", "format": "date-time" },
+          "sandbox_instance_expires_at": { "type": "string", "format": "date-time", "nullable": true },
+          "sandbox_version": { "$ref": "#/components/schemas/SandboxVersion" }
+        }
+      },
+      "PageInfo": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mode", "has_more"],
+        "properties": {
+          "mode": { "type": "string", "const": "cursor" },
+          "has_more": { "type": "boolean" },
+          "next_cursor": { "type": "string", "nullable": true }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string", "description": "Client-safe; never carries repository, database, or crypto detail" }
+        }
+      }
+    },
+    "responses": {
+      "SandboxInstance": {
+        "description": "The sandbox instance wrapped in the standard envelope",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": ["code", "message", "data"],
+              "properties": {
+                "code": { "type": "integer" },
+                "message": { "type": "string" },
+                "data": { "$ref": "#/components/schemas/SandboxInstance" }
+              }
+            }
+          }
+        }
+      },
+      "SandboxInstancePage": {
+        "description": "Cursor page: data.items plus data.pageInfo, O(page_size) memory",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": ["code", "message", "data"],
+              "properties": {
+                "code": { "type": "integer" },
+                "message": { "type": "string" },
+                "data": {
+                  "type": "object",
+                  "required": ["items", "pageInfo"],
+                  "properties": {
+                    "items": { "type": "array", "items": { "$ref": "#/components/schemas/SandboxInstance" } },
+                    "pageInfo": { "$ref": "#/components/schemas/PageInfo" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Client fault; unlogged at server",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorDetail" } } }
+      },
+      "Forbidden": {
+        "description": "Missing or unverified tenant/principal context",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorDetail" } } }
+      },
+      "Conflict": {
+        "description": "Duplicate name, version conflict, or idempotency conflict",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorDetail" } } }
+      },
+      "NotFound": {
+        "description": "The sandbox instance does not exist in this tenant",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorDetail" } } }
+      },
+      "ServiceUnavailable": {
+        "description": "Repository temporarily unavailable; retryable",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorDetail" } } }
+      }
+    }
+  }
+}

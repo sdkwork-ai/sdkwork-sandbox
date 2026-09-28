@@ -62,3 +62,10 @@
 - `REVIEW-20260924` 评审包追加 2026-09-29 授权扩展节（逐角色 Human Outcome 表，仓库所有者以单一身份行使各列名角色）。
 - 钉面同步：PRD 链接行与缺口行、PRD-roadmap 进度段、`TECH_ARCHITECTURE` §5、`TECH-e2b-capability-parity` 普查行（[28, 4, 5, 19] / decisions [28, 24, 4]）、`docs/INDEX.yaml` 两行状态、`e2b-parity-matrix-tool` / `e2b-field-parity-tool` / `sandbox-platform-code-tool` 契约测试钉数（ready=4、draft=19、proposed=24、accepted-ADR=4、Rust 读数 143/0/2、declared tests=145、ignored 两个、平台标记回 20）。
 - 网关二次信号强杀撤回：Gate 0 交付门禁止控制面出现 `std::process`（`provider-delivery-gate.contract.test.mjs`），force-exit watcher 移除；drain 期间 readiness 摘流保留，卡死排空交由监督者 stop-timeout（`terminationGracePeriodSeconds` + SIGKILL，标准实践）。平台标记 21 → 20。
+
+## REQ-2026-0028 授权切片 v0：apis/ 权威契约与双向 parity ledger 物化
+
+- `apis/internal-api/intelligence/sandbox-internal-api-authority.openapi.json`：权威 OpenAPI v0（OpenAPI 3.1），覆盖当前已拥有的 sandbox 实例注册表面（5 条路由）；每个 operation 携带 `x-e2b-reference` 映射到钉死的 E2B 参考基线；`SandboxVersion` 遵循 int64-as-string（`API_SPEC.md` §13.6，`x-sdkwork-int64-string: true`）；ingress-token 安全方案仅限 internal-api 面。
+- `apis/internal-api/intelligence/sandbox-e2b-parity-ledger.json`：71 个 E2B 参考操作的双向 ledger——4 个 `mapped`（实现面）+ 67 个 `pending-gate`（无实现能力，按基线类别登记，绝无静默遗漏）。由 `tools/generate-sandbox-e2b-parity-ledger.mjs` 从钉死基线确定性推导，`--check` 即 AC8 回归命令。
+- `tests/contract/sandbox-e2b-parity-ledger.contract.test.mjs`：四向钉死（完备性、映射指向真实权威操作、int64/安全方案规则、可复现性）。
+- 钉面同步：基线 `testInventory`（42 文件/678 测试）、`REAL_CONTRACT_FILES/TESTS`、tools/README 与 parity 文档套件读数（678 pass / 0 fail）。

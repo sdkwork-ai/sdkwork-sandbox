@@ -381,8 +381,8 @@ test("markers are collected from crates only, and test code counts", () => {
   // shutdown-signal cfg-unix markers at their new lines; process_runner.rs
   // markers shifted with the spawn_blocking resolution slice.
   assert.deepEqual(summarized, [
-    { path: "crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs", line: 91, marker: "cfg-unix" },
-    { path: "crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs", line: 99, marker: "cfg-unix" },
+    { path: "crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs", line: 89, marker: "cfg-unix" },
+    { path: "crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs", line: 97, marker: "cfg-unix" },
     { path: "crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs", line: 26, marker: "cfg-macro" },
     { path: "crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs", line: 37, marker: "cfg-macro" },
     { path: "crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs", line: 45, marker: "cfg-macro" },

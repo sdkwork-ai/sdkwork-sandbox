@@ -1,0 +1,405 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "sdkwork.sandbox.e2b-parity-ledger",
+  "requirementId": "REQ-2026-0028",
+  "baselineSource": {
+    "id": "e2b-openapi-public",
+    "capturedAt": "2026-09-22T09:36:31Z",
+    "documentedOperations": 71
+  },
+  "authoritySurface": "apis/internal-api/intelligence/sandbox-internal-api-authority.openapi.json",
+  "summary": {
+    "e2bOperations": 71,
+    "mapped": 4,
+    "pendingGate": 67
+  },
+  "entries": [
+    {
+      "operationId": "deleteSandbox",
+      "status": "mapped",
+      "e2bReference": {
+        "path": "DELETE /sandboxes/{sandboxID}"
+      },
+      "authority": {
+        "method": "DELETE",
+        "path": "/sandbox_instances/{sandboxInstanceId}",
+        "operationId": "deleteSandboxInstance"
+      },
+      "category": "sandbox-lifecycle"
+    },
+    {
+      "operationId": "deleteSecret",
+      "status": "pending-gate",
+      "category": "secrets-and-iam"
+    },
+    {
+      "operationId": "deleteTemplate",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "deleteTemplatesTags",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "deleteVolume",
+      "status": "pending-gate",
+      "category": "volumes"
+    },
+    {
+      "operationId": "downloadFile",
+      "status": "pending-gate",
+      "category": "filesystem"
+    },
+    {
+      "operationId": "filesystem.Filesystem.CreateWatcher",
+      "status": "pending-gate",
+      "category": "filesystem"
+    },
+    {
+      "operationId": "filesystem.Filesystem.GetWatcherEvents",
+      "status": "pending-gate",
+      "category": "filesystem"
+    },
+    {
+      "operationId": "filesystem.Filesystem.ListDir",
+      "status": "pending-gate",
+      "category": "filesystem"
+    },
+    {
+      "operationId": "filesystem.Filesystem.MakeDir",
+      "status": "pending-gate",
+      "category": "filesystem"
+    },
+    {
+      "operationId": "filesystem.Filesystem.Move",
+      "status": "pending-gate",
+      "category": "filesystem"
+    },
+    {
+      "operationId": "filesystem.Filesystem.Remove",
+      "status": "pending-gate",
+      "category": "filesystem"
+    },
+    {
+      "operationId": "filesystem.Filesystem.RemoveWatcher",
+      "status": "pending-gate",
+      "category": "filesystem"
+    },
+    {
+      "operationId": "filesystem.Filesystem.Stat",
+      "status": "pending-gate",
+      "category": "filesystem"
+    },
+    {
+      "operationId": "filesystem.Filesystem.WatchDir",
+      "status": "pending-gate",
+      "category": "filesystem"
+    },
+    {
+      "operationId": "getEnvVars",
+      "status": "pending-gate",
+      "category": "sandbox-lifecycle"
+    },
+    {
+      "operationId": "getHealth",
+      "status": "pending-gate",
+      "category": null
+    },
+    {
+      "operationId": "getMetrics",
+      "status": "pending-gate",
+      "category": "metrics-and-telemetry"
+    },
+    {
+      "operationId": "getSandbox",
+      "status": "mapped",
+      "e2bReference": {
+        "path": "GET /sandboxes/{sandboxID}"
+      },
+      "authority": {
+        "method": "GET",
+        "path": "/sandbox_instances/{sandboxInstanceId}",
+        "operationId": "retrieveSandboxInstance"
+      },
+      "category": "sandbox-lifecycle"
+    },
+    {
+      "operationId": "getSandboxLogs",
+      "status": "pending-gate",
+      "category": "sandbox-lifecycle"
+    },
+    {
+      "operationId": "getSandboxLogsV2",
+      "status": "pending-gate",
+      "category": "sandbox-lifecycle"
+    },
+    {
+      "operationId": "getSandboxMetrics",
+      "status": "pending-gate",
+      "category": "metrics-and-telemetry"
+    },
+    {
+      "operationId": "getSecret",
+      "status": "pending-gate",
+      "category": "secrets-and-iam"
+    },
+    {
+      "operationId": "getTeamMetrics",
+      "status": "pending-gate",
+      "category": "metrics-and-telemetry"
+    },
+    {
+      "operationId": "getTeamMetricsMax",
+      "status": "pending-gate",
+      "category": "metrics-and-telemetry"
+    },
+    {
+      "operationId": "getTemplate",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "getTemplateBuildLogs",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "getTemplateBuildStatus",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "getTemplateFile",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "getTemplatesAlias",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "getTemplateTags",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "getVolume",
+      "status": "pending-gate",
+      "category": "volumes"
+    },
+    {
+      "operationId": "listSandboxes",
+      "status": "pending-gate",
+      "category": "sandbox-lifecycle"
+    },
+    {
+      "operationId": "listSandboxesMetrics",
+      "status": "pending-gate",
+      "category": "metrics-and-telemetry"
+    },
+    {
+      "operationId": "listSandboxesV2",
+      "status": "pending-gate",
+      "category": "sandbox-lifecycle"
+    },
+    {
+      "operationId": "listSecrets",
+      "status": "pending-gate",
+      "category": "secrets-and-iam"
+    },
+    {
+      "operationId": "listSnapshots",
+      "status": "pending-gate",
+      "category": "snapshot-and-fork"
+    },
+    {
+      "operationId": "listTeams",
+      "status": "pending-gate",
+      "category": "metrics-and-telemetry"
+    },
+    {
+      "operationId": "listTemplates",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "listTemplatesV2",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "listVolumes",
+      "status": "pending-gate",
+      "category": "volumes"
+    },
+    {
+      "operationId": "patchTemplate",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "patchTemplateV2",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "postSandboxConnect",
+      "status": "pending-gate",
+      "category": "sandbox-lifecycle"
+    },
+    {
+      "operationId": "postSandboxes",
+      "status": "mapped",
+      "e2bReference": {
+        "path": "POST /sandboxes"
+      },
+      "authority": {
+        "method": "POST",
+        "path": "/sandbox_instances",
+        "operationId": "createSandboxInstance"
+      },
+      "category": "sandbox-lifecycle"
+    },
+    {
+      "operationId": "postSandboxFork",
+      "status": "pending-gate",
+      "category": "snapshot-and-fork"
+    },
+    {
+      "operationId": "postSandboxPause",
+      "status": "pending-gate",
+      "category": "persistence"
+    },
+    {
+      "operationId": "postSandboxRefreshes",
+      "status": "pending-gate",
+      "category": "sandbox-lifecycle"
+    },
+    {
+      "operationId": "postSandboxResume",
+      "status": "pending-gate",
+      "category": "persistence"
+    },
+    {
+      "operationId": "postSandboxSnapshots",
+      "status": "pending-gate",
+      "category": "snapshot-and-fork"
+    },
+    {
+      "operationId": "postSandboxTimeout",
+      "status": "mapped",
+      "e2bReference": {
+        "path": "POST /sandboxes/{sandboxID}/timeout"
+      },
+      "authority": {
+        "method": "PATCH",
+        "path": "/sandbox_instances/{sandboxInstanceId}",
+        "operationId": "updateSandboxInstance"
+      },
+      "category": "sandbox-lifecycle"
+    },
+    {
+      "operationId": "postSecret",
+      "status": "pending-gate",
+      "category": "secrets-and-iam"
+    },
+    {
+      "operationId": "postSecrets",
+      "status": "pending-gate",
+      "category": "secrets-and-iam"
+    },
+    {
+      "operationId": "postTemplate",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "postTemplateBuild",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "postTemplateBuildV2",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "postTemplates",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "postTemplatesTags",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "postTemplatesV2",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "postTemplatesV3",
+      "status": "pending-gate",
+      "category": "template"
+    },
+    {
+      "operationId": "postVolumes",
+      "status": "pending-gate",
+      "category": "volumes"
+    },
+    {
+      "operationId": "process.Process.CloseStdin",
+      "status": "pending-gate",
+      "category": "commands-and-process"
+    },
+    {
+      "operationId": "process.Process.Connect",
+      "status": "pending-gate",
+      "category": "commands-and-process"
+    },
+    {
+      "operationId": "process.Process.List",
+      "status": "pending-gate",
+      "category": "commands-and-process"
+    },
+    {
+      "operationId": "process.Process.SendInput",
+      "status": "pending-gate",
+      "category": "commands-and-process"
+    },
+    {
+      "operationId": "process.Process.SendSignal",
+      "status": "pending-gate",
+      "category": "commands-and-process"
+    },
+    {
+      "operationId": "process.Process.Start",
+      "status": "pending-gate",
+      "category": "commands-and-process"
+    },
+    {
+      "operationId": "process.Process.StreamInput",
+      "status": "pending-gate",
+      "category": "commands-and-process"
+    },
+    {
+      "operationId": "process.Process.Update",
+      "status": "pending-gate",
+      "category": "commands-and-process"
+    },
+    {
+      "operationId": "putSandboxNetwork",
+      "status": "pending-gate",
+      "category": "network"
+    },
+    {
+      "operationId": "uploadFile",
+      "status": "pending-gate",
+      "category": "filesystem"
+    }
+  ]
+}

@@ -161,7 +161,7 @@ node tools/check-sandbox-e2b-field-parity.mjs --root <dir>
 node --test tests/contract/sandbox-e2b-field-parity-tool.contract.test.mjs
 ```
 
-Current reading: 78 rows fully evidenced across 17 categories from 101 captured sources, 0 rows index-only (ceiling 0); 71 E2B OpenAPI operations, 70 judged by a row, 1 recorded unjudged; 34 product rows joined, 57 baseline rows mapped, 21 registered unmapped, 9 product rows registered without a baseline row; the audit document's quoted suite readings (674 contract tests recomputed from `tests/contract/*.test.mjs`, 143 Rust tests measured by `cargo test --workspace`) are checked against the files and the recording, and eleven rule families are declared consistently in all four surfaces that describe this gate.
+Current reading: 78 rows fully evidenced across 17 categories from 101 captured sources, 0 rows index-only (ceiling 0); 71 E2B OpenAPI operations, 70 judged by a row, 1 recorded unjudged; 34 product rows joined, 57 baseline rows mapped, 21 registered unmapped, 9 product rows registered without a baseline row; the audit document's quoted suite readings (678 contract tests recomputed from `tests/contract/*.test.mjs`, 143 Rust tests measured by `cargo test --workspace`) are checked against the files and the recording, and eleven rule families are declared consistently in all four surfaces that describe this gate.
 
 ## E2B Upstream Source-Parity Sampler
 
