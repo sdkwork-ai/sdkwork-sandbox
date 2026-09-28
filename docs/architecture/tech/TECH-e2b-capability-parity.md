@@ -72,7 +72,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | API Assembly | `crates/sdkwork-api-sandbox-assembly` | 3 模块 | `ROUTE_CRATE_COUNT: usize = 1`（`generated.rs:3`）+ `ApiAssemblyContribution::from_manifest`（`bootstrap.rs:78`）——1 个 route crate、5 条 `sandboxInstances.*` 路由 |
 | Sandbox Internal API Route Crate | `crates/sdkwork-routes-sandbox-internal-api` | 10 模块 | `INTERNAL_API_SPEC.md` 对齐：前缀 `/internal/v3/api/intelligence/sandbox/*`（`paths.rs`），`internal_route_manifest` 声明 5 条 `ingress_token` 路由（`http_route_manifest.rs`），operator-trusted 无权限码声明；handler 面租户缺验证上下文即拒绝（fail-closed，无默认租户），唯一公开路径是健康探针 |
 | Sandbox Database Host | `crates/sdkwork-sandbox-database-host` | 1 模块 | `bootstrap_sandbox_database`（`lib.rs:93`）编排 init / migrate / 漂移分析，error 级漂移即失败；模块 id `sandbox`（`lib.rs:26`） |
-| Command Executor | `crates/sdkwork-sandbox-provider-spi` | 7 模块 | 端口（`SandboxCommandExecutor`、规范指纹）之上已有 Local 实现（兄弟 crate `sdkwork-sandbox-provider-local` 的 `SandboxLocalCommandExecutor` admission + 有界 live 注册表 + fenced cancel，以及 `SandboxLocalTokioProcessRunner` 真实进程切片：有界流式输出、硬超时 kill+reap、kill-on-drop、provider-owned 可执行解析、空环境）；2026-09-27 起 SPI 另承载 REQ-2026-0007 的 20 场景共享 Conformance 套件（`command_conformance.rs`），Local executor 已端到端通过其可执行子集）；descendant containment 未实现，Terminal capability 未声明 |
+| Command Executor | `crates/sdkwork-sandbox-provider-spi` | 7 模块 | 端口（`SandboxCommandExecutor`、规范指纹）之上已有 Local 实现（兄弟 crate `sdkwork-sandbox-provider-local` 的 `SandboxLocalCommandExecutor` admission + 有界 live 注册表 + fenced cancel，以及 `SandboxLocalTokioProcessRunner` 真实进程切片：有界流式输出、硬超时 kill+reap、kill-on-drop、provider-owned 可执行解析、空环境）；2026-09-27 起 SPI 另承载 REQ-2026-0007 的 20 场景共享 Conformance 套件（`command_conformance.rs`），Local executor 已端到端通过其可执行子集）；Windows 舷道 descendant containment 已落地（评审候选 process-wrap 9.1：挂起创建→kill-on-close Job Object 赋值→赋值后恢复，`TerminateJobObject` 树杀，三代树探针证明），已记录 `start` shell 脱离逃逸为 `detached-and-breakaway-attempt-denial` 证据义务）；Terminal capability 仍未声明（Linux cgroup v2 舷道与真实平台证据矩阵未闭环） |
 | Template / Snapshot / Fork / Pool | — | 不存在 | `crates/` 下无 `template` / `snapshot` / `fork` / `pool` 同名 crate，全仓无对应实现，也无产品级 `REQ-*` |
 | SDK | `sdks/` | 目录 + README | **零生成产物**，`apis/` 无权威 OpenAPI |
 
@@ -316,8 +316,9 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 | Sandbox Internal API 请求体与查询体：cursor 解码、page_size 拒绝式上界、状态词汇与 expiry 三态（2026-09-24 切片） | `crates/sdkwork-routes-sandbox-internal-api/src/payloads.rs` | `crates/sdkwork-routes-sandbox-internal-api/src/payloads.rs` | `list_query_defaults_page_size_and_absent_filters`、`list_query_rejects_an_out_of_range_page_size_instead_of_clamping`、`list_query_cursor_round_trips_and_rejects_forgeries`、`list_query_rejects_an_unknown_state_and_an_invalid_owner`、`update_body_distinguishes_absent_null_and_timestamp_expiry`、`create_body_rejects_unknown_capability_vocabulary_and_duplicates` |
 | Command Conformance 矩阵套件：场景目录镜像与状态判别（2026-09-27 切片） | `crates/sdkwork-sandbox-provider-spi/src/command_conformance.rs` | `crates/sdkwork-sandbox-provider-spi/src/command_conformance.rs` | `scenario_catalog_mirrors_the_contract_declaration_order`、`failed_status_is_distinct_from_enforced_and_pending` |
 | Local Executor 共享 Conformance 端到端：20 场景经真实进程驱动、状态钉面（2026-09-27 切片） | `crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs` | `crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs` | `local_executor_holds_the_shared_command_conformance_matrix` |
+| Windows Job containment：三代树（cmd→cmd→ping）整树硬超时击杀、日志冻结验证（2026-09-27 切片） | `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `runner_job_kills_a_three_generation_tree_at_the_hard_timeout` |
 
-表内共 **133 个用例**（29 行），与工作区静态清点一致；其中 `sandbox_postgres_repository_enforces_durable_lifecycle_contract` 带 `#[ignore]`，是唯一不进默认运行的用例（它声明需要 `SDKWORK_DATABASE_TEST_POSTGRES_URL` 与一个已初始化的 PostgreSQL）。因此 `cargo test --workspace` 的读数是 **132 passed / 0 failed / 1 ignored**，133 = 132 + 1，两侧对得上。
+表内共 **134 个用例**（30 行），与工作区静态清点一致；其中 `sandbox_postgres_repository_enforces_durable_lifecycle_contract` 带 `#[ignore]`，是唯一不进默认运行的用例（它声明需要 `SDKWORK_DATABASE_TEST_POSTGRES_URL` 与一个已初始化的 PostgreSQL）。因此 `cargo test --workspace` 的读数是 **133 passed / 0 failed / 1 ignored**，134 = 133 + 1，两侧对得上。
 
 计数（2026-09-27 实测；此前的 73/74、97/98 与 123/124 三组读数见 `specs/sandbox-e2b-capability-baseline.json` 的 `rustWorkspace.note`）：
 
@@ -325,7 +326,7 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 cargo test --workspace
 ```
 
-`132 passed / 1 ignored`（另 0 failed；1 ignored 是声明需要外部 PostgreSQL 的测试）。契约测试：
+`133 passed / 1 ignored`（另 0 failed；1 ignored 是声明需要外部 PostgreSQL 的测试）。契约测试：
 
 ```bash
 node --test tests/contract/*.test.mjs
@@ -509,7 +510,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 | 缺口 | 性质 | 说明 |
 | --- | --- | --- |
 | 运行入口不全（HTTP 候选面已物化；RPC、CLI、Service Host wiring 仍缺） | 设计级 | 2026-09-24 起为**部分解除**：internal-api 候选面（5 条 `sandboxInstances.*` ingress-token 路由，`ROUTE_CRATE_COUNT: 1`、assembly 与 standalone gateway 已承载）落了，实例注册表 CRUD 可走 HTTP。仍缺：RPC 面、CLI（`fn main() {}`）、Service Host wiring（service-host 5 行）——需要 `REQ-2026-0023`（internal control plane）与 `REQ-2026-0009`（service host）进入 `ready` |
-| Provider 执行切片不全（真实命令执行已物化；descendant containment 未落地） | 设计级 | 2026-09-24 起为**部分解除**：`REQ-2026-0003`/`0007`/`0008` 三个 packet 经人审进入 `ready`，`specs/sandbox-local-provider-host-boundary.contract.json` 授权实现；真实 tokio 进程切片（有界输出、硬超时 kill、fenced cancel、provider-owned 可执行解析）已落。仍缺：Windows suspended Job Object / Linux delegated cgroup v2 containment 及 `requiredRealEvidence` 的 7+6+3 条真实平台证据，Terminal capability 因此保持不声明 |
+| Provider 执行切片不全（真实命令执行已物化；descendant containment 未落地） | 设计级 | 2026-09-24 起为**部分解除**：`REQ-2026-0003`/`0007`/`0008` 三个 packet 经人审进入 `ready`，`specs/sandbox-local-provider-host-boundary.contract.json` 授权实现；真实 tokio 进程切片（有界输出、硬超时 kill、fenced cancel、provider-owned 可执行解析）已落。Windows suspended kill-on-close Job Object containment 已落地（2026-09-27，评审候选 process-wrap 9.1 + 三代树整树击杀探针；`start` shell 脱离逃逸已实测并登记为 `detached-and-breakaway-attempt-denial` 证据义务）。仍缺：Linux delegated cgroup v2 舷道、`requiredRealEvidence` 的 7+6+3 条真实平台证据记录，Terminal capability 因此保持不声明 |
 | 无 Template（含定义、构建、缓存、tags、start command） | **设计级** | E2B 快速创建与快速部署的**全部**依赖它。本仓零 `REQ-*`〔§3.4/1〕；与 Firecracker 制品元组的权威边界未定（见 `PRD.md` 第 9 节待决问题） |
 | Command 执行面部分物化；Terminal / Filesystem 执行面仍缺 | 设计级 | `REQ-2026-0007` 已 `ready` 且授权实现，executor/admission/runner 切片已落，且交付顺序的 Common Conformance 步骤已落地：SPI 承载 20 场景共享套件（四态报告：Enforced / PartiallyEnforced / Pending / Failed），Local executor 端到端通过可执行子集，14 个场景的剩余部分分别钉在平台监督切片（descendant cleanup）、durable registry 切片（terminal race / 完成后重放）与 composition 切片（cleanup quarantine / policy snapshot）上（见上）；`REQ-2026-0024`（Interactive Terminal）仍 `draft` 禁止物化；Filesystem 无 `REQ-*`〔§3.4/8〕 |
 

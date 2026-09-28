@@ -1,22 +1,33 @@
 //! The real tokio-based process runner for the Local Provider command slice.
 //!
-//! This is the first real implementation behind the
+//! This is the real implementation behind the
 //! [`SandboxLocalCommandProcessRunner`] seam. It enforces the declared hard
 //! bounds at the process level: executable resolution from provider-owned
 //! roots only (never the caller-controlled environment), an empty base
 //! environment plus the admitted allowlist, a validated host working directory
 //! under the composition-supplied workspace root, hard wall-clock timeout with
 //! kill and reap, bounded streamed output capture (no unbounded buffering), a
-//! cooperative cancellation signal, and kill-on-drop so an aborted await can
-//! never leak a live child.
+//! cooperative cancellation signal, and containment of the whole descendant
+//! tree so an aborted await can never leak live children.
 //!
-//! Containment honesty: this slice runs the child under the runner process
-//! with `process_group(0)` on Unix and kill-on-drop, which bounds the direct
-//! child. It does NOT yet provide the Windows suspended Job Object or Linux
-//! delegated cgroup v2 descendant containment the host-boundary contract
-//! requires for a Terminal capability claim — the provider descriptor keeps
-//! that capability unclaimed until that evidence-gated slice lands
-//! (REQ-2026-0003).
+//! Descendant containment is platform supervision by the reviewed
+//! `process-wrap` candidate (`REQ-2026-0003` supply-chain assessment): on
+//! Windows the child is spawned suspended, assigned to a kill-on-close Job
+//! Object, and only then resumed — assign-before-resume is enforced by the
+//! wrapper, and `TerminateJobObject` kills every descendant that stays inside
+//! the job. On Unix the child leads its own process group and kills target
+//! the group.
+//!
+//! Known containment limit, recorded from the conformance probes: a process
+//! spawned through the shell's `start` command is created by the shell
+//! process and therefore lands OUTSIDE the Job Object — it survives both
+//! parent exit and tree kills. Direct process creation stays contained (the
+//! three-generation probe proves it). Denying shell-detachment escapes is
+//! the `detached-and-breakaway-attempt-denial` evidence obligation; what
+//! this slice still does NOT provide is the Linux delegated cgroup v2 lane
+//! (a `setsid`/double-fork escape is not contained by a process group) and
+//! the recorded real-platform evidence matrix — the Terminal capability
+//! stays unclaimed until that evidence-gated work lands (`REQ-2026-0003`).
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -24,6 +35,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
+#[cfg(unix)]
+use process_wrap::tokio::ProcessGroup;
+use process_wrap::tokio::{ChildWrapper, CommandWrap};
+#[cfg(windows)]
+use process_wrap::tokio::{JobObject, KillOnDrop};
 use sdkwork_sandbox_provider_spi::{
     SandboxCommandExecutionError, SandboxCommandLimits, SandboxCommandOutcome,
 };
@@ -222,18 +238,35 @@ impl SandboxLocalCommandProcessRunner for SandboxLocalTokioProcessRunner {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .kill_on_drop(true);
-        #[cfg(unix)]
-        sandbox_child_command.process_group(0);
 
-        let mut sandbox_child = sandbox_child_command
+        let mut sandbox_wrapped_command = CommandWrap::from(sandbox_child_command);
+        #[cfg(windows)]
+        {
+            // Suspended Job Object containment: `JobObject::pre_spawn` forces
+            // `CREATE_SUSPENDED`, the suspended child is assigned to the
+            // kill-on-close job, and only then resumed — no user code can run
+            // outside the job. `start_kill` becomes `TerminateJobObject`, so
+            // the whole descendant tree dies with the execution.
+            sandbox_wrapped_command.wrap(KillOnDrop);
+            sandbox_wrapped_command.wrap(JobObject);
+        }
+        #[cfg(unix)]
+        {
+            // Process-group containment: kills target the group, so
+            // descendants that stay in it die with the execution. A
+            // setsid/double-fork escape is NOT contained here — that is the
+            // delegated cgroup v2 slice's evidence obligation.
+            sandbox_wrapped_command.wrap(ProcessGroup);
+        }
+        let mut sandbox_child: Box<dyn ChildWrapper> = sandbox_wrapped_command
             .spawn()
             .map_err(|_| SandboxCommandExecutionError::UnsupportedCapability)?;
         let sandbox_stdout_pipe = sandbox_child
-            .stdout
+            .stdout()
             .take()
             .ok_or(SandboxCommandExecutionError::UnsupportedCapability)?;
         let sandbox_stderr_pipe = sandbox_child
-            .stderr
+            .stderr()
             .take()
             .ok_or(SandboxCommandExecutionError::UnsupportedCapability)?;
 
@@ -264,8 +297,8 @@ impl SandboxLocalCommandProcessRunner for SandboxLocalTokioProcessRunner {
 
         let sandbox_exit_code = match sandbox_timed {
             Ok(sandbox_exit_code) => sandbox_exit_code,
-            // Hard timeout: kill and reap within the cleanup bound so the
-            // child can never outlive its declared wall-clock bound.
+            // Hard timeout: kill and reap within the cleanup bound so no
+            // descendant can outlive the declared wall-clock bound.
             Err(_) => {
                 let _ = sandbox_child.start_kill();
                 let _ = tokio::time::timeout(
@@ -303,6 +336,7 @@ fn sandbox_environment_admitted(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
 
     fn sandbox_runner() -> SandboxLocalTokioProcessRunner {
         let roots = if cfg!(windows) {
@@ -393,5 +427,97 @@ mod tests {
             .sandbox_run_admitted(&sandbox_admitted("../escaped", vec![], 1_000))
             .await;
         assert_eq!(Err(SandboxCommandExecutionError::InvalidRequest), outcome);
+    }
+
+    /// The child runs under the admitted empty environment, so descendants
+    /// cannot resolve a bare `ping` name; the probe pins the absolute host
+    /// path instead. One tick lands roughly every second, which outlives
+    /// every assertion window.
+    const SANDBOX_PROBE_PINGER: &str = if cfg!(windows) {
+        "C:\\Windows\\System32\\ping.exe"
+    } else {
+        "/bin/sleep"
+    };
+
+    /// The contract's `parent-child-grandchild-cleanup` evidence mechanics:
+    /// a three-generation tree (`cmd` -> `cmd` -> `ping`, every generation
+    /// created by direct process creation so all of them stay inside the Job
+    /// Object) must die at the hard wall-clock timeout, log growth included.
+    #[cfg(windows)]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn runner_job_kills_a_three_generation_tree_at_the_hard_timeout() {
+        let sandbox_log_dir = std::env::temp_dir().join(format!(
+            "sandbox-tree-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock after epoch")
+                .as_millis()
+        ));
+        std::fs::create_dir_all(&sandbox_log_dir).expect("tree probe log dir");
+        let sandbox_log_path = sandbox_log_dir.join("tree.log");
+        let sandbox_log_display = sandbox_log_path.display().to_string();
+
+        let runner = sandbox_runner();
+        // `cmd` (parent) -> `cmd` (child) -> `ping` (grandchild): the inner
+        // chain uses direct process creation only. A shell-detached
+        // `start /b` grandchild is NOT a valid probe here — see the module
+        // limitation note: shell-spawned processes escape the Job Object.
+        let mut sandbox_command = sandbox_admitted(
+            "cmd",
+            vec![
+                "/c".to_owned(),
+                "cmd".to_owned(),
+                "/c".to_owned(),
+                format!("{SANDBOX_PROBE_PINGER} -n 600 127.0.0.1 >>{sandbox_log_display}"),
+            ],
+            2_500,
+        );
+        sandbox_command
+            .sandbox_command_limits
+            .sandbox_cleanup_timeout_ms = 2_000;
+
+        let sandbox_execution =
+            tokio::spawn(async move { runner.sandbox_run_admitted(&sandbox_command).await });
+
+        // The grandchild must be writing before the kill fires.
+        let mut sandbox_deadline = 0;
+        while !sandbox_log_path.exists() && sandbox_deadline < 50 {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            sandbox_deadline += 1;
+        }
+        assert!(
+            sandbox_log_path.exists(),
+            "the grandchild must have started writing its log"
+        );
+
+        // The hard timeout terminates the whole tree; the runner reports the
+        // non-terminal outcome (killed, no exit code) inside its bound.
+        let sandbox_outcome = tokio::time::timeout(Duration::from_secs(15), sandbox_execution)
+            .await
+            .expect("the killed execution must settle")
+            .expect("the execution task must not panic")
+            .expect("the runner must report an outcome");
+        assert_eq!(None, sandbox_outcome.sandbox_exit_code);
+
+        // After the tree kill the log must stay frozen: three consecutive
+        // stable seconds prove the grandchild is gone.
+        let mut sandbox_last = std::fs::metadata(&sandbox_log_path)
+            .expect("tree probe log metadata")
+            .len();
+        assert!(sandbox_last > 0, "the grandchild must have ticked");
+        for _ in 0..3 {
+            tokio::time::sleep(Duration::from_millis(1_000)).await;
+            let sandbox_now = std::fs::metadata(&sandbox_log_path)
+                .expect("tree probe log metadata")
+                .len();
+            assert_eq!(
+                sandbox_last, sandbox_now,
+                "the grandchild must stop writing after the tree kill"
+            );
+            sandbox_last = sandbox_now;
+        }
+        let _ = std::fs::remove_file(&sandbox_log_path);
+        let _ = std::fs::remove_dir(&sandbox_log_dir);
     }
 }

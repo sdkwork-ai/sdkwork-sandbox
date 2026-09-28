@@ -14,6 +14,7 @@ path = "src/lib.rs"
 
 [dependencies]
 async-trait.workspace = true
+process-wrap.workspace = true
 sdkwork-sandbox-provider-spi.workspace = true
 tokio.workspace = true
 tracing.workspace = true

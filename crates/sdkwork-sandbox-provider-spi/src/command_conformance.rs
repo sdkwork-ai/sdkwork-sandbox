@@ -188,7 +188,7 @@ pub async fn sandbox_run_command_conformance(
 /// delegated cgroup v2 with `cgroup.kill`).
 const SANDBOX_DESCENDANT_CLEANUP_PENDING: SandboxCommandConformancePending =
     SandboxCommandConformancePending {
-        sandbox_slice: "platform supervision (Job Object / cgroup v2) slice",
+        sandbox_slice: "Linux delegated cgroup v2 lane + real-platform evidence matrix (the Windows kill-on-close Job Object lane landed; shell-detached escapes are recorded as the detached-and-breakaway-attempt-denial obligation)",
         sandbox_gate: "specs/sandbox-local-provider-host-boundary.contract.json (REQ-2026-0003)",
     };
 

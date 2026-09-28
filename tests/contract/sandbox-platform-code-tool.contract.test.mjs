@@ -140,7 +140,7 @@ test("the repository's own platform regime passes with every marker declared", (
   // process spawning under the provider crate, and the standalone gateway
   // carries POSIX shutdown handling. All ten markers are declared in
   // TECH-platform-support.md section 3.1; the control plane stays clean.
-  assert.equal(result.markerCount, 15);
+  assert.equal(result.markerCount, 20);
 });
 
 test("the rendered report prints every platform and its status", () => {
@@ -384,14 +384,19 @@ test("markers are collected from crates only, and test code counts", () => {
     { path: "crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs", line: 45, marker: "cfg-macro" },
     { path: "crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs", line: 58, marker: "cfg-macro" },
     { path: "crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs", line: 66, marker: "cfg-macro" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 31, marker: "tokio-process" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 158, marker: "cfg-windows" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 165, marker: "cfg-windows" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 225, marker: "cfg-unix" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 308, marker: "cfg-macro" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 341, marker: "cfg-macro" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 351, marker: "cfg-macro" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 374, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 38, marker: "cfg-unix" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 41, marker: "cfg-windows" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 47, marker: "tokio-process" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 174, marker: "cfg-windows" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 181, marker: "cfg-windows" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 243, marker: "cfg-windows" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 253, marker: "cfg-unix" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 342, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 375, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 385, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 408, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 436, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 446, marker: "cfg-windows" },
   ]);
   withFixture(
     {
