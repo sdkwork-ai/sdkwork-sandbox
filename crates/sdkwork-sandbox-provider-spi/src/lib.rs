@@ -3,6 +3,7 @@
 
 mod capability;
 mod command;
+mod command_conformance;
 mod error;
 mod identity;
 mod provider;
@@ -13,6 +14,12 @@ pub use command::{
     sandbox_verify_request_fingerprint, SandboxCommandCancellationRequest,
     SandboxCommandExecutionError, SandboxCommandExecutionRequest, SandboxCommandExecutor,
     SandboxCommandLimits, SandboxCommandLimitsError, SandboxCommandOutcome,
+};
+pub use command_conformance::{
+    sandbox_run_command_conformance, SandboxCommandConformanceFinding,
+    SandboxCommandConformanceFixture, SandboxCommandConformancePending,
+    SandboxCommandConformanceReport, SandboxCommandConformanceStatus,
+    SANDBOX_COMMAND_CONFORMANCE_SCENARIOS,
 };
 pub use error::{
     SandboxProviderError, SandboxProviderErrorKind, SandboxProviderOperation, SandboxProviderResult,

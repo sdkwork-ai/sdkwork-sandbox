@@ -18,6 +18,9 @@ pub mod command_admission;
 pub mod command_executor;
 
 #[cfg(test)]
+mod command_conformance_tests;
+
+#[cfg(test)]
 mod command_executor_tests;
 pub mod host_boundary;
 

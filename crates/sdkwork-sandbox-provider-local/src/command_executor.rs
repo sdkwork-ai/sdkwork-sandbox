@@ -177,6 +177,9 @@ impl SandboxLocalCommandExecutor {
             ))
             | Err(SandboxLocalCommandAdmissionError::BoundaryDenied(
                 SandboxLocalHostBoundaryError::EnvironmentProtected,
+            ))
+            | Err(SandboxLocalCommandAdmissionError::BoundaryDenied(
+                SandboxLocalHostBoundaryError::EnvironmentDenied,
             )) => Err(SandboxCommandExecutionError::PolicyDenied),
             // A denied executable is a policy refusal of the requested
             // program, not a malformed request: the request shape may be

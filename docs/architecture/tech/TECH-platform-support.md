@@ -100,7 +100,7 @@ node tools/testing/sandbox-host-capability-evidence.mjs --target wsl:Ubuntu-22.0
 声明表与代码双向一致，且声明总数必须与 §表末的计数一致。测试代码同样计入，因为平台条件的**测试**
 也是一种平台声明。
 
-当前声明：10
+当前声明：15
 
 | 文件 | 标记 | 平台 | 理由 |
 | --- | --- | --- | --- |
@@ -114,6 +114,11 @@ node tools/testing/sandbox-host-capability-evidence.mjs --target wsl:Ubuntu-22.0
 | `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-macro` | `windows-x64` | runner 测试选平台可执行名（`cmd` vs `echo`），同上双态 |
 | `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-macro` | `windows-x64` | runner 回显测试的平台参数（`/c echo ok` vs `ok`），同上双态 |
 | `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-macro` | `windows-x64` | 硬超时测试的长任务选择（`ping -n 10` vs `sleep 10`），同上双态 |
+| `crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs` | `cfg-macro` | `windows-x64` | Conformance fixture 选平台可用解析根（System32 vs /usr/bin、/bin）；同一行在非 Windows 编译为另一分支 |
+| `crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs` | `cfg-macro` | `windows-x64` | Conformance fixture 选平台回显可执行名（`cmd` vs `echo`），同上双态 |
+| `crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs` | `cfg-macro` | `windows-x64` | Conformance fixture 的回显参数（`/c echo` 前缀 vs 裸参数），同上双态 |
+| `crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs` | `cfg-macro` | `windows-x64` | Conformance fixture 选平台长任务可执行名（`ping` vs `sleep`），同上双态 |
+| `crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs` | `cfg-macro` | `windows-x64` | Conformance fixture 的长任务参数（`ping -n 30` vs `sleep 30`），同上双态 |
 
 **这张表为什么必须与代码双向一致。** 控制面之所以可移植，是因为它把
 所有平台相关工作都留给 Provider SPI 背后的适配器，服务层只做编排。因此：

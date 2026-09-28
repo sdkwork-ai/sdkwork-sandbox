@@ -37,6 +37,18 @@ fn accepts_a_well_formed_sandbox_command_request() {
 }
 
 #[test]
+fn accepts_the_workspace_root_token_as_a_working_directory() {
+    let boundary = sandbox_boundary();
+    // `filesystemBoundary.sandbox_workspace_root_token` is exactly `.`: a
+    // command may address the Workspace root itself. Embedded `.` segments
+    // and `..` stay rejected.
+    assert_eq!(
+        boundary.validate_sandbox_command("toybox", &[], ".", &sandbox_environment(),),
+        Ok(())
+    );
+}
+
+#[test]
 fn rejects_an_executable_that_is_not_a_bare_name() {
     let boundary = sandbox_boundary();
     assert_eq!(

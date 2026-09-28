@@ -140,7 +140,7 @@ test("the repository's own platform regime passes with every marker declared", (
   // process spawning under the provider crate, and the standalone gateway
   // carries POSIX shutdown handling. All ten markers are declared in
   // TECH-platform-support.md section 3.1; the control plane stays clean.
-  assert.equal(result.markerCount, 10);
+  assert.equal(result.markerCount, 15);
 });
 
 test("the rendered report prints every platform and its status", () => {
@@ -379,6 +379,11 @@ test("markers are collected from crates only, and test code counts", () => {
   assert.deepEqual(summarized, [
     { path: "crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs", line: 50, marker: "cfg-unix" },
     { path: "crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs", line: 58, marker: "cfg-unix" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs", line: 26, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs", line: 37, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs", line: 45, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs", line: 58, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs", line: 66, marker: "cfg-macro" },
     { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 31, marker: "tokio-process" },
     { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 158, marker: "cfg-windows" },
     { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 165, marker: "cfg-windows" },

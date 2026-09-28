@@ -265,6 +265,13 @@ fn is_valid_sandbox_logical_relative_path(
         return false;
     }
 
+    // The contract's workspace-root token: a command may address the Workspace
+    // root itself as exactly `.`. Any other use of a `.` segment (embedded or
+    // as `..`) stays rejected, so traversal forms gain nothing.
+    if sandbox_path == "." {
+        return true;
+    }
+
     let sandbox_path_bytes = sandbox_path.as_bytes();
     if sandbox_path_bytes.len() >= 2
         && sandbox_path_bytes[0].is_ascii_alphabetic()
