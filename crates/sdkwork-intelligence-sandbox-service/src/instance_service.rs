@@ -149,6 +149,20 @@ impl<R: SandboxInstanceRepository> SandboxInstanceService<R> {
         .await
         .map_err(SandboxInstanceError::Repository)?;
         if !stored {
+            // `rows_affected == 0` covers both a moved version and a row that
+            // was concurrently deleted; the session repository distinguishes
+            // the two, so the instance surface does too instead of reporting
+            // a version conflict for a vanished row.
+            if self
+                .retrieve(&command.tenant_id, &command.sandbox_instance_id)
+                .await
+                .is_err()
+            {
+                return Err(SandboxInstanceError::NotFound {
+                    tenant_id: command.tenant_id.clone(),
+                    sandbox_instance_id: command.sandbox_instance_id,
+                });
+            }
             return Err(SandboxInstanceError::VersionConflict {
                 sandbox_instance_id: command.sandbox_instance_id,
             });
@@ -187,6 +201,14 @@ impl<R: SandboxInstanceRepository> SandboxInstanceService<R> {
         .await
         .map_err(SandboxInstanceError::Repository)?;
         if !deleted {
+            // The row moved (version conflict) or vanished under the caller;
+            // re-check which, mirroring the session repository's semantics.
+            if self.retrieve(tenant_id, sandbox_instance_id).await.is_err() {
+                return Err(SandboxInstanceError::NotFound {
+                    tenant_id: tenant_id.clone(),
+                    sandbox_instance_id: sandbox_instance_id.clone(),
+                });
+            }
             return Err(SandboxInstanceError::VersionConflict {
                 sandbox_instance_id: sandbox_instance_id.clone(),
             });
@@ -309,7 +331,10 @@ mod tests {
                             (cursor.created_at(), cursor.sandbox_instance_id().as_str());
                         row_key < cursor_key
                     })
-                    .ok_or(SandboxInstanceRepositoryError::InvalidPageRequest)?,
+                    // A deleted anchor row (or a seek past the end) is an
+                    // empty page, matching the PostgreSQL keyset seek —
+                    // never an error.
+                    .unwrap_or(filtered.len()),
             };
             let window = &filtered[window_start.min(filtered.len())..];
             let has_more = window.len() > page_size as usize;

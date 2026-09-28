@@ -10,7 +10,7 @@ Canonical standards are rooted at `../sdkwork-specs/README.md`. This repository 
 
 ## Application Identity
 
-The application code is `sandbox`, and the repository is `sdkwork-sandbox`. The repository is in Phase 0 and does not yet declare `sdkwork.app.config.json`; create that manifest only when registration, packaging, or deployment enters scope, then validate it against `../sdkwork-specs/APP_MANIFEST_SPEC.md`.
+The application code is `sandbox`, and the repository is `sdkwork-sandbox`. The repository declares `sdkwork.app.config.json`; keep it validated against `../sdkwork-specs/APP_MANIFEST_SPEC.md` (`node ../sdkwork-specs/tools/check-app-manifest-standard.mjs --root .` and `node ../sdkwork-specs/tools/check-app-manifest-deployment-standard.mjs --root .`) whenever application identity, packaging, or deployment changes. Publication stays `DRAFT` until the commercial-readiness contract authorizes a release.
 
 ## Local Dictionary Structure
 

@@ -9,6 +9,7 @@ authors.workspace = true
 repository.workspace = true
 
 [dependencies]
+tracing.workspace = true
 axum.workspace = true
 base64.workspace = true
 serde.workspace = true

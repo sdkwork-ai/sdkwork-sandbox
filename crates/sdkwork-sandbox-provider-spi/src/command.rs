@@ -274,13 +274,17 @@ pub trait SandboxCommandExecutor: Send + Sync {
     ) -> Result<SandboxCommandOutcome, SandboxCommandExecutionError>;
 
     /// Requests fenced cancellation of a started execution. Cancellation is idempotent: cancelling
-    /// an unknown or already-terminal operation is not an error.
+    /// an unknown or already-terminal operation is not an error. The lookup key is the contract's
+    /// execution key triple (`tenantId`, `sandboxProviderId`, `sandboxCommandOperationId`), so two
+    /// tenants reusing an operation id string can never reach each other's live execution.
     ///
     /// # Errors
     ///
     /// Returns the provider's typed execution error for stale fencing or unavailable providers.
     async fn sandbox_cancel(
         &self,
+        sandbox_tenant_id: &str,
+        sandbox_provider_id: &str,
         sandbox_operation_id: &str,
         sandbox_fencing_token: u64,
     ) -> Result<(), SandboxCommandExecutionError>;
@@ -307,18 +311,36 @@ pub struct SandboxCommandOutcome {
 }
 
 /// Why an execution failed without producing a terminal outcome.
+///
+/// The variants mirror the contract's `errorCodes` families one to one, in the
+/// contract's declared order, so an error family can never appear on the wire
+/// without a typed carrier here.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SandboxCommandExecutionError {
-    /// The request failed contract validation.
+    /// The request failed contract validation (`invalid-request`).
     InvalidRequest,
-    /// The provider does not offer the requested capability.
+    /// The provider does not offer the requested capability (`unsupported-capability`).
     UnsupportedCapability,
-    /// The execution policy denied the request.
+    /// The execution policy denied the request (`policy-denied`).
     PolicyDenied,
-    /// The fencing token is stale; retry requires new fencing authority.
+    /// The fencing token is stale; retry requires new fencing authority (`stale-fencing`).
     StaleFencing,
-    /// The operation id is already bound to a different fingerprint.
+    /// The operation id is already bound to a different fingerprint (`idempotency-conflict`).
     IdempotencyConflict,
+    /// The same operation id and fingerprint is already executing live
+    /// (`operation-in-progress`); retry after the live execution settles.
+    OperationInProgress,
+    /// The requested command is unknown to the provider (`command-not-found`).
+    CommandNotFound,
+    /// The provider is temporarily unable to run or clean up the execution
+    /// (`provider-unavailable`); the contract's retry prerequisite is the same
+    /// operation id and fingerprint.
+    ProviderUnavailable,
+    /// No terminal result is available for the operation (`result-unavailable`);
+    /// the contract's retry prerequisite is the same operation id and fingerprint.
+    ResultUnavailable,
+    /// The provider failed on an internal invariant (`internal-failure`).
+    InternalFailure,
 }
 
 impl fmt::Display for SandboxCommandExecutionError {
@@ -331,6 +353,11 @@ impl fmt::Display for SandboxCommandExecutionError {
             Self::IdempotencyConflict => {
                 "sandbox command operation id conflicts with a different fingerprint"
             }
+            Self::OperationInProgress => "sandbox command operation is already in progress",
+            Self::CommandNotFound => "sandbox command is unknown to the provider",
+            Self::ProviderUnavailable => "sandbox command provider is unavailable",
+            Self::ResultUnavailable => "sandbox command result is unavailable",
+            Self::InternalFailure => "sandbox command provider hit an internal failure",
         };
         f.write_str(message)
     }

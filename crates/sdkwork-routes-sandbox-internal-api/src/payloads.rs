@@ -31,6 +31,7 @@ use crate::errors::SandboxApiError;
 /// 20 and is rejected — never clamped — outside `1..=200`; `cursor` is the
 /// opaque continuation token the previous page returned.
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SandboxInstanceListQuery {
     pub page_size: Option<u32>,
     pub cursor: Option<String>,
@@ -431,6 +432,43 @@ mod tests {
             ..SandboxInstanceListQuery::default()
         };
         assert_eq!(200, boundary.validated_page_size().expect("boundary"));
+    }
+
+    #[test]
+    fn list_query_rejects_forbidden_pagination_aliases() {
+        // `PAGINATION_SPEC.md` section 10.1: `pageSize`, `limit`, `page_no`,
+        // `pageNo`, `per_page`, `size`, and numeric paging aliases must be
+        // rejected, never silently ignored or honored.
+        for alias in [
+            "pageSize=5",
+            "limit=5",
+            "page_no=2",
+            "pageNo=2",
+            "per_page=5",
+            "size=5",
+            "page=2",
+            "offset=20",
+        ] {
+            let uri = format!("http://sandbox.test/sandbox_instances?{alias}")
+                .parse::<axum::http::Uri>()
+                .expect("alias uri");
+            assert!(
+                axum::extract::Query::<SandboxInstanceListQuery>::try_from_uri(&uri).is_err(),
+                "the forbidden pagination alias `{alias}` must be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn list_query_accepts_its_declared_parameters() {
+        let uri = "http://sandbox.test/sandbox_instances?page_size=5&cursor=&sandbox_instance_owner_id=owner-1&sandbox_instance_state=requested"
+            .parse::<axum::http::Uri>()
+            .expect("declared uri");
+        let query = axum::extract::Query::<SandboxInstanceListQuery>::try_from_uri(&uri)
+            .expect("declared parameters parse");
+        assert_eq!(Some(5), query.page_size);
+        assert_eq!(Some("owner-1"), query.sandbox_instance_owner_id.as_deref());
+        assert_eq!(Some("requested"), query.sandbox_instance_state.as_deref());
     }
 
     #[test]

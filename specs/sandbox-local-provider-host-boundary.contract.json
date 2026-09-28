@@ -195,13 +195,15 @@
     "sandbox_cleanup_and_quarantine_facts_required": true
   },
   "supplyChain": {
-    "sandbox_runtime_dependency_changes_authorized": false,
+    "sandbox_runtime_dependency_changes_authorized": true,
+    "sandbox_selection_evidence": "docs/engineering/reviews/REVIEW-20260929-process-wrap-selection-closure.md",
     "sandbox_candidates": [
       {
         "sandbox_package": "process-wrap",
-        "sandbox_version": "9.1.0",
-        "sandbox_disposition": "conditional-candidate",
-        "sandbox_security_boundary": "windows-suspended-job-object-only; unix-process-group-is-not-containment"
+        "sandbox_version": "9.1.1",
+        "sandbox_disposition": "selected-windows-lane",
+        "sandbox_security_boundary": "windows-suspended-job-object-only; unix-process-group-is-not-containment",
+        "sandbox_open_lane_obligation": "linux-delegated-cgroup-v2-build-and-platform-evidence"
       },
       {
         "sandbox_package": "cap-std",
@@ -214,7 +216,7 @@
         "sandbox_package": "tokio",
         "sandbox_version": "workspace-authority",
         "sandbox_disposition": "existing-dependency-candidate",
-        "sandbox_process_feature_authorized": false
+        "sandbox_process_feature_authorized": true
       },
       {
         "sandbox_package": "cgroups-rs",

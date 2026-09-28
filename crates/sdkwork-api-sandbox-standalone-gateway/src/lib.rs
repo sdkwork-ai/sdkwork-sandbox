@@ -22,9 +22,22 @@ use tracing_subscriber::EnvFilter;
 /// Panics when the address cannot be bound or the server fails, because a
 /// gateway that cannot listen has no useful degraded mode to fall back to.
 pub async fn serve_router(listen_addr: &str, service_name: &str, router: Router) {
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
-        .init();
+    // Structured observability (OBSERVABILITY_SPEC section 2): `RUST_LOG`
+    // keeps precedence, an unset filter falls back to `info` so a default
+    // deployment is not silent, and `SDKWORK_SANDBOX_LOG_FORMAT=json` emits
+    // structured JSON events for a log pipeline.
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let format_json = std::env::var("SDKWORK_SANDBOX_LOG_FORMAT")
+        .map(|value| value.eq_ignore_ascii_case("json"))
+        .unwrap_or(false);
+    if format_json {
+        tracing_subscriber::fmt()
+            .json()
+            .with_env_filter(filter)
+            .init();
+    } else {
+        tracing_subscriber::fmt().with_env_filter(filter).init();
+    }
 
     let listener = tokio::net::TcpListener::bind(listen_addr)
         .await

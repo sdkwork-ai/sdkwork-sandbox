@@ -31,7 +31,7 @@ thiserror = "2"
 tokio = { version = "1.53", features = ["io-util", "macros", "process", "rt", "rt-multi-thread", "net", "signal", "sync", "time"] }
 process-wrap = { version = "9.1", default-features = false, features = ["creation-flags", "job-object", "kill-on-drop", "process-group", "tokio1"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["v4"] }
 zeroize = "1"
 
@@ -49,7 +49,7 @@ sdkwork-database-sqlx = { path = "../sdkwork-database/crates/sdkwork-database-sq
 sdkwork-utils-rust = { path = "../sdkwork-utils/packages/sdkwork-utils-rust" }
 
 [workspace.package]
-rust-version = "1.85"
+rust-version = "1.87"
 version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0-or-later"

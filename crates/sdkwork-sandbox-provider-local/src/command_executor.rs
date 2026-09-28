@@ -5,14 +5,18 @@
 //! for the Local Provider lane. Admission (contract limits, fencing-token
 //! validity, the pure-data host boundary, and the recomputed fingerprint) runs
 //! before any delegation; live executions are tracked in a bounded registry
-//! keyed by the durable operation id, so a fingerprint change under the same
-//! id is an [`SandboxCommandExecutionError::IdempotencyConflict`] and a
-//! fenced cancellation reaches the live child through the runner's
-//! cancellation handle. The process lifecycle itself lives in
+//! keyed by the contract's execution key triple (`tenantId`,
+//! `sandboxProviderId`, `sandboxCommandOperationId`), so a fingerprint change
+//! under the same key is an
+//! [`SandboxCommandExecutionError::IdempotencyConflict`], a same-fingerprint
+//! live replay is an
+//! [`SandboxCommandExecutionError::OperationInProgress`], and a fenced
+//! cancellation reaches the live child through the runner's cancellation
+//! handle. The process lifecycle itself lives in
 //! [`crate::process_runner::SandboxLocalTokioProcessRunner`].
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 
 use async_trait::async_trait;
 use sdkwork_sandbox_provider_spi::{
@@ -20,7 +24,6 @@ use sdkwork_sandbox_provider_spi::{
     SandboxCommandExecutionRequest, SandboxCommandExecutor, SandboxCommandLimits,
     SandboxCommandOutcome,
 };
-use tokio::sync::Mutex;
 
 use crate::command_admission::{admit_sandbox_command, SandboxLocalCommandAdmissionError};
 use crate::host_boundary::{SandboxLocalHostBoundary, SandboxLocalHostBoundaryError};
@@ -68,6 +71,12 @@ pub trait SandboxLocalCommandProcessRunner: Send + Sync {
 /// refuses new work as policy-denied instead of growing without limit.
 const MAX_SANDBOX_LIVE_COMMANDS: usize = 1024;
 
+/// The contract's execution key triple (`tenantId`, `sandboxProviderId`,
+/// `sandboxCommandOperationId`). Keying live executions by the triple, not the
+/// bare operation id, keeps two tenants that reuse an id string out of each
+/// other's registry cells.
+type SandboxLiveCommandKey = (String, String, String);
+
 /// One live execution's registry entry.
 struct SandboxLiveCommand {
     sandbox_fencing_token: u64,
@@ -75,45 +84,94 @@ struct SandboxLiveCommand {
     sandbox_cancellation: SandboxLiveCommandHandle,
 }
 
-/// Bounded live-execution registry. Every completion path removes its entry
-/// exactly once, so the map size tracks actually-live children only.
+/// Bounded live-execution registry. The map locks only for the brief insert,
+/// remove, and lookup map operations (never across an await), and the
+/// [`SandboxLiveCommandGuard`] removes an entry on every drop path — including
+/// a cancelled or panicked execution future — so the map size tracks
+/// actually-live children only.
 #[derive(Default)]
 struct SandboxLiveCommandRegistry {
-    sandbox_live: Mutex<HashMap<String, SandboxLiveCommand>>,
+    sandbox_live: Mutex<HashMap<SandboxLiveCommandKey, SandboxLiveCommand>>,
 }
 
 impl SandboxLiveCommandRegistry {
-    async fn sandbox_insert(
+    /// Registers one live execution under the contract's execution key triple.
+    ///
+    /// A duplicate key is a replay of a live execution: the same fingerprint
+    /// is [`SandboxCommandExecutionError::OperationInProgress`] (the contract's
+    /// `sameFingerprintInProgress` outcome), a moved fingerprint is
+    /// [`SandboxCommandExecutionError::IdempotencyConflict`] — never a second
+    /// spawn.
+    fn sandbox_insert(
         &self,
-        sandbox_operation_id: &str,
+        sandbox_key: &SandboxLiveCommandKey,
         sandbox_entry: SandboxLiveCommand,
     ) -> Result<(), SandboxCommandExecutionError> {
-        let mut sandbox_live = self.sandbox_live.lock().await;
-        if let Some(sandbox_existing) = sandbox_live.get(sandbox_operation_id) {
+        let mut sandbox_live = self
+            .sandbox_live
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if let Some(sandbox_existing) = sandbox_live.get(sandbox_key) {
             if sandbox_existing.sandbox_fingerprint != sandbox_entry.sandbox_fingerprint {
                 tracing::warn!(
-                    sandbox_operation = %sandbox_operation_id,
-                    "a live sandbox command operation id was replayed with a different fingerprint"
+                    sandbox_tenant = %sandbox_key.0,
+                    sandbox_provider = %sandbox_key.1,
+                    sandbox_operation = %sandbox_key.2,
+                    "a live sandbox command operation was replayed with a different fingerprint"
                 );
+                return Err(SandboxCommandExecutionError::IdempotencyConflict);
             }
-            // A duplicate operation id is a replay of a live execution: a
-            // matching fingerprint still may not run twice concurrently.
-            return Err(SandboxCommandExecutionError::IdempotencyConflict);
+            return Err(SandboxCommandExecutionError::OperationInProgress);
         }
         if sandbox_live.len() >= MAX_SANDBOX_LIVE_COMMANDS {
             return Err(SandboxCommandExecutionError::PolicyDenied);
         }
-        sandbox_live.insert(sandbox_operation_id.to_owned(), sandbox_entry);
+        sandbox_live.insert(sandbox_key.clone(), sandbox_entry);
         Ok(())
     }
 
-    /// Removes the entry and returns its cancellation handle so the run's
-    /// select loop keeps listening even while the entry is already gone.
-    async fn sandbox_remove(&self, sandbox_operation_id: &str) -> Option<SandboxLiveCommandHandle> {
-        let mut sandbox_live = self.sandbox_live.lock().await;
-        sandbox_live
-            .remove(sandbox_operation_id)
-            .map(|entry| entry.sandbox_cancellation)
+    fn sandbox_remove(&self, sandbox_key: &SandboxLiveCommandKey) {
+        self.sandbox_live
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(sandbox_key);
+    }
+
+    fn sandbox_lookup_cancel(
+        &self,
+        sandbox_key: &SandboxLiveCommandKey,
+        sandbox_fencing_token: u64,
+    ) -> Result<(), SandboxCommandExecutionError> {
+        let sandbox_live = self
+            .sandbox_live
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        match sandbox_live.get(sandbox_key) {
+            // Unknown or already-terminal operation: idempotent no-op.
+            None => Ok(()),
+            Some(entry) if entry.sandbox_fencing_token == sandbox_fencing_token => {
+                entry.sandbox_cancellation.sandbox_cancel();
+                Ok(())
+            }
+            // A cancellation under a stale token must not touch a newer
+            // execution of the same operation id.
+            Some(_) => Err(SandboxCommandExecutionError::StaleFencing),
+        }
+    }
+}
+
+/// Removes the registry entry for one key when dropped, on every path —
+/// terminal outcome, runner error, cancelled future, or panic. This is what
+/// keeps the bounded registry from leaking slots under the service layer's
+/// operation-timeout cancellation of long-running executions.
+struct SandboxLiveCommandGuard {
+    sandbox_registry: Arc<SandboxLiveCommandRegistry>,
+    sandbox_key: SandboxLiveCommandKey,
+}
+
+impl Drop for SandboxLiveCommandGuard {
+    fn drop(&mut self) {
+        self.sandbox_registry.sandbox_remove(&self.sandbox_key);
     }
 }
 
@@ -201,44 +259,52 @@ impl SandboxCommandExecutor for SandboxLocalCommandExecutor {
         sandbox_request: &SandboxCommandExecutionRequest,
     ) -> Result<SandboxCommandOutcome, SandboxCommandExecutionError> {
         let sandbox_command = self.sandbox_admit(sandbox_request)?;
-        self.sandbox_registry
-            .sandbox_insert(
-                &sandbox_request.sandbox_command_operation_id,
-                SandboxLiveCommand {
-                    sandbox_fencing_token: sandbox_request.sandbox_fencing_token,
-                    sandbox_fingerprint: sandbox_command_execution_fingerprint(sandbox_request),
-                    sandbox_cancellation: sandbox_command.sandbox_cancellation.clone(),
-                },
-            )
-            .await?;
+        // The executor recomputes the fingerprint from the request and
+        // registers exactly this value, so a replay under the same execution
+        // key with a different request is a conflict at the registry, not a
+        // silent re-execution.
+        let sandbox_fingerprint = sandbox_command_execution_fingerprint(sandbox_request);
+        let sandbox_key: SandboxLiveCommandKey = (
+            sandbox_request.sandbox_tenant_id.clone(),
+            sandbox_request.sandbox_provider_id.clone(),
+            sandbox_request.sandbox_command_operation_id.clone(),
+        );
+        self.sandbox_registry.sandbox_insert(
+            &sandbox_key,
+            SandboxLiveCommand {
+                sandbox_fencing_token: sandbox_request.sandbox_fencing_token,
+                sandbox_fingerprint,
+                sandbox_cancellation: sandbox_command.sandbox_cancellation.clone(),
+            },
+        )?;
+        // The guard removes the live entry on every drop path, so a cancelled
+        // or panicked execution can never strand its registry slot.
+        let sandbox_live_guard = SandboxLiveCommandGuard {
+            sandbox_registry: Arc::clone(&self.sandbox_registry),
+            sandbox_key,
+        };
         let sandbox_outcome = self
             .sandbox_runner
             .sandbox_run_admitted(&sandbox_command)
             .await;
-        // Every path — terminal outcome or runner-level error — removes the
-        // live entry, so the registry never grows beyond live children.
-        self.sandbox_registry
-            .sandbox_remove(&sandbox_request.sandbox_command_operation_id)
-            .await;
+        drop(sandbox_live_guard);
         sandbox_outcome
     }
 
     async fn sandbox_cancel(
         &self,
+        sandbox_tenant_id: &str,
+        sandbox_provider_id: &str,
         sandbox_operation_id: &str,
         sandbox_fencing_token: u64,
     ) -> Result<(), SandboxCommandExecutionError> {
-        let sandbox_live = self.sandbox_registry.sandbox_live.lock().await;
-        match sandbox_live.get(sandbox_operation_id) {
-            // Unknown or already-terminal operation: idempotent no-op.
-            None => Ok(()),
-            Some(entry) if entry.sandbox_fencing_token == sandbox_fencing_token => {
-                entry.sandbox_cancellation.sandbox_cancel();
-                Ok(())
-            }
-            // A cancellation under a stale token must not touch a newer
-            // execution of the same operation id.
-            Some(_) => Err(SandboxCommandExecutionError::StaleFencing),
-        }
+        self.sandbox_registry.sandbox_lookup_cancel(
+            &(
+                sandbox_tenant_id.to_owned(),
+                sandbox_provider_id.to_owned(),
+                sandbox_operation_id.to_owned(),
+            ),
+            sandbox_fencing_token,
+        )
     }
 }

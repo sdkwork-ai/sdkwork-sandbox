@@ -114,7 +114,7 @@ flowchart LR
 
 箭头表示 Build/Use Dependency 指向被消费组件。跨仓库方向固定为 `sdkwork-agents -> sdkwork-kernel -> sdkwork-sandbox`。L2 不导入 Concrete Provider；Provider Adapter 不决定 Lifecycle 或 Tenant Policy；CLI 与 Route 不直接访问 Provider 或 Repository；Sandbox 不导入 Agents 模型。
 
-**当前落地状态**（2026-09-23 核对，依据各 crate `Cargo.toml`；F-08 要求计划与现状可区分）：已落地 2 条——`SERVICE → PORTS`（`sdkwork-intelligence-sandbox-service` 依赖 `sdkwork-sandbox-provider-spi`）与 `STORES → PORTS`（`…-repository-memory`/`…-repository-sqlx` 依赖 `…-sandbox-service` 与 `…-provider-spi`）。其余边均为计划、零落地：`API → ROUTE → SERVICE`（无 route crate）、`HOST → SERVICE/PROVIDERS/STORES`（service-host 零依赖）、`ASSEMBLY → ROUTE`（assembly 仅依赖 web-bootstrap/core）、`GATEWAY → ASSEMBLY`、`CLI → HOST`（cli 零依赖）、`AGENTS → KERNEL → SERVICE`（跨仓，未接线）。
+**当前落地状态**（2026-09-29 核对，依据各 crate `Cargo.toml`；F-08 要求计划与现状可区分）：已落地 5 条——`SERVICE → PORTS`（`sdkwork-intelligence-sandbox-service` 依赖 `sdkwork-sandbox-provider-spi`）、`STORES → PORTS`（`…-repository-memory`/`…-repository-sqlx` 依赖 `…-sandbox-service` 与 `…-provider-spi`）、`API → ROUTE → SERVICE`（`sdkwork-routes-sandbox-internal-api` 已存在并被 service/routes 清单接线）、`ASSEMBLY → ROUTE`（assembly 依赖 route crate）、`GATEWAY → ASSEMBLY`（standalone gateway 依赖 assembly）。仍为零落地的计划边：`HOST → SERVICE/PROVIDERS/STORES`（service-host 仍为组合 stub）、`CLI → HOST`（cli 零依赖）、`AGENTS → KERNEL → SERVICE`（跨仓，未接线）。
 
 ## 5. Repository Layout
 

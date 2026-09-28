@@ -10,8 +10,11 @@
 //! cooperative cancellation signal, and containment of the whole descendant
 //! tree so an aborted await can never leak live children.
 //!
-//! Descendant containment is platform supervision by the reviewed
-//! `process-wrap` candidate (`REQ-2026-0003` supply-chain assessment): on
+//! Descendant containment is platform supervision by the `process-wrap`
+//! candidate assessed as the conditional selection in the `REQ-2026-0003`
+//! supply-chain gate, whose selection-evidence closure is recorded in
+//! `docs/engineering/reviews/REVIEW-20260929-process-wrap-selection-closure.md`:
+//! on
 //! Windows the child is spawned suspended, assigned to a kill-on-close Job
 //! Object, and only then resumed — assign-before-resume is enforced by the
 //! wrapper, and `TerminateJobObject` kills every descendant that stays inside
@@ -28,6 +31,10 @@
 //! (a `setsid`/double-fork escape is not contained by a process group) and
 //! the recorded real-platform evidence matrix — the Terminal capability
 //! stays unclaimed until that evidence-gated work lands (`REQ-2026-0003`).
+//! The declared `sandbox_max_process_count` bound is admission-validated but
+//! not yet OS-enforced: the wrapper's Job Object sets kill-on-close only and
+//! exposes no active-process limit, so enforcement lands with the same
+//! platform-supervision evidence work.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -61,9 +68,11 @@ impl SandboxLiveCommandHandle {
         Self::default()
     }
 
-    /// Requests cancellation; idempotent and safe after completion.
+    /// Requests cancellation; idempotent and safe after completion. The
+    /// notification stores a permit, so a cancellation arriving before the
+    /// runner's select loop first polls is still observed there.
     pub fn sandbox_cancel(&self) {
-        self.sandbox_cancelled.notify_waiters();
+        self.sandbox_cancelled.notify_one();
     }
 
     /// Waits for one cancellation notification. Crate-visible so the
@@ -260,15 +269,15 @@ impl SandboxLocalCommandProcessRunner for SandboxLocalTokioProcessRunner {
         }
         let mut sandbox_child: Box<dyn ChildWrapper> = sandbox_wrapped_command
             .spawn()
-            .map_err(|_| SandboxCommandExecutionError::UnsupportedCapability)?;
+            .map_err(|_| SandboxCommandExecutionError::ProviderUnavailable)?;
         let sandbox_stdout_pipe = sandbox_child
             .stdout()
             .take()
-            .ok_or(SandboxCommandExecutionError::UnsupportedCapability)?;
+            .ok_or(SandboxCommandExecutionError::InternalFailure)?;
         let sandbox_stderr_pipe = sandbox_child
             .stderr()
             .take()
-            .ok_or(SandboxCommandExecutionError::UnsupportedCapability)?;
+            .ok_or(SandboxCommandExecutionError::InternalFailure)?;
 
         let sandbox_stdout_task = tokio::spawn(sandbox_read_bounded(
             sandbox_stdout_pipe,
@@ -279,41 +288,84 @@ impl SandboxLocalCommandProcessRunner for SandboxLocalTokioProcessRunner {
             limits.sandbox_stderr_byte_limit,
         ));
 
-        let sandbox_timed =
-            tokio::time::timeout(Duration::from_millis(limits.sandbox_timeout_ms), async {
-                tokio::select! {
-                    sandbox_status = sandbox_child.wait() => {
-                        // A signal-terminated child has no exit code, which
-                        // the contract reports as a non-terminal exit status.
-                        sandbox_status.ok().and_then(|status| status.code())
-                    }
-                    () = sandbox_command.sandbox_cancellation.sandbox_cancelled() => {
-                        let _ = sandbox_child.start_kill();
-                        None
-                    }
+        let sandbox_wall_clock = Duration::from_millis(limits.sandbox_timeout_ms);
+        let sandbox_cleanup_budget = Duration::from_millis(limits.sandbox_cleanup_timeout_ms);
+        let sandbox_termination = tokio::time::timeout(sandbox_wall_clock, async {
+            tokio::select! {
+                sandbox_status = sandbox_child.wait() => {
+                    // A signal-terminated child has no exit code, which
+                    // the contract reports as a non-terminal exit status.
+                    // On Windows the Job Object wrapper's wait returns
+                    // only once the whole job has drained, so a live
+                    // descendant consumes the wall-clock budget by design.
+                    Ok(sandbox_status.ok().and_then(|status| status.code()))
                 }
-            })
-            .await;
+                () = sandbox_command.sandbox_cancellation.sandbox_cancelled() => Err(()),
+            }
+        })
+        .await;
 
-        let sandbox_exit_code = match sandbox_timed {
-            Ok(sandbox_exit_code) => sandbox_exit_code,
+        let (sandbox_exit_code, mut sandbox_cleanup_confirmed) = match sandbox_termination {
+            Ok(Ok(sandbox_exit_code)) => (sandbox_exit_code, true),
+            // Fenced cancellation: kill the tree, then reap within the
+            // cleanup bound so no descendant can outlive the cancellation.
+            Ok(Err(())) => {
+                let _ = sandbox_child.start_kill();
+                let sandbox_reaped =
+                    sandbox_reap_within(&mut sandbox_child, sandbox_cleanup_budget).await;
+                (None, sandbox_reaped)
+            }
             // Hard timeout: kill and reap within the cleanup bound so no
             // descendant can outlive the declared wall-clock bound.
             Err(_) => {
                 let _ = sandbox_child.start_kill();
-                let _ = tokio::time::timeout(
-                    Duration::from_millis(limits.sandbox_cleanup_timeout_ms),
-                    sandbox_child.wait(),
-                )
-                .await;
-                None
+                let sandbox_reaped =
+                    sandbox_reap_within(&mut sandbox_child, sandbox_cleanup_budget).await;
+                (None, sandbox_reaped)
             }
         };
 
-        let (sandbox_stdout, sandbox_stdout_truncated) =
-            sandbox_stdout_task.await.unwrap_or((Vec::new(), false));
-        let (sandbox_stderr, sandbox_stderr_truncated) =
-            sandbox_stderr_task.await.unwrap_or((Vec::new(), false));
+        // The reader join is bounded by the cleanup budget: a descendant that
+        // inherited the pipe write ends can hold EOF open past the direct
+        // child's exit, and the runner must never wait unbounded on it.
+        let sandbox_streams = tokio::time::timeout(sandbox_cleanup_budget, async {
+            tokio::join!(sandbox_stdout_task, sandbox_stderr_task)
+        })
+        .await;
+        let (sandbox_stdout, sandbox_stdout_truncated, sandbox_stderr, sandbox_stderr_truncated) =
+            match sandbox_streams {
+                Ok((Ok((stdout, stdout_truncated)), Ok((stderr, stderr_truncated)))) => {
+                    (stdout, stdout_truncated, stderr, stderr_truncated)
+                }
+                // A reader task panicked: captured output is unreliable, so
+                // the execution fails without a terminal outcome.
+                Ok((Err(_join_error), _)) | Ok((_, Err(_join_error))) => {
+                    return Err(SandboxCommandExecutionError::InternalFailure);
+                }
+                Err(_elapsed) => {
+                    sandbox_cleanup_confirmed = false;
+                    (Vec::new(), false, Vec::new(), false)
+                }
+            };
+
+        if !sandbox_cleanup_confirmed {
+            // The contract requires cleanup failures to stay explicit
+            // (`cleanupFailureIsExplicitAndNotBlindlyRetryable`). A killed
+            // tree whose cleanup never confirmed reports no terminal outcome;
+            // the caller retries the same operation id and fingerprint. A
+            // normally exited child keeps its primary outcome — cleanup
+            // failure must not hide or rewrite it
+            // (`cleanupFailureDoesNotHideOrRewritePrimaryOutcome`) — and the
+            // binding-quarantine decision belongs to the composition layer.
+            if sandbox_exit_code.is_none() {
+                return Err(SandboxCommandExecutionError::ProviderUnavailable);
+            }
+            tracing::warn!(
+                sandbox_executable = %sandbox_command.sandbox_executable,
+                "sandbox execution terminal outcome kept while cleanup stayed unconfirmed; \
+                 the composition layer must quarantine the binding"
+            );
+        }
 
         Ok(SandboxCommandOutcome {
             sandbox_exit_code,
@@ -323,6 +375,19 @@ impl SandboxLocalCommandProcessRunner for SandboxLocalTokioProcessRunner {
             sandbox_stderr_truncated,
         })
     }
+}
+
+/// Reaps one killed child within the cleanup bound. Returns whether the reap
+/// actually confirmed the child's termination; an error or a blown budget
+/// leaves cleanup unconfirmed.
+async fn sandbox_reap_within(
+    sandbox_child: &mut Box<dyn ChildWrapper>,
+    sandbox_cleanup_budget: Duration,
+) -> bool {
+    matches!(
+        tokio::time::timeout(sandbox_cleanup_budget, sandbox_child.wait()).await,
+        Ok(Ok(_))
+    )
 }
 
 /// The environment actually passed to the child: the admitted allowlist only.
@@ -336,7 +401,6 @@ fn sandbox_environment_admitted(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
 
     fn sandbox_runner() -> SandboxLocalTokioProcessRunner {
         let roots = if cfg!(windows) {

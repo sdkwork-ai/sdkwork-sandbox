@@ -1005,6 +1005,15 @@ async fn sandbox_postgres_repository_enforces_durable_lifecycle_contract() {
     assert_eq!(sandbox_rotation_page_count, 3);
     assert_eq!(sandbox_rotation_scanned_count, 3);
     assert_eq!(sandbox_rotation_reencrypted_count, 3);
+    // The settlement loop must confirm the sweep in one clean pass once
+    // every row is already on the current key.
+    let sandbox_settlement = sandbox_session_repository
+        .reencrypt_sandbox_provider_allocation_references_until_settled(&tenant_a, 2)
+        .await
+        .unwrap_or_else(|error| panic!("sandbox allocation settlement failed: {error}"));
+    assert_eq!(sandbox_settlement.sandbox_passes(), 1);
+    assert_eq!(sandbox_settlement.sandbox_scanned_count(), 0);
+    assert_eq!(sandbox_settlement.sandbox_reencrypted_count(), 0);
 
     let sandbox_tenant_a_key_versions: Vec<i64> = sqlx::query_scalar(
         "SELECT sandbox_allocation_key_version FROM sandbox_runtime_binding \

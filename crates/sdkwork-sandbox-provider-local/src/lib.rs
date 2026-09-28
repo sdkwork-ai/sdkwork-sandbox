@@ -9,9 +9,12 @@
 //! empty base environment. The [`command_executor`] module admits requests and tracks live
 //! executions in a bounded registry with fenced cancellation.
 //!
-//! Descendant containment (Windows suspended Job Object, Linux delegated cgroup v2) is not
-//! implemented yet, so the Terminal capability stays unclaimed until that evidence-gated
-//! slice lands (REQ-2026-0003). Host filesystem, network, and browser access are not
+//! Descendant containment has landed for the Windows lane (suspended kill-on-close Job
+//! Object supervision via `process-wrap`, with shell-detachment escapes recorded as the
+//! `detached-and-breakaway-attempt-denial` evidence obligation); the Linux delegated
+//! cgroup v2 lane and the real-platform evidence matrix are still pending, so the
+//! Terminal capability stays unclaimed until that evidence-gated slice lands
+//! (REQ-2026-0003). Host filesystem, network, and browser access are not
 //! implemented until capability and isolation policies are approved.
 
 pub mod command_admission;

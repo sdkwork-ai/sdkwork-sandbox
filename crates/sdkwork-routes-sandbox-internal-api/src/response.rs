@@ -102,6 +102,19 @@ impl SandboxApiProblemResponse for SandboxApiError {
             failed_stage: None,
             reason: None,
         };
-        problem_response(&error, ctx.problem_correlation())
+        let response = problem_response(&error, ctx.problem_correlation());
+        // A server fault that reaches a client must also reach the operator:
+        // render the problem and log it with the same trace id
+        // (OBSERVABILITY_SPEC section 2). Client faults stay unlogged — they
+        // are the caller's signal, not the server's.
+        if response.status().is_server_error() {
+            tracing::error!(
+                status = %response.status(),
+                trace_id = %ctx.resolved_trace_id(),
+                error = self.message(),
+                "sandbox internal-api request failed with a server fault"
+            );
+        }
+        response
     }
 }

@@ -103,6 +103,27 @@
       "idempotency": "resume-cursor"
     }
   ],
+  "pagination": {
+    "mode": "cursor",
+    "pageSizeParameter": "page_size",
+    "cursorParameter": "cursor",
+    "defaultPageSize": 20,
+    "maxPageSize": 200,
+    "pageSizeOutOfRange": "reject-with-40003-never-clamp",
+    "sort": "created_at DESC, sandbox_instance_id DESC",
+    "forbiddenAliases": [
+      "pageSize",
+      "limit",
+      "page_no",
+      "pageNo",
+      "per_page",
+      "size",
+      "page",
+      "offset"
+    ],
+    "unknownQueryParameters": "rejected",
+    "standard": "../sdkwork-specs/PAGINATION_SPEC.md"
+  },
   "requestBoundary": {
     "typedCallerContextRequired": true,
     "typedRequestMetadataRequired": true,

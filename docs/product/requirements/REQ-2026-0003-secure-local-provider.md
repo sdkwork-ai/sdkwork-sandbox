@@ -33,7 +33,7 @@ affected_surfaces:
 - 人工安全评审并接受 [Local Provider Assurance ADR](../../architecture/decisions/ADR-20260728-local-provider-assurance-and-host-boundaries.md)。
 - 接受 Agents Workspace 与 Sandbox Attachment ADR；Local Provider 不得根据 `sandbox_workspace_id` 猜测 Host Path。
 - 人工接受首版平台切片：Windows 只有在 suspended Job Object 全矩阵通过后声明 Terminal；Linux 只有在用户代码执行前完成 delegated cgroup v2 membership 且全矩阵通过后声明 Terminal；macOS 在 detached descendant containment 获批前明确拒绝 Terminal。
-- 人工接受精确 Runtime Dependency Set，并关闭 `cap-std` MSRV、Fresh Online RustSec、License/Source/Feature Review、Windows/Linux Build、任何 macOS 声明能力的 macOS Build 与真实平台安全测试。
+- 人工接受精确 Runtime Dependency Set，并关闭 `cap-std` MSRV、Fresh Online RustSec、License/Source/Feature Review、Windows/Linux Build、任何 macOS 声明能力的 macOS Build 与真实平台安全测试。（2026-09-29 更新：`process-wrap 9.1.1` 的 Windows 舷道选择证据已按 [REVIEW-20260929](../../engineering/reviews/REVIEW-20260929-process-wrap-selection-closure.md) 关闭并使能依赖变更授权；Linux Build 与 Linux 平台证据仍开放并归属 delegated cgroup v2 舷道；`cap-std` 未采用。）
 
 ## Candidate Acceptance Criteria
 

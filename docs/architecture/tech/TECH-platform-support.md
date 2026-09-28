@@ -12,10 +12,11 @@
 
 **控制面与执行环境必须分开回答，因为二者的平台结论相反。**
 
-1. **控制面是平台中立的，且有机器证据。** `crates/*/src` 全树 **0 处**平台条件代码（`#[cfg(windows)]`、
-   `#[cfg(unix)]`、`std::process::Command`、`tokio::process`、`libc::`、`nix::`、`std::path::MAIN_SEPARATOR`
-   等 14 类标记全为零命中）。这不是"看起来可移植"，而是被门禁锁死的不变量：任何平台条件代码一旦落地，
-   必须先在本文 §3.1 声明它属于哪个平台、为什么。
+1. **控制面是平台中立的，且有机器证据。** 平台条件代码只允许出现在承载执行环境的 Provider crate
+   （`sdkwork-sandbox-provider-local`，见 §3.1 声明表）；控制面各 crate 的 `crates/*/src` 零平台标记
+   （`#[cfg(windows)]`、`#[cfg(unix)]`、`std::process::Command`、`tokio::process`、`libc::`、`nix::`、
+   `std::path::MAIN_SEPARATOR` 等标记类在控制面全为零命中）。这不是"看起来可移植"，而是被门禁锁死的
+   不变量：任何平台条件代码一旦落地，必须先在本文 §3.1 声明它属于哪个平台、为什么。
 2. **执行环境需要 Linux 内核，Windows 原生宿主在本仓的隔离模型下不可用。** 本仓的宿主能力词汇表
    （`tools/testing/sandbox-host-capability-evidence.mjs` 的 `HOST_CAPABILITY_IDS`）全部是 Linux 内核原语：
    命名空间、cgroup v2、overlayfs、seccomp。在 Git Bash（MSYS）身份下实测 **47 项里只有 4 项 verified，
@@ -129,7 +130,7 @@ node tools/testing/sandbox-host-capability-evidence.mjs --target wsl:Ubuntu-22.0
 所有平台相关工作都留给 Provider SPI 背后的适配器，服务层只做编排。因此：
 新增任何平台条件代码前，必须先确定它属于"控制面"还是"某个 Provider 实现"。属于控制面的平台条件代码
 是架构缺陷，应改为 SPI 能力位（`RuntimeCapability` / `IsolationAssurance`）；属于具体 Provider 的，
-应在该 Provider 的 crate 内落地并在此登记。当前声明的 10 项全部属于两类豁免：独立网关监听器的
+应在该 Provider 的 crate 内落地并在此登记。当前声明的 20 项全部属于两类豁免：独立网关监听器的
 停机信号（传输面运维语义，不是沙箱隔离能力），以及 Local Provider 已授权命令执行切片的进程派生
 （Provider 执行面）；没有任何平台条件代码出现在 service、repository 或 routes crate 中。
 

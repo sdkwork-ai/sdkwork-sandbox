@@ -183,11 +183,14 @@ async fn a_fenced_cancel_reaches_the_live_execution_and_a_stale_token_is_refused
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
     assert_eq!(
-        executor.sandbox_cancel("operation-1", 6).await.unwrap_err(),
+        executor
+            .sandbox_cancel("tenant-1", "provider-local", "operation-1", 6)
+            .await
+            .unwrap_err(),
         SandboxCommandExecutionError::StaleFencing
     );
     executor
-        .sandbox_cancel("operation-1", 7)
+        .sandbox_cancel("tenant-1", "provider-local", "operation-1", 7)
         .await
         .expect("matching token must cancel");
 
@@ -199,7 +202,7 @@ async fn a_fenced_cancel_reaches_the_live_execution_and_a_stale_token_is_refused
 }
 
 #[tokio::test]
-async fn a_duplicate_live_operation_id_is_an_idempotency_conflict() {
+async fn a_same_fingerprint_live_replay_is_operation_in_progress() {
     struct BlockingRunner;
 
     #[async_trait]
@@ -238,12 +241,125 @@ async fn a_duplicate_live_operation_id_is_an_idempotency_conflict() {
     let replay = sandbox_request();
     assert_eq!(
         executor.sandbox_execute(&replay).await.unwrap_err(),
+        SandboxCommandExecutionError::OperationInProgress
+    );
+
+    executor
+        .sandbox_cancel("tenant-1", "provider-local", "operation-1", 7)
+        .await
+        .expect("unblock the first run");
+    let _ = sandbox_execution.await;
+}
+
+#[tokio::test]
+async fn a_moved_fingerprint_under_a_live_operation_id_is_an_idempotency_conflict() {
+    struct BlockingRunner;
+
+    #[async_trait]
+    impl SandboxLocalCommandProcessRunner for BlockingRunner {
+        async fn sandbox_run_admitted(
+            &self,
+            sandbox_command: &SandboxLocalAdmittedCommand,
+        ) -> Result<SandboxCommandOutcome, SandboxCommandExecutionError> {
+            sandbox_command
+                .sandbox_cancellation
+                .sandbox_cancelled()
+                .await;
+            Ok(SandboxCommandOutcome {
+                sandbox_exit_code: None,
+                sandbox_stdout: Vec::new(),
+                sandbox_stderr: Vec::new(),
+                sandbox_stdout_truncated: false,
+                sandbox_stderr_truncated: false,
+            })
+        }
+    }
+
+    let executor = Arc::new(SandboxLocalCommandExecutor::new(
+        Arc::new(SandboxLocalHostBoundary::new(
+            BTreeSet::from(["toybox".to_owned()]),
+            BTreeSet::from(["SANDBOX_MODE".to_owned()]),
+        )),
+        Arc::new(BlockingRunner),
+    ));
+    let first = sandbox_request();
+    let sandbox_executor = executor.clone();
+    let sandbox_execution =
+        tokio::spawn(async move { sandbox_executor.sandbox_execute(&first).await });
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+    // The same execution key with a moved covered field is the contract's
+    // `differentFingerprint` outcome: an idempotency conflict, never a run.
+    let mut tampered = sandbox_request();
+    tampered.sandbox_arguments.push("moved".to_owned());
+    assert_eq!(
+        executor.sandbox_execute(&tampered).await.unwrap_err(),
         SandboxCommandExecutionError::IdempotencyConflict
     );
 
     executor
-        .sandbox_cancel("operation-1", 7)
+        .sandbox_cancel("tenant-1", "provider-local", "operation-1", 7)
         .await
         .expect("unblock the first run");
     let _ = sandbox_execution.await;
+}
+
+#[tokio::test]
+async fn the_same_operation_id_under_another_tenant_never_conflicts() {
+    struct BlockingRunner;
+
+    #[async_trait]
+    impl SandboxLocalCommandProcessRunner for BlockingRunner {
+        async fn sandbox_run_admitted(
+            &self,
+            sandbox_command: &SandboxLocalAdmittedCommand,
+        ) -> Result<SandboxCommandOutcome, SandboxCommandExecutionError> {
+            sandbox_command
+                .sandbox_cancellation
+                .sandbox_cancelled()
+                .await;
+            Ok(SandboxCommandOutcome {
+                sandbox_exit_code: None,
+                sandbox_stdout: Vec::new(),
+                sandbox_stderr: Vec::new(),
+                sandbox_stdout_truncated: false,
+                sandbox_stderr_truncated: false,
+            })
+        }
+    }
+
+    let executor = Arc::new(SandboxLocalCommandExecutor::new(
+        Arc::new(SandboxLocalHostBoundary::new(
+            BTreeSet::from(["toybox".to_owned()]),
+            BTreeSet::from(["SANDBOX_MODE".to_owned()]),
+        )),
+        Arc::new(BlockingRunner),
+    ));
+    // The registry keys by the contract's execution key triple, so a second
+    // tenant reusing the operation id string runs in its own cell.
+    let first = sandbox_request();
+    let mut second = sandbox_request();
+    second.sandbox_tenant_id = "tenant-2".to_owned();
+    let sandbox_first_executor = executor.clone();
+    let sandbox_first =
+        tokio::spawn(async move { sandbox_first_executor.sandbox_execute(&first).await });
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    let sandbox_second_executor = executor.clone();
+    let sandbox_second =
+        tokio::spawn(async move { sandbox_second_executor.sandbox_execute(&second).await });
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+    executor
+        .sandbox_cancel("tenant-1", "provider-local", "operation-1", 7)
+        .await
+        .expect("the tenant-1 cancel must reach its own cell");
+    executor
+        .sandbox_cancel("tenant-2", "provider-local", "operation-1", 7)
+        .await
+        .expect("the tenant-2 cancel must reach its own cell");
+
+    let sandbox_first = sandbox_first.await.expect("join").expect("first run");
+    let sandbox_second = sandbox_second.await.expect("join").expect("second run");
+    assert_eq!(None, sandbox_first.sandbox_exit_code);
+    assert_eq!(None, sandbox_second.sandbox_exit_code);
 }

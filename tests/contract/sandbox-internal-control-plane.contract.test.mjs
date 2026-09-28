@@ -125,3 +125,25 @@ test("security compatibility and deployment require real cloud evidence", () => 
   assert.ok(contract.requiredRealEvidence.length >= 12);
   assert.equal(contract.humanReview.approvedOutcomeRequiredBeforeImplementation, true);
 });
+
+test("The declared list surface pins the PAGINATION_SPEC cursor contract", () => {
+  const pagination = contract.pagination;
+  assert.equal(pagination.mode, "cursor");
+  assert.equal(pagination.pageSizeParameter, "page_size");
+  assert.equal(pagination.cursorParameter, "cursor");
+  assert.equal(pagination.defaultPageSize, 20);
+  assert.equal(pagination.maxPageSize, 200);
+  assert.equal(pagination.pageSizeOutOfRange, "reject-with-40003-never-clamp");
+  assert.equal(pagination.sort, "created_at DESC, sandbox_instance_id DESC");
+  assert.deepEqual(pagination.forbiddenAliases, [
+    "pageSize",
+    "limit",
+    "page_no",
+    "pageNo",
+    "per_page",
+    "size",
+    "page",
+    "offset",
+  ]);
+  assert.equal(pagination.unknownQueryParameters, "rejected");
+});

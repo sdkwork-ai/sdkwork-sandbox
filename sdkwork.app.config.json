@@ -11,10 +11,9 @@
   "backend": {},
   "runtime": {
     "supportedDeploymentProfiles": [
-      "standalone",
-      "cloud"
+      "standalone"
     ],
-    "defaultDeploymentProfile": "cloud",
+    "defaultDeploymentProfile": "standalone",
     "family": "server",
     "framework": "rust-axum"
   },
@@ -95,7 +94,7 @@
     }
   },
   "publish": {
-    "status": "ACTIVE",
+    "status": "DRAFT",
     "platforms": [
       "WEB"
     ],
@@ -122,35 +121,15 @@
           "sourceType": "BINARY_URL",
           "packageFormat": "TAR_GZ",
           "platform": "API",
-          "url": "https://cdn.sdkwork.com/apps/sdkwork-sandbox/STABLE/0.1.0/linux-x64-standalone-server-tar-gz-0.1.0.tar.gz",
           "architecture": "x64",
-          "checksumAlgorithm": "SHA-256",
-          "checksum": "66e1a74da0a35492d520dfdc4db451152741df2ea6304190ab3b852869a1671c",
           "deploymentProfile": "standalone",
           "runtimeTarget": "server",
           "profileBinding": "fixed",
-          "enabled": true,
+          "enabled": false,
           "metadata": {
-            "releaseBuildDeferred": false
-          }
-        },
-        {
-          "id": "linux-x64-cloud-server-tar-gz",
-          "name": "Sdkwork Sandbox cloud server archive",
-          "sourceType": "BINARY_URL",
-          "packageFormat": "TAR_GZ",
-          "platform": "API",
-          "url": "https://cdn.sdkwork.com/apps/sdkwork-sandbox/STABLE/0.1.0/linux-x64-cloud-server-tar-gz-0.1.0.tar.gz",
-          "architecture": "x64",
-          "checksumAlgorithm": "SHA-256",
-          "checksum": "5a205ad8f1953a266e61787aa29ea37848f305dea109eb47501d67f3b887b930",
-          "deploymentProfile": "cloud",
-          "runtimeTarget": "server",
-          "profileBinding": "fixed",
-          "enabled": true,
-          "metadata": {
-            "releaseBuildDeferred": false
-          }
+            "releaseBuildDeferred": true
+          },
+          "url": "https://cdn.sdkwork.com/apps/sdkwork-sandbox/STABLE/0.1.0/linux-x64-standalone-server-tar-gz-0.1.0.tar.gz"
         }
       ]
     }
@@ -174,8 +153,7 @@
           "Download package matrix normalized"
         ],
         "packageIds": [
-          "linux-x64-standalone-server-tar-gz",
-          "linux-x64-cloud-server-tar-gz"
+          "linux-x64-standalone-server-tar-gz"
         ],
         "publishedAt": "2026-05-07T00:00:00Z",
         "current": true,

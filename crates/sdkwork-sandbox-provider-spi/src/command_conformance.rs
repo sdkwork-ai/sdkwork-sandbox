@@ -168,7 +168,7 @@ pub async fn sandbox_run_command_conformance(
     sandbox_findings.push(sandbox_scenario_stale_fencing(executor, fixture).await);
     sandbox_findings.extend(sandbox_scenario_fingerprint_recomputation(executor, fixture).await);
     sandbox_findings.extend(sandbox_scenario_same_fingerprint_replay(executor, fixture).await);
-    sandbox_findings.push(sandbox_scenario_fenced_idempotent_cancellation(executor).await);
+    sandbox_findings.push(sandbox_scenario_fenced_idempotent_cancellation(executor, fixture).await);
     sandbox_findings
         .push(sandbox_scenario_terminal_result_error_partition(executor, fixture).await);
     sandbox_findings.push(sandbox_scenario_terminal_race_single_winner());
@@ -496,7 +496,12 @@ async fn sandbox_scenario_cancellation_and_descendants(
         sandbox_join_with_observer!(executor, sandbox_request, async {
             tokio::time::sleep(Duration::from_millis(500)).await;
             executor
-                .sandbox_cancel(&sandbox_operation_id, sandbox_token)
+                .sandbox_cancel(
+                    &fixture.sandbox_base_request.sandbox_tenant_id,
+                    &fixture.sandbox_base_request.sandbox_provider_id,
+                    &sandbox_operation_id,
+                    sandbox_token,
+                )
                 .await
         });
     match (sandbox_cancellation, sandbox_result) {
@@ -592,12 +597,22 @@ async fn sandbox_scenario_stale_fencing(
         sandbox_join_with_observer!(executor, sandbox_request, async {
             tokio::time::sleep(Duration::from_millis(500)).await;
             let sandbox_stale = executor
-                .sandbox_cancel(&sandbox_operation_id, sandbox_token.wrapping_add(1))
+                .sandbox_cancel(
+                    &fixture.sandbox_base_request.sandbox_tenant_id,
+                    &fixture.sandbox_base_request.sandbox_provider_id,
+                    &sandbox_operation_id,
+                    sandbox_token.wrapping_add(1),
+                )
                 .await;
             // The stale attempt must not touch the live execution; settle it
             // with the correct token so the drive terminates inside its bound.
             let _ = executor
-                .sandbox_cancel(&sandbox_operation_id, sandbox_token)
+                .sandbox_cancel(
+                    &fixture.sandbox_base_request.sandbox_tenant_id,
+                    &fixture.sandbox_base_request.sandbox_provider_id,
+                    &sandbox_operation_id,
+                    sandbox_token,
+                )
                 .await;
             sandbox_stale
         });
@@ -647,7 +662,12 @@ async fn sandbox_scenario_fingerprint_recomputation(
             tokio::time::sleep(Duration::from_millis(500)).await;
             let sandbox_conflict = executor.sandbox_execute(&sandbox_tampered).await;
             let _ = executor
-                .sandbox_cancel(&sandbox_operation_id, sandbox_token)
+                .sandbox_cancel(
+                    &fixture.sandbox_base_request.sandbox_tenant_id,
+                    &fixture.sandbox_base_request.sandbox_provider_id,
+                    &sandbox_operation_id,
+                    sandbox_token,
+                )
                 .await;
             sandbox_conflict
         });
@@ -703,13 +723,18 @@ async fn sandbox_scenario_same_fingerprint_replay(
             tokio::time::sleep(Duration::from_millis(500)).await;
             let sandbox_duplicate = executor.sandbox_execute(&sandbox_request).await;
             let _ = executor
-                .sandbox_cancel(&sandbox_operation_id, sandbox_token)
+                .sandbox_cancel(
+                    &fixture.sandbox_base_request.sandbox_tenant_id,
+                    &fixture.sandbox_base_request.sandbox_provider_id,
+                    &sandbox_operation_id,
+                    sandbox_token,
+                )
                 .await;
             sandbox_duplicate
         });
     let sandbox_conflict_holds = matches!(
         sandbox_duplicate,
-        Err(SandboxCommandExecutionError::IdempotencyConflict)
+        Err(SandboxCommandExecutionError::OperationInProgress)
     );
     let sandbox_live_terminated = matches!(&sandbox_live_result, Ok(_));
     let sandbox_status = if sandbox_conflict_holds && sandbox_live_terminated {
@@ -719,7 +744,7 @@ async fn sandbox_scenario_same_fingerprint_replay(
     };
     let sandbox_pending_detail = sandbox_pending_detail(
         &SANDBOX_DURABLE_ARBITRATION_PENDING,
-        "a live same-fingerprint duplicate was refused (no second spawn); replay after terminal outcome is the durable registry slice",
+        "a live same-fingerprint duplicate was refused as operation-in-progress (no second spawn); replay after terminal outcome is the durable registry slice",
     );
     vec![
         SandboxCommandConformanceFinding {
@@ -737,13 +762,24 @@ async fn sandbox_scenario_same_fingerprint_replay(
 
 async fn sandbox_scenario_fenced_idempotent_cancellation(
     executor: &dyn SandboxCommandExecutor,
+    fixture: &SandboxCommandConformanceFixture,
 ) -> SandboxCommandConformanceFinding {
     let sandbox_scenario_id = "fenced-idempotent-cancellation-request";
     let sandbox_absent = executor
-        .sandbox_cancel("sandbox-conformance-canceled-operation", 7)
+        .sandbox_cancel(
+            &fixture.sandbox_base_request.sandbox_tenant_id,
+            &fixture.sandbox_base_request.sandbox_provider_id,
+            "sandbox-conformance-canceled-operation",
+            7,
+        )
         .await;
     let sandbox_absent_again = executor
-        .sandbox_cancel("sandbox-conformance-canceled-operation", 7)
+        .sandbox_cancel(
+            &fixture.sandbox_base_request.sandbox_tenant_id,
+            &fixture.sandbox_base_request.sandbox_provider_id,
+            "sandbox-conformance-canceled-operation",
+            7,
+        )
         .await;
     let sandbox_held = sandbox_absent.is_ok() && sandbox_absent_again.is_ok();
     SandboxCommandConformanceFinding {
@@ -834,6 +870,11 @@ fn sandbox_scenario_safe_error_redaction() -> SandboxCommandConformanceFinding {
         SandboxCommandExecutionError::PolicyDenied,
         SandboxCommandExecutionError::StaleFencing,
         SandboxCommandExecutionError::IdempotencyConflict,
+        SandboxCommandExecutionError::OperationInProgress,
+        SandboxCommandExecutionError::CommandNotFound,
+        SandboxCommandExecutionError::ProviderUnavailable,
+        SandboxCommandExecutionError::ResultUnavailable,
+        SandboxCommandExecutionError::InternalFailure,
     ];
     let sandbox_clean = sandbox_variants.iter().all(|variant| {
         let sandbox_text = variant.to_string();

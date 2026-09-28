@@ -210,20 +210,34 @@ test("Cleanup is idempotent, preserves Agents workspace and quarantines uncertai
   assert.equal(cleanup.sandbox_uncertain_capacity_reuse_allowed, false);
 });
 
-test("Supply-chain candidates remain non-authoritative and runtime dependencies stay unchanged", () => {
+test("Supply-chain selection is evidence-closed for the Windows lane and the open lanes stay recorded", () => {
   const supplyChain = contract.supplyChain;
-  assert.equal(supplyChain.sandbox_runtime_dependency_changes_authorized, false);
+  assert.equal(supplyChain.sandbox_runtime_dependency_changes_authorized, true);
+  assert.equal(
+    supplyChain.sandbox_selection_evidence,
+    "docs/engineering/reviews/REVIEW-20260929-process-wrap-selection-closure.md",
+  );
   assert.deepEqual(
     supplyChain.sandbox_candidates.map((candidate) => [
       candidate.sandbox_package,
       candidate.sandbox_disposition,
     ]),
     [
-      ["process-wrap", "conditional-candidate"],
+      ["process-wrap", "selected-windows-lane"],
       ["cap-std", "conditional-candidate"],
       ["tokio", "existing-dependency-candidate"],
       ["cgroups-rs", "not-selected"],
     ],
+  );
+  assert.equal(
+    supplyChain.sandbox_candidates.find((candidate) => candidate.sandbox_package === "process-wrap")
+      .sandbox_open_lane_obligation,
+    "linux-delegated-cgroup-v2-build-and-platform-evidence",
+  );
+  assert.equal(
+    supplyChain.sandbox_candidates.find((candidate) => candidate.sandbox_package === "tokio")
+      .sandbox_process_feature_authorized,
+    true,
   );
   assert.equal(
     supplyChain.sandbox_candidates.find((candidate) => candidate.sandbox_package === "cap-std")

@@ -9,7 +9,8 @@
 //! detected it, so an orchestration loop must keep re-running pages from the
 //! returned cursor — and restart the whole scan when a page reports a nonzero
 //! conflict count — until one full pass reports zero conflicts before any old
-//! key is revoked.
+//! key is revoked. That orchestration loop is materialized here as
+//! [`SqlxSandboxSessionRepository::reencrypt_sandbox_provider_allocation_references_until_settled`].
 
 use sdkwork_intelligence_sandbox_service::{
     SandboxProtectedProviderAllocationRef, SandboxProviderAllocationProtectionContext,
@@ -71,6 +72,91 @@ struct SandboxProviderAllocationReencryptionCandidate {
     sandbox_session_id: SandboxSessionId,
     sandbox_runtime_binding_id: SandboxRuntimeBindingId,
     sandbox_protected_allocation_reference: SandboxProtectedProviderAllocationRef,
+}
+
+/// Upper bound on whole-scan passes one settlement may take. A live
+/// lifecycle writer that keeps re-keying rows every pass would otherwise spin
+/// forever; the loop reports failure instead of retrying without bound.
+const MAX_SANDBOX_REENCRYPTION_SETTLE_PASSES: u32 = 8;
+
+/// The settled result of a full re-encryption sweep: the pass that reported
+/// zero conflicts, plus the totals accumulated across every pass it took.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SandboxProviderAllocationReencryptionSettlement {
+    sandbox_passes: u32,
+    sandbox_scanned_count: usize,
+    sandbox_reencrypted_count: usize,
+}
+
+impl SandboxProviderAllocationReencryptionSettlement {
+    #[must_use]
+    pub fn sandbox_passes(&self) -> u32 {
+        self.sandbox_passes
+    }
+
+    #[must_use]
+    pub fn sandbox_scanned_count(&self) -> usize {
+        self.sandbox_scanned_count
+    }
+
+    #[must_use]
+    pub fn sandbox_reencrypted_count(&self) -> usize {
+        self.sandbox_reencrypted_count
+    }
+}
+
+impl SqlxSandboxSessionRepository {
+    /// Drives the sweep to a settled pass, per the module contract: full
+    /// keyset passes over the tenant's rows; any page reporting a nonzero
+    /// conflict count restarts the whole scan; the first zero-conflict pass
+    /// settles the sweep (after which the old key may be revoked). Bounded by
+    /// [`MAX_SANDBOX_REENCRYPTION_SETTLE_PASSES`] so a permanently concurrent
+    /// writer fails loudly instead of looping forever.
+    ///
+    /// # Errors
+    ///
+    /// Returns `SandboxSessionRepositoryError::InvalidPageRequest` for an
+    /// out-of-range page size, and `ProtectionFailed` when the sweep could
+    /// not settle within the pass bound.
+    pub async fn reencrypt_sandbox_provider_allocation_references_until_settled(
+        &self,
+        tenant_id: &TenantId,
+        sandbox_page_size: u16,
+    ) -> SandboxSessionRepositoryResult<SandboxProviderAllocationReencryptionSettlement> {
+        if !(1..=MAX_SANDBOX_REENCRYPTION_PAGE_SIZE).contains(&sandbox_page_size) {
+            return Err(SandboxSessionRepositoryError::InvalidPageRequest);
+        }
+        let mut sandbox_total_scanned = 0usize;
+        let mut sandbox_total_reencrypted = 0usize;
+        for sandbox_pass in 1..=MAX_SANDBOX_REENCRYPTION_SETTLE_PASSES {
+            let mut sandbox_cursor: Option<SandboxRuntimeBindingId> = None;
+            let mut sandbox_pass_conflicts = 0usize;
+            loop {
+                let sandbox_page = self
+                    .reencrypt_sandbox_provider_allocation_references_page(
+                        tenant_id,
+                        sandbox_cursor.as_ref(),
+                        sandbox_page_size,
+                    )
+                    .await?;
+                sandbox_total_scanned += sandbox_page.sandbox_scanned_count();
+                sandbox_total_reencrypted += sandbox_page.sandbox_reencrypted_count();
+                sandbox_pass_conflicts += sandbox_page.sandbox_conflict_count();
+                match sandbox_page.sandbox_next_runtime_binding_id() {
+                    Some(sandbox_next) => sandbox_cursor = Some(sandbox_next.clone()),
+                    None => break,
+                }
+            }
+            if sandbox_pass_conflicts == 0 {
+                return Ok(SandboxProviderAllocationReencryptionSettlement {
+                    sandbox_passes: sandbox_pass,
+                    sandbox_scanned_count: sandbox_total_scanned,
+                    sandbox_reencrypted_count: sandbox_total_reencrypted,
+                });
+            }
+        }
+        Err(SandboxSessionRepositoryError::ProtectionFailed)
+    }
 }
 
 fn ensure_sandbox_reencryption_target(

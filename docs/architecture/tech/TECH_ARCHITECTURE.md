@@ -228,7 +228,7 @@ node tools/check-sandbox-evidence-traceability.mjs
 node tools/check-sandbox-human-review-signoff.mjs
 ```
 
-`cargo fmt --check` 是本仓的格式门禁，禁止使用 `cargo fmt --all -- --check`：`--all` 的语义包含本地路径依赖，会把 `sdkwork-web-framework`、`sdkwork-utils`、`sdkwork-database` 等兄弟仓库的格式偏差一并报出并要求改写，而本仓不得修改这些仓库。`cargo fmt --check` 覆盖全部 8 个 Sandbox 成员且不越界。
+`cargo fmt --check` 是本仓的格式门禁，禁止使用 `cargo fmt --all -- --check`：`--all` 的语义包含本地路径依赖，会把 `sdkwork-web-framework`、`sdkwork-utils`、`sdkwork-database` 等兄弟仓库的格式偏差一并报出并要求改写，而本仓不得修改这些仓库。`cargo fmt --check` 覆盖全部 11 个 Sandbox 成员且不越界。
 
 `check-sandbox-cargo-path-dependencies.mjs` 必须最先执行：清单里一个多余的 `..` 就能让 `cargo metadata` 失败，从而使后续所有 cargo 命令都无法运行；该静态门禁直接给出出错的清单、行号与解析后的路径，而不是一个不透明的 cargo 报错。
 
