@@ -363,3 +363,82 @@ async fn the_same_operation_id_under_another_tenant_never_conflicts() {
     assert_eq!(None, sandbox_first.sandbox_exit_code);
     assert_eq!(None, sandbox_second.sandbox_exit_code);
 }
+#[tokio::test]
+async fn the_node_output_budget_refuses_admissions_beyond_the_declared_caps() {
+    struct BlockingRunner;
+
+    #[async_trait]
+    impl SandboxLocalCommandProcessRunner for BlockingRunner {
+        async fn sandbox_run_admitted(
+            &self,
+            sandbox_command: &SandboxLocalAdmittedCommand,
+        ) -> Result<SandboxCommandOutcome, SandboxCommandExecutionError> {
+            sandbox_command
+                .sandbox_cancellation
+                .sandbox_cancelled()
+                .await;
+            Ok(SandboxCommandOutcome {
+                sandbox_exit_code: None,
+                sandbox_stdout: Vec::new(),
+                sandbox_stderr: Vec::new(),
+                sandbox_stdout_truncated: false,
+                sandbox_stderr_truncated: false,
+            })
+        }
+    }
+    let executor = Arc::new(SandboxLocalCommandExecutor::new(
+        Arc::new(SandboxLocalHostBoundary::new(
+            BTreeSet::from(["toybox".to_owned()]),
+            BTreeSet::from(["SANDBOX_MODE".to_owned()]),
+        )),
+        Arc::new(BlockingRunner),
+    ));
+    // Eight executions at the contract's maximum output caps (64 MiB per
+    // stream) reserve exactly the node's 1 GiB output budget.
+    let mut sandbox_executions = Vec::new();
+    for sandbox_index in 0..8 {
+        let mut sandbox_request = sandbox_request();
+        sandbox_request.sandbox_command_operation_id = format!("budget-operation-{sandbox_index}");
+        sandbox_request
+            .sandbox_command_limits
+            .sandbox_stdout_byte_limit = 67_108_864;
+        sandbox_request
+            .sandbox_command_limits
+            .sandbox_stderr_byte_limit = 67_108_864;
+        let sandbox_executor = executor.clone();
+        sandbox_executions.push(tokio::spawn(async move {
+            sandbox_executor.sandbox_execute(&sandbox_request).await
+        }));
+    }
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+    // A ninth max-cap admission would push the worst-case buffered output
+    // past the budget, so it is policy-denied instead of admitted.
+    let mut sandbox_ninth = sandbox_request();
+    sandbox_ninth.sandbox_command_operation_id = "budget-operation-9".to_owned();
+    sandbox_ninth
+        .sandbox_command_limits
+        .sandbox_stdout_byte_limit = 67_108_864;
+    sandbox_ninth
+        .sandbox_command_limits
+        .sandbox_stderr_byte_limit = 67_108_864;
+    assert_eq!(
+        executor.sandbox_execute(&sandbox_ninth).await.unwrap_err(),
+        SandboxCommandExecutionError::PolicyDenied
+    );
+
+    for sandbox_index in 0..8 {
+        executor
+            .sandbox_cancel(
+                "tenant-1",
+                "provider-local",
+                &format!("budget-operation-{sandbox_index}"),
+                7,
+            )
+            .await
+            .expect("settle every budget reservation");
+    }
+    for sandbox_execution in sandbox_executions {
+        let _ = sandbox_execution.await;
+    }
+}

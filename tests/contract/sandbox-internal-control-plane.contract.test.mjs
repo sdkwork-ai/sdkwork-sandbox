@@ -146,4 +146,5 @@ test("The declared list surface pins the PAGINATION_SPEC cursor contract", () =>
     "offset",
   ]);
   assert.equal(pagination.unknownQueryParameters, "rejected");
+  assert.equal(pagination.performanceClass, "P1");
 });

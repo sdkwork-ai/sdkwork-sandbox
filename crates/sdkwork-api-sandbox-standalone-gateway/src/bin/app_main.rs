@@ -23,7 +23,8 @@ async fn main() {
         iam_web_request_context_resolver_from_env().await,
         assembly.route_manifest.clone(),
         infra_public_path_prefixes(),
-    );
+    )
+    .request_timeout(std::time::Duration::from_secs(30));
     let mut module_registry = ApiModuleRegistry::new();
     module_registry.add_modules(vec![assembly]);
     let router = module_registry

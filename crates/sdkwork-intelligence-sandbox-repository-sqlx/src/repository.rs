@@ -40,11 +40,11 @@ pub use sdkwork_intelligence_sandbox_service::MAX_SANDBOX_SESSION_OPERATIONS;
 /// Statement timeout applied to every sandbox repository transaction,
 /// matching the authoritative-server baseline header contract
 /// (`database/ddl/baseline/postgres/0001_sandbox_baseline.sql`).
-const SANDBOX_DATABASE_STATEMENT_TIMEOUT: &str = "30s";
+pub(crate) const SANDBOX_DATABASE_STATEMENT_TIMEOUT: &str = "30s";
 
 /// Lock timeout applied to every sandbox repository transaction, matching the
 /// authoritative-server baseline header contract.
-const SANDBOX_DATABASE_LOCK_TIMEOUT: &str = "2s";
+pub(crate) const SANDBOX_DATABASE_LOCK_TIMEOUT: &str = "2s";
 
 pub struct SqlxSandboxSessionRepository {
     sandbox_database_pool: DatabasePool,

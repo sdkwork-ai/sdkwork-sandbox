@@ -215,6 +215,33 @@ fn sandbox_instance_expires_at_bind(sandbox_instance: &SandboxInstance) -> Optio
     sandbox_instance.sandbox_instance_expires_at()
 }
 
+impl SqlxSandboxInstanceRepository {
+    /// Opens one write transaction with the session adapter's
+    /// transaction-local time budgets applied, so both adapters enforce the
+    /// same statement and lock-wait bounds instead of silently falling back
+    /// to the connection-level defaults.
+    async fn sandbox_write_transaction(
+        &self,
+    ) -> SandboxInstanceRepositoryResult<sqlx::Transaction<'static, sqlx::Postgres>> {
+        let mut sandbox_tx = self
+            .sandbox_postgres_pool()?
+            .begin()
+            .await
+            .map_err(Self::map_sandbox_sqlx_error)?;
+        sqlx::query("SELECT set_config('statement_timeout', $1, true)")
+            .bind(crate::repository::SANDBOX_DATABASE_STATEMENT_TIMEOUT)
+            .execute(&mut *sandbox_tx)
+            .await
+            .map_err(Self::map_sandbox_sqlx_error)?;
+        sqlx::query("SELECT set_config('lock_timeout', $1, true)")
+            .bind(crate::repository::SANDBOX_DATABASE_LOCK_TIMEOUT)
+            .execute(&mut *sandbox_tx)
+            .await
+            .map_err(Self::map_sandbox_sqlx_error)?;
+        Ok(sandbox_tx)
+    }
+}
+
 #[async_trait]
 impl SandboxInstanceRepository for SqlxSandboxInstanceRepository {
     async fn insert_sandbox_instance(
@@ -235,6 +262,7 @@ impl SandboxInstanceRepository for SqlxSandboxInstanceRepository {
                 CAST($14 AS TIMESTAMPTZ), $15, $16\
              ) RETURNING {SANDBOX_INSTANCE_COLUMNS}"
         );
+        let mut sandbox_tx = self.sandbox_write_transaction().await?;
         let row = sqlx::query(audited_sql(&sql))
             .bind(sandbox_instance.tenant_id().as_str())
             .bind(sandbox_instance.sandbox_instance_id().as_str())
@@ -272,10 +300,15 @@ impl SandboxInstanceRepository for SqlxSandboxInstanceRepository {
                 i64::try_from(sandbox_instance.sandbox_version())
                     .map_err(|_| SandboxInstanceRepositoryError::InvalidStoredData)?,
             )
-            .fetch_one(self.sandbox_postgres_pool()?)
+            .fetch_one(&mut *sandbox_tx)
             .await
             .map_err(Self::map_sandbox_sqlx_error)?;
-        Self::read_sandbox_instance(&row)
+        let sandbox_stored = Self::read_sandbox_instance(&row);
+        sandbox_tx
+            .commit()
+            .await
+            .map_err(Self::map_sandbox_sqlx_error)?;
+        sandbox_stored
     }
 
     async fn list_sandbox_instances(
@@ -372,6 +405,7 @@ impl SandboxInstanceRepository for SqlxSandboxInstanceRepository {
         sandbox_instance: &SandboxInstance,
         expected_sandbox_version: u64,
     ) -> SandboxInstanceRepositoryResult<bool> {
+        let mut sandbox_tx = self.sandbox_write_transaction().await?;
         let result = sqlx::query(
             "UPDATE sandbox_instance SET \
                 sandbox_instance_name = $3, \
@@ -421,9 +455,13 @@ impl SandboxInstanceRepository for SqlxSandboxInstanceRepository {
             i64::try_from(expected_sandbox_version)
                 .map_err(|_| SandboxInstanceRepositoryError::InvalidStoredData)?,
         )
-        .execute(self.sandbox_postgres_pool()?)
+        .execute(&mut *sandbox_tx)
         .await
         .map_err(Self::map_sandbox_sqlx_error)?;
+        sandbox_tx
+            .commit()
+            .await
+            .map_err(Self::map_sandbox_sqlx_error)?;
         Ok(result.rows_affected() == 1)
     }
 
@@ -433,6 +471,7 @@ impl SandboxInstanceRepository for SqlxSandboxInstanceRepository {
         sandbox_instance_id: &SandboxInstanceId,
         expected_sandbox_version: u64,
     ) -> SandboxInstanceRepositoryResult<bool> {
+        let mut sandbox_tx = self.sandbox_write_transaction().await?;
         let result = sqlx::query(
             "DELETE FROM sandbox_instance \
              WHERE tenant_id = $1 AND sandbox_instance_id = $2 AND version = $3",
@@ -443,9 +482,13 @@ impl SandboxInstanceRepository for SqlxSandboxInstanceRepository {
             i64::try_from(expected_sandbox_version)
                 .map_err(|_| SandboxInstanceRepositoryError::InvalidStoredData)?,
         )
-        .execute(self.sandbox_postgres_pool()?)
+        .execute(&mut *sandbox_tx)
         .await
         .map_err(Self::map_sandbox_sqlx_error)?;
+        sandbox_tx
+            .commit()
+            .await
+            .map_err(Self::map_sandbox_sqlx_error)?;
         Ok(result.rows_affected() == 1)
     }
 }

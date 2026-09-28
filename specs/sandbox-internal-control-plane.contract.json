@@ -122,7 +122,8 @@
       "offset"
     ],
     "unknownQueryParameters": "rejected",
-    "standard": "../sdkwork-specs/PAGINATION_SPEC.md"
+    "standard": "../sdkwork-specs/PAGINATION_SPEC.md",
+    "performanceClass": "P1"
   },
   "requestBoundary": {
     "typedCallerContextRequired": true,

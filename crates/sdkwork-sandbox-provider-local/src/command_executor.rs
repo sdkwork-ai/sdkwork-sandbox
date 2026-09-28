@@ -71,6 +71,14 @@ pub trait SandboxLocalCommandProcessRunner: Send + Sync {
 /// refuses new work as policy-denied instead of growing without limit.
 const MAX_SANDBOX_LIVE_COMMANDS: usize = 1024;
 
+/// Node-level budget on buffered command output. Every live execution
+/// reserves its declared stdout plus stderr byte caps at admission (the
+/// worst case the contract allows), so the node's captured-output memory
+/// stays bounded no matter how many executions are admitted or how chatty
+/// their children are. An admission that would exceed the budget is
+/// policy-denied instead of being allowed to grow the node toward OOM.
+const MAX_SANDBOX_LIVE_OUTPUT_BYTES: u64 = 1 << 30;
+
 /// The contract's execution key triple (`tenantId`, `sandboxProviderId`,
 /// `sandboxCommandOperationId`). Keying live executions by the triple, not the
 /// bare operation id, keeps two tenants that reuse an id string out of each
@@ -81,6 +89,7 @@ type SandboxLiveCommandKey = (String, String, String);
 struct SandboxLiveCommand {
     sandbox_fencing_token: u64,
     sandbox_fingerprint: String,
+    sandbox_output_bytes: u64,
     sandbox_cancellation: SandboxLiveCommandHandle,
 }
 
@@ -124,6 +133,15 @@ impl SandboxLiveCommandRegistry {
             return Err(SandboxCommandExecutionError::OperationInProgress);
         }
         if sandbox_live.len() >= MAX_SANDBOX_LIVE_COMMANDS {
+            return Err(SandboxCommandExecutionError::PolicyDenied);
+        }
+        let sandbox_reserved: u64 = sandbox_live
+            .values()
+            .map(|entry| entry.sandbox_output_bytes)
+            .sum();
+        if sandbox_reserved.saturating_add(sandbox_entry.sandbox_output_bytes)
+            > MAX_SANDBOX_LIVE_OUTPUT_BYTES
+        {
             return Err(SandboxCommandExecutionError::PolicyDenied);
         }
         sandbox_live.insert(sandbox_key.clone(), sandbox_entry);
@@ -274,6 +292,14 @@ impl SandboxCommandExecutor for SandboxLocalCommandExecutor {
             SandboxLiveCommand {
                 sandbox_fencing_token: sandbox_request.sandbox_fencing_token,
                 sandbox_fingerprint,
+                sandbox_output_bytes: sandbox_command
+                    .sandbox_command_limits
+                    .sandbox_stdout_byte_limit
+                    .saturating_add(
+                        sandbox_command
+                            .sandbox_command_limits
+                            .sandbox_stderr_byte_limit,
+                    ),
                 sandbox_cancellation: sandbox_command.sandbox_cancellation.clone(),
             },
         )?;
