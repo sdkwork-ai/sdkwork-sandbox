@@ -204,7 +204,7 @@ entries:
     path: docs/product/requirements/REQ-2026-0028-sandbox-e2b-compatible-api-sdk-family.md
     layer: work
     audience: [product, architecture, engineering, sdk, api, security, review]
-    status: draft
+    status: ready
   - id: ADR-20260728
     path: docs/architecture/decisions/ADR-20260728-runtime-boundary-and-rust-workspace.md
     layer: work
@@ -344,7 +344,7 @@ entries:
     path: docs/architecture/decisions/ADR-20260924-sandbox-e2b-api-sdk-authority.md
     layer: work
     audience: [product, architecture, engineering, sdk, api, security, review]
-    status: proposed
+    status: accepted
   - id: PLAN-2026-0001
     path: docs/engineering/plans/PLAN-2026-0001-local-and-firecracker-provider-delivery.md
     layer: work

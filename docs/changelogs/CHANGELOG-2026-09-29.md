@@ -55,3 +55,10 @@
 ## 治理边界（本次未实施，须人审解锁）
 
 - Service Host 组合、session 生命周期 HTTP 面（REQ-2026-0023）、E2B OpenAPI 权威与 SDK 生成（REQ-2026-0028）、Firecracker/调度/池/配额（REQ-2026-0008、0016~0019）、账本保留与 Late Retry（REQ-2026-0020）、`tenant_id` BIGINT 迁移（REQ-2026-0018）均为 draft REQ 门禁锁定项，未经人审批准不得实施。
+
+## 商业化路径门禁推进（2026-09-29 所有者结构化决策）
+
+- `REQ-2026-0028`（E2B-Compatible API And SDK Family Authority）经所有者于本会话的书面指令（逐字记录于 `REVIEW-20260924` 附录）由 `draft` 提升为 `ready`；`ADR-20260924` 进入 `accepted`。授权切片：`apis/` 权威契约 + 双向 parity ledger 物化与生成链（`SDK_WORKSPACE_GENERATION_SPEC.md`）；服务面路由/RPC/envd、公共命名与边缘归属仍需各自机器契约翻转与评审。
+- `REVIEW-20260924` 评审包追加 2026-09-29 授权扩展节（逐角色 Human Outcome 表，仓库所有者以单一身份行使各列名角色）。
+- 钉面同步：PRD 链接行与缺口行、PRD-roadmap 进度段、`TECH_ARCHITECTURE` §5、`TECH-e2b-capability-parity` 普查行（[28, 4, 5, 19] / decisions [28, 24, 4]）、`docs/INDEX.yaml` 两行状态、`e2b-parity-matrix-tool` / `e2b-field-parity-tool` / `sandbox-platform-code-tool` 契约测试钉数（ready=4、draft=19、proposed=24、accepted-ADR=4、Rust 读数 143/0/2、declared tests=145、ignored 两个、平台标记回 20）。
+- 网关二次信号强杀撤回：Gate 0 交付门禁止控制面出现 `std::process`（`provider-delivery-gate.contract.test.mjs`），force-exit watcher 移除；drain 期间 readiness 摘流保留，卡死排空交由监督者 stop-timeout（`terminationGracePeriodSeconds` + SIGKILL，标准实践）。平台标记 21 → 20。

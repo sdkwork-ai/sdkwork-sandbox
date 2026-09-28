@@ -1,6 +1,6 @@
 # ADR-20260924-sandbox-e2b-api-sdk-authority
 
-Status: proposed
+Status: accepted
 
 Requirement: REQ-2026-0028
 

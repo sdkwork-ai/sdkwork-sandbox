@@ -20,8 +20,11 @@ use tracing_subscriber::EnvFilter;
 ///
 /// The first signal starts the graceful drain and flips `sandbox_drain_gate`,
 /// so `/readyz` fails immediately and load balancers stop routing new
-/// connections while in-flight requests finish. A second signal force-exits a
-/// stuck drain instead of hanging forever.
+/// connections while in-flight requests finish. A drain that cannot finish is
+/// the supervisor's stop-timeout decision (for example
+/// `terminationGracePeriodSeconds` followed by SIGKILL): the gateway itself
+/// stays inside the Gate 0 boundary that forbids process control in the
+/// control plane.
 ///
 /// # Panics
 ///
@@ -67,25 +70,13 @@ pub async fn serve_router(
 /// them off.
 ///
 /// The first signal begins the drain (readiness fails; see
-/// [`SandboxDrainGate`]) and arms a second-signal watcher: a second Ctrl+C or
-/// `SIGTERM` force-exits a stuck drain with the conventional signal exit
-/// status instead of hanging until an external timeout kills the process.
+/// [`SandboxDrainGate`]). A second signal is deliberately not handled here:
+/// force-exiting would put process control back into the control plane, which
+/// the Gate 0 delivery gate forbids; supervisors own the stuck-drain timeout.
 async fn shutdown_signal(sandbox_drain_gate: SandboxDrainGate) {
     wait_for_shutdown_signal().await;
     sandbox_drain_gate.begin_drain();
-    tracing::info!(
-        "graceful drain started; readiness now fails so load balancers stop routing \
-         (a second signal force-exits a stuck drain)"
-    );
-    // The watcher captures nothing, so it outlives this future and stays
-    // armed for the whole drain.
-    tokio::spawn(async {
-        wait_for_shutdown_signal().await;
-        tracing::warn!("second shutdown signal received; force exit");
-        // 130/143 are the conventional `128 + signal` statuses for SIGINT and
-        // SIGTERM, so supervisors see an intentional termination, not a crash.
-        std::process::exit(if cfg!(unix) { 143 } else { 130 });
-    });
+    tracing::info!("graceful drain started; readiness now fails so load balancers stop routing");
 }
 
 async fn wait_for_shutdown_signal() {

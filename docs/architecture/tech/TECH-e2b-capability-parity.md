@@ -53,7 +53,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 具体到三个数字：
 
 - E2B 的能力集合共 **78 项**（本分片逐行展开），本仓 ✅ **0**、🟡 **16**、❌ **60**、⛔ **2**。
-- 28 份 `REQ-*` 中 **3 份 `ready`**（5 `accepted` / 20 `draft`）；28 份 `ADR` 中 25 份 `proposed`（3 份 `accepted`）；机器契约授权状态：23 份 `*.contract.json` 中 21 份显式声明 `implementationAuthorized: false`、**1 份已授权实现**——`specs/sandbox-local-provider-host-boundary.contract.json`（其人审 packet 已于 2026-09-24 由仓库所有者全部评审角色签署），第 23 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约：`apis/commands/sandbox-command-contract.json` 已于 2026-09-24 随 `REQ-2026-0007` 进入 `ready` 授权实现，`apis/async/sandbox-observability-catalog.json` 仍为 `false`。
+- 28 份 `REQ-*` 中 **4 份 `ready`**（5 `accepted` / 19 `draft`）——2026-09-29 起 `REQ-2026-0028` E2B API/SDK 权威随所有者结构化决策进入 `ready`；28 份 `ADR` 中 24 份 `proposed`（4 份 `accepted`）——新增 `ADR-20260924`；机器契约授权状态：23 份 `*.contract.json` 中 21 份显式声明 `implementationAuthorized: false`、**1 份已授权实现**——`specs/sandbox-local-provider-host-boundary.contract.json`（其人审 packet 已于 2026-09-24 由仓库所有者全部评审角色签署），第 23 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约：`apis/commands/sandbox-command-contract.json` 已于 2026-09-24 随 `REQ-2026-0007` 进入 `ready` 授权实现，`apis/async/sandbox-observability-catalog.json` 仍为 `false`。
 - 8 份契约声明的 **127 个证据 id** 中，只有 **2 个**有 host-precondition 半产出，**125 个**仍被真实 runner 或人工评审完全阻塞。
 
 因此本仓对用户画像的承诺（`PRD.md` 第 2 节"AI Agent 应用开发者：用少量代码获得一个可执行代码、可读写文件、可访问网络、可持久化的独立运行环境"）**当前为零兑现**。
@@ -570,8 +570,8 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 本仓不是"有些功能没做完"，而是**治理门禁未打开**。四条硬门禁互相依赖：
 
-1. 28 份 `REQ-*` 中 3 份 `ready`（5 `accepted` / 20 `draft`）→ 其余逐份人工评审进 `ready`。
-2. 28 份 `ADR` 中 25 份 `proposed`（3 份 `accepted`）→ 其余需 `accepted`。
+1. 28 份 `REQ-*` 中 4 份 `ready`（5 `accepted` / 19 `draft`）→ 其余逐份人工评审进 `ready`（2026-09-29 起 `REQ-2026-0028` 已进入 `ready`）。
+2. 28 份 `ADR` 中 24 份 `proposed`（4 份 `accepted`）→ 其余需 `accepted`（`ADR-20260924` 已 `accepted`）。
 3. 机器契约全部未授权（23 份 `*.contract.json` + 2 份 `apis/` 机器契约，全部 `implementationAuthorized: false` 或独立声明 `runtimeImplementationAuthorizationGranted: false`）→ 需人工评审签字后翻转。
 4. 8 份契约声明的 127 个证据 id 中 125 个无产出者 → 需真实 runner 与人工评审闭合。
 

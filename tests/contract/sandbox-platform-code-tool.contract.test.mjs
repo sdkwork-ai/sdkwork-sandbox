@@ -376,9 +376,13 @@ test("a missing census line is reported", () => {
 test("markers are collected from crates only, and test code counts", () => {
   const markers = collectPlatformMarkers(repoRoot);
   const summarized = markers.map(({ path, line, marker }) => ({ path, line, marker }));
+  // 2026-09-29: the gateway lost its second-signal force-exit (Gate 0 forbids
+  // process control in the control plane), so the gateway keeps only its two
+  // shutdown-signal cfg-unix markers at their new lines; process_runner.rs
+  // markers shifted with the spawn_blocking resolution slice.
   assert.deepEqual(summarized, [
-    { path: "crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs", line: 63, marker: "cfg-unix" },
-    { path: "crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs", line: 71, marker: "cfg-unix" },
+    { path: "crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs", line: 91, marker: "cfg-unix" },
+    { path: "crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs", line: 99, marker: "cfg-unix" },
     { path: "crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs", line: 26, marker: "cfg-macro" },
     { path: "crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs", line: 37, marker: "cfg-macro" },
     { path: "crates/sdkwork-sandbox-provider-local/src/command_conformance_tests.rs", line: 45, marker: "cfg-macro" },
@@ -387,16 +391,16 @@ test("markers are collected from crates only, and test code counts", () => {
     { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 45, marker: "cfg-unix" },
     { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 48, marker: "cfg-windows" },
     { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 54, marker: "tokio-process" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 183, marker: "cfg-windows" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 190, marker: "cfg-windows" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 252, marker: "cfg-windows" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 262, marker: "cfg-unix" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 406, marker: "cfg-macro" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 439, marker: "cfg-macro" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 449, marker: "cfg-macro" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 472, marker: "cfg-macro" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 500, marker: "cfg-macro" },
-    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 510, marker: "cfg-windows" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 189, marker: "cfg-windows" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 196, marker: "cfg-windows" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 277, marker: "cfg-windows" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 287, marker: "cfg-unix" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 440, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 473, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 483, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 506, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 534, marker: "cfg-macro" },
+    { path: "crates/sdkwork-sandbox-provider-local/src/process_runner.rs", line: 544, marker: "cfg-windows" },
   ]);
   withFixture(
     {

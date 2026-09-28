@@ -1,6 +1,6 @@
 # REQ-2026-0028: E2B-Compatible API And SDK Family Authority
 
-Status: draft
+Status: ready
 
 Owner: SDKWork Runtime Platform
 
@@ -75,4 +75,4 @@ Without one owned authority, a future implementation could hand-write HTTP route
 
 ## Implementation Gate
 
-This requirement remains `draft`. It defines authority, mapping, and acceptance only. It does not authorize an HTTP route, RPC server, envd implementation, generated SDK, public endpoint name, domain, edge ingress, or any runtime behavior. Implementation begins only after this requirement is ready, the ADR and review are accepted, an `apis/` authority contract exists as a reviewed artifact, and the surfaces it maps receive API, security, and cross-repository human approval per `AGENTS.md`.
+The repository owner approved this requirement for every listed reviewer role via the structured implementation-gate decision of 2026-09-24 (packet acceptance) and extended it on 2026-09-29 (verbatim session directive recorded in `REVIEW-20260924`): `REQ-2026-0028` is `ready`, ADR-20260924 is `accepted`, and the authorized slice is the materialization of the `apis/` authority contract with its two-way parity ledger plus the generator-owned SDK generation chain per `SDK_WORKSPACE_GENERATION_SPEC.md`. This requirement still does not authorize a serving HTTP route, RPC server, envd implementation, public endpoint name, domain, or edge ingress: every serving surface requires its own machine-contract `implementationAuthorized` flip and the human reviews `AGENTS.md` names, and implemented-surface parity rows remain evidence-gated in the capability baseline.

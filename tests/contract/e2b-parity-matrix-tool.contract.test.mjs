@@ -1260,13 +1260,15 @@ test("every requirement in this repository declares a readable status", () => {
     assert.notEqual(record.status, null, `${name} has no readable status`);
     if (record.status === "ready") ready.push(name);
   }
-  // The first transition (2026-09-24) promoted exactly the three provider-side requirements. A new
-  // `ready` requirement is fine, but section 3.2's 治理阻塞 rows must be re-triaged when it happens,
-  // so the count is pinned to make that re-triage deliberate rather than accidental.
+  // The 2026-09-24 transition promoted the three provider-side requirements; the 2026-09-29
+  // structured decision promoted the E2B API/SDK authority. A new `ready` requirement is fine,
+  // but section 3.2's 治理阻塞 rows must be re-triaged when it happens, so the count is pinned
+  // to make that re-triage deliberate rather than accidental.
   assert.deepEqual(ready.sort(), [
     "REQ-2026-0003-secure-local-provider.md",
     "REQ-2026-0007-sandbox-command-execution-contract.md",
     "REQ-2026-0008-firecracker-sandbox-provider.md",
+    "REQ-2026-0028-sandbox-e2b-compatible-api-sdk-family.md",
   ]);
 });
 
@@ -1284,13 +1286,13 @@ test("the repository's own coverage table accounts for every test the workspace 
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  // 2026-09-29: 139 declared tests (138 runnable + the external-PostgreSQL
-  // ignored one) after the platform-supervision containment slice (Windows
-  // suspended kill-on-close Job Object, three-generation tree-kill probe)
-  // landed on top of the shared command-conformance suite; the evidence
+  // 2026-09-29: 145 declared tests (143 runnable + the two external-PostgreSQL
+  // ignored ones) after the lifecycle-ledger delta/retention slices, the SQLx
+  // service-driven delta integration test, the API-assembly drain-gate
+  // readiness test, and the executor per-tenant partition test; the coverage
   // table in the audit document accounts for each of them.
-  assert.equal(assessment.workspaceTests, 139);
-  assert.equal(assessment.coveredTests, 139);
+  assert.equal(assessment.workspaceTests, 145);
+  assert.equal(assessment.coveredTests, 145);
 
   const discovered = discoverWorkspaceTests(repoRoot);
   let runnable = 0;
@@ -1301,10 +1303,10 @@ test("the repository's own coverage table accounts for every test the workspace 
       else runnable += 1;
     }
   }
-  // The two readings the audit quotes have to agree with the code: 129 declared, 128 of them
-  // runnable because one declares it needs an external PostgreSQL.
-  assert.equal(runnable + ignored, 139);
-  assert.equal(ignored, 1);
+  // The two readings the audit quotes have to agree with the code: 145 declared, 143 of them
+  // runnable because two declare they need an external PostgreSQL.
+  assert.equal(runnable + ignored, 145);
+  assert.equal(ignored, 2);
 });
 
 test("a test the workspace declares but the coverage table omits is rejected", () => {
@@ -1405,8 +1407,11 @@ test("an ignored test is recorded as ignored rather than dropped", () => {
     .filter((entry) => entry.ignored);
 
   assert.deepEqual(
-    ignored.map((entry) => entry.name),
-    ["sandbox_postgres_repository_enforces_durable_lifecycle_contract"],
+    ignored.map((entry) => entry.name).sort(),
+    [
+      "sandbox_postgres_repository_enforces_durable_lifecycle_contract",
+      "sandbox_postgres_repository_persists_lifecycle_operation_deltas",
+    ],
   );
 });
 
@@ -2044,13 +2049,15 @@ test("the repository holds exactly the machine contracts, records and evidence c
   ]);
   const requirements = readRequirementStatuses(repoRoot);
   assert.equal(requirements.length, 28);
-  assert.equal(requirements.filter((record) => record.status === "ready").length, 3);
+  // The 2026-09-29 structured decision promoted REQ-2026-0028 (E2B API/SDK authority) to ready.
+  assert.equal(requirements.filter((record) => record.status === "ready").length, 4);
   assert.equal(requirements.filter((record) => record.status === "accepted").length, 5);
-  assert.equal(requirements.filter((record) => record.status === "draft").length, 20);
+  assert.equal(requirements.filter((record) => record.status === "draft").length, 19);
   const decisions = readDecisionStatuses(repoRoot);
   assert.equal(decisions.length, 28);
-  assert.equal(decisions.filter((record) => record.status === "proposed").length, 25);
-  assert.equal(decisions.filter((record) => record.status === "accepted").length, 3);
+  // The 2026-09-29 structured decision accepted ADR-20260924 (E2B API/SDK authority).
+  assert.equal(decisions.filter((record) => record.status === "proposed").length, 24);
+  assert.equal(decisions.filter((record) => record.status === "accepted").length, 4);
 });
 
 test("the repository's own answer section compares every restated figure", () => {
