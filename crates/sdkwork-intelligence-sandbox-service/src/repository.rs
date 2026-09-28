@@ -33,8 +33,12 @@ pub enum SandboxSessionRepositoryError {
     NotFound,
     #[error("sandbox session version conflict")]
     VersionConflict,
+    #[error("sandbox session id already exists in this tenant")]
+    DuplicateSandboxSession,
     #[error("sandbox operation id already belongs to another sandbox session")]
     DuplicateOperation,
+    #[error("the sandbox runtime binding sandbox identity already belongs to another sandbox session in this tenant")]
+    RuntimeBindingConflict,
     #[error("sandbox session repository is unavailable")]
     Unavailable,
     #[error("sandbox session repository contains invalid persisted data")]
@@ -423,6 +427,10 @@ pub struct SandboxSessionRepositorySnapshot {
     sandbox_runtime_binding: Option<SandboxRuntimeBindingRepositorySnapshot>,
     sandbox_last_failure: Option<SandboxSessionFailure>,
     sandbox_operations: Vec<SandboxSessionOperationRepositorySnapshot>,
+    /// Ledger entries a save must persist, captured from the session's
+    /// persistence frontier. `None` for snapshots built directly from stored
+    /// rows (`new`), which fall back to persisting the full ledger.
+    sandbox_persisted_operations: Option<Vec<SandboxSessionOperationRepositorySnapshot>>,
     sandbox_version: u64,
 }
 
@@ -630,8 +638,21 @@ impl SandboxSessionRepositorySnapshot {
             sandbox_runtime_binding,
             sandbox_last_failure,
             sandbox_operations,
+            sandbox_persisted_operations: None,
             sandbox_version,
         }
+    }
+
+    /// Attaches the captured persistence delta: the unpersisted ledger tail
+    /// plus the always-repersisted last entry. Chained by
+    /// [`capture`](Self::capture) only; row-built snapshots stay on the
+    /// full-ledger fallback.
+    fn with_persisted_operations(
+        mut self,
+        sandbox_persisted_operations: Vec<SandboxSessionOperationRepositorySnapshot>,
+    ) -> Self {
+        self.sandbox_persisted_operations = Some(sandbox_persisted_operations);
+        self
     }
 
     ///
@@ -680,7 +701,18 @@ impl SandboxSessionRepositorySnapshot {
                     sandbox_operation.sandbox_operation_outcome(),
                 )
             })
-            .collect();
+            .collect::<Vec<_>>();
+        let sandbox_persisted_operations = sandbox_session
+            .sandbox_operations_to_persist()
+            .iter()
+            .map(|sandbox_operation| {
+                SandboxSessionOperationRepositorySnapshot::new(
+                    sandbox_operation.sandbox_operation_id().clone(),
+                    sandbox_operation.sandbox_operation_kind(),
+                    sandbox_operation.sandbox_operation_outcome(),
+                )
+            })
+            .collect::<Vec<_>>();
         let sandbox_snapshot = Self::new(
             sandbox_session.tenant_id().clone(),
             sandbox_session.sandbox_workspace_id().clone(),
@@ -692,7 +724,8 @@ impl SandboxSessionRepositorySnapshot {
             sandbox_session.sandbox_last_failure(),
             sandbox_operations,
             sandbox_session.sandbox_version(),
-        );
+        )
+        .with_persisted_operations(sandbox_persisted_operations);
         sandbox_snapshot.validate_sandbox_persisted_invariants()?;
         Ok(sandbox_snapshot)
     }
@@ -803,6 +836,16 @@ impl SandboxSessionRepositorySnapshot {
     #[must_use]
     pub fn sandbox_operations(&self) -> &[SandboxSessionOperationRepositorySnapshot] {
         &self.sandbox_operations
+    }
+
+    /// Ledger entries a save must persist: the captured persistence delta
+    /// when present, otherwise the full ledger (snapshots built from stored
+    /// rows carry no delta, so writes stay correct for every constructor).
+    #[must_use]
+    pub fn sandbox_operations_to_persist(&self) -> &[SandboxSessionOperationRepositorySnapshot] {
+        self.sandbox_persisted_operations
+            .as_deref()
+            .unwrap_or(&self.sandbox_operations)
     }
 
     #[must_use]

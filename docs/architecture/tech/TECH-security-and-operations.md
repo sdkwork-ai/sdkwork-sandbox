@@ -50,7 +50,7 @@ Sandbox Lifecycle Provider Side Effect 使用 `SandboxSessionLease` 建立唯一
 
 PostgreSQL Operation 历史使用稳定 `sandbox_operation_sequence`，避免同一事务时间戳和随机 ID 造成状态机反序。Repository Restore 必须在解密 `SandboxProviderAllocationRef` 前按该顺序重放并验证持久化组合不变量；`Running`/`Stopping`/`Stopped` 缺少受保护 Allocation、`Created`/`Destroyed` 保留 Binding、Transient State 缺少匹配 InProgress Operation、Failure 不匹配等情况统一关闭失败，且不得触发 Provider Side Effect。
 
-上述历史 replay 是当前 REQ-2026-0005 候选行为；读取侧由 `MAX_SANDBOX_SESSION_OPERATIONS` 有界化（历史超限的 Session 失败关闭），历史无界增长与超限不可用仍是一项未关闭的商业化 P1 风险。REQ-2026-0020 与候选 ADR-20260730 将目标边界固定为 bounded `SandboxSessionHotState` + separate durable `SandboxLifecycleIdempotencyRecord`：普通 hydrate 和 post-Lease reread 至多读取当前 In-progress Operation，Operation 重放/冲突通过 Tenant-scoped point lookup 处理，Audit/Event/Log 不充当幂等权威。最大 Operation 数、最大活动 Session 生命周期、终态保留和 Late Retry Outcome 未获人审前保持未定义，当前 Schema/Repository 不得擅自截断或迁移。
+上述历史 replay 是当前 REQ-2026-0005 候选行为；读取侧由 `MAX_SANDBOX_SESSION_PERSISTED_OPERATIONS` 有界化（保留界 `MAX_SANDBOX_SESSION_OPERATIONS` 加一个终态 `Destroy` 宽限行，超限的 Session 失败关闭；宽限行保证触界 Session 仍可读取并可销毁，Provider 分配不会因账本触界而泄漏）。写侧自 2026-09-29 起只持久化本次追加或解析的账本条目（快照携带持久化 frontier 与末项 outcome 指纹），不再逐条重放全量历史；历史无界增长与超限不可用的长期解仍由 REQ-2026-0020 承接，未获批前不得擅自截断或迁移。REQ-2026-0020 与候选 ADR-20260730 将目标边界固定为 bounded `SandboxSessionHotState` + separate durable `SandboxLifecycleIdempotencyRecord`：普通 hydrate 和 post-Lease reread 至多读取当前 In-progress Operation，Operation 重放/冲突通过 Tenant-scoped point lookup 处理，Audit/Event/Log 不充当幂等权威。最大 Operation 数、最大活动 Session 生命周期、终态保留和 Late Retry Outcome 未获人审前保持未定义，当前 Schema/Repository 不得擅自截断或迁移。
 
 ## 5. Secret Handling
 

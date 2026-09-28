@@ -137,12 +137,12 @@ Updated: 2026-09-22
 | D6 | `MIG-*` 迁移策略与真实证据 | 六段式 expand→backfill→verify→dual-read→cutover→retire；禁止原地重写 `0001` | Database Owner |
 | D7 | 公开 Error 与 Kernel 映射 | 未定义 | API/Kernel Owner |
 
-批准即解锁下方 Phase 0.5（bounded Hot State + point-lookup Idempotency Ledger 的 expand/backfill/verify/cutover 实施）；在此之前 `MAX_SANDBOX_SESSION_OPERATIONS` 行为被 REQ-2026-0005 边界段冻结，不得删除/截断/过期任何幂等记录。
+批准即解锁下方 Phase 0.5（bounded Hot State + point-lookup Idempotency Ledger 的 expand/backfill/verify/cutover 实施）；在此之前 `MAX_SANDBOX_SESSION_PERSISTED_OPERATIONS`（保留界 + 终态 `Destroy` 宽限行）行为被 REQ-2026-0005 边界段冻结，不得删除/截断/过期任何幂等记录；写侧增量持久化（只写追加/解析的账本条目）不删除任何记录，不属于截断。
 
 ## 评审退出后立即可执行的工作项
 
 ### Phase 0.5: Bounded Lifecycle Persistence
-批准 REQ-2026-0020 的最大 Operation 数、最大活动 Session 生命周期、终态保留、Late Retry、Repository 命名与 `MIG-*` 后，以 expand/backfill/verify/cutover 方式将当前有界历史 hydrate（读取上限 `MAX_SANDBOX_SESSION_OPERATIONS`，超限失败关闭）收敛为 bounded Hot State + point-lookup Idempotency Ledger；真实 PostgreSQL 证据完成前不改变现有持久化行为。
+批准 REQ-2026-0020 的最大 Operation 数、最大活动 Session 生命周期、终态保留、Late Retry、Repository 命名与 `MIG-*` 后，以 expand/backfill/verify/cutover 方式将当前有界历史 hydrate（读取上限 `MAX_SANDBOX_SESSION_PERSISTED_OPERATIONS`，超限失败关闭）收敛为 bounded Hot State + point-lookup Idempotency Ledger；真实 PostgreSQL 证据完成前不改变现有持久化行为。
 
 ### Phase 1: Command Execution Port
 在 REQ-2026-0021 事务边界中创建经过批准的 Workspace Runtime Transaction/Checkpoint 组合 Port，并在 `sdkwork-sandbox-provider-spi` 创建 `SandboxCommandExecutor` Port 与公共类型；各窄 Port 保持独立所有权。

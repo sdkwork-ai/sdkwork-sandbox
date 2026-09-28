@@ -15,10 +15,10 @@ use sdkwork_intelligence_sandbox_service::{
     SandboxInstanceProfile, SandboxInstanceRepository, SandboxOperationOutcome,
     SandboxProtectedProviderAllocationRef, SandboxProviderAllocationProtectionContext,
     SandboxProviderAllocationProtectionVersion, SandboxProviderAllocationProtector,
-    SandboxRuntimeBindingRepositorySnapshot, SandboxSession, SandboxSessionOperationKind,
-    SandboxSessionOperationRepositorySnapshot, SandboxSessionReconciliationOutcome,
-    SandboxSessionRepository, SandboxSessionRepositoryError, SandboxSessionRepositoryResult,
-    SandboxSessionRepositorySnapshot, SandboxSessionState,
+    SandboxRuntimeBindingRepositorySnapshot, SandboxSession, SandboxSessionLifecycleCommand,
+    SandboxSessionOperationKind, SandboxSessionOperationRepositorySnapshot,
+    SandboxSessionReconciliationOutcome, SandboxSessionRepository, SandboxSessionRepositoryError,
+    SandboxSessionRepositoryResult, SandboxSessionRepositorySnapshot, SandboxSessionState,
 };
 use sdkwork_sandbox_provider_spi::{
     IsolationAssurance, OperationId, RuntimeCapability, SandboxId, SandboxInstanceOwnerId,
@@ -29,6 +29,7 @@ use sdkwork_sandbox_provider_spi::{
     SandboxProviderStopRequest, SandboxRuntimeBindingId, SandboxSessionId, SandboxWorkspaceId,
     TenantId,
 };
+use sqlx::Row;
 
 const SANDBOX_POSTGRES_TEST_KEY_ID: &str = "sandbox-postgres-test-key";
 const SANDBOX_POSTGRES_TEST_DATABASE_URL: &str = "SDKWORK_DATABASE_TEST_POSTGRES_URL";
@@ -1532,4 +1533,172 @@ async fn sandbox_postgres_repository_enforces_durable_lifecycle_contract() {
     assert_eq!(6, sandbox_visited_listing_ids.len());
 
     sandbox_database_pool.close().await;
+}
+
+/// Pins the save-path operation-ledger delta contract against real
+/// PostgreSQL: each lifecycle transition persists only the appended or
+/// resolved ledger entries with absolute sequences, so the stored history
+/// stays contiguous (0..n) with one row per operation — never a replayed
+/// full-history upsert.
+fn sandbox_session_lifecycle_command_for(
+    sandbox_session: &SandboxSession,
+) -> SandboxSessionLifecycleCommand {
+    SandboxSessionLifecycleCommand {
+        tenant_id: sandbox_session.tenant_id().clone(),
+        sandbox_session_id: sandbox_session.sandbox_session_id().clone(),
+        sandbox_operation_id: OperationId::generate(),
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires SDKWORK_DATABASE_TEST_POSTGRES_URL and an initialized PostgreSQL database"]
+async fn sandbox_postgres_repository_persists_lifecycle_operation_deltas() {
+    let sandbox_database_pool = sandbox_postgres_test_pool_builder()
+        .max_connections(4)
+        .min_connections(1)
+        .acquire_timeout(Duration::from_secs(10))
+        .build()
+        .await
+        .unwrap_or_else(|error| panic!("sandbox test database pool failed: {error}"));
+    let sandbox_postgres_pool = sandbox_database_pool
+        .as_postgres()
+        .unwrap_or_else(|| panic!("sandbox test database must be PostgreSQL"));
+    sqlx::raw_sql(
+        "TRUNCATE TABLE sandbox_session_operation, sandbox_runtime_binding, \
+         sandbox_session_lease, sandbox_session, sandbox_instance CASCADE",
+    )
+    .execute(sandbox_postgres_pool)
+    .await
+    .unwrap_or_else(|error| panic!("sandbox test database cleanup failed: {error}"));
+
+    let sandbox_allocation_key_source = Arc::new(TestSandboxAllocationKeySource::with_v1());
+    let sandbox_allocation_protector: Arc<dyn SandboxProviderAllocationProtector> = Arc::new(
+        TestSandboxAllocationProtector::new(Arc::clone(&sandbox_allocation_key_source)),
+    );
+    let sandbox_session_repository = Arc::new(
+        SqlxSandboxSessionRepository::new(
+            sandbox_database_pool.clone(),
+            Arc::clone(&sandbox_allocation_protector),
+        )
+        .unwrap_or_else(|error| panic!("sandbox SQLx repository creation failed: {error}")),
+    );
+    let sandbox_lifecycle_service =
+        sdkwork_intelligence_sandbox_service::SandboxLifecycleService::new(
+            sandbox_session_repository.clone(),
+            vec![Arc::new(TestSandboxProvider::new())],
+        )
+        .unwrap_or_else(|error| panic!("sandbox lifecycle service creation failed: {error}"));
+
+    let tenant = tenant_id("tenant-postgres-delta");
+    let created_sandbox_session = sandbox_lifecycle_service
+        .create_sandbox_session(
+            sdkwork_intelligence_sandbox_service::CreateSandboxSessionCommand {
+                tenant_id: tenant.clone(),
+                sandbox_workspace_id: parse_sandbox_workspace_id("workspace-postgres-delta"),
+                sandbox_session_id: parse_sandbox_session_id("session-postgres-delta"),
+                sandbox_operation_id: OperationId::generate(),
+                sandbox_required_capabilities: BTreeSet::from([RuntimeCapability::Filesystem]),
+                sandbox_minimum_assurance: IsolationAssurance::HostUser,
+            },
+        )
+        .await
+        .unwrap_or_else(|error| panic!("sandbox session create failed: {error}"));
+    assert_eq!(
+        1,
+        sandbox_operation_row_count(sandbox_postgres_pool, &tenant).await,
+        "create persists exactly its own ledger entry"
+    );
+
+    let start_sandbox_session = sandbox_lifecycle_service
+        .start_sandbox_session(sandbox_session_lifecycle_command_for(
+            &created_sandbox_session,
+        ))
+        .await
+        .unwrap_or_else(|error| panic!("sandbox session start failed: {error}"));
+    assert_eq!(
+        2,
+        sandbox_operation_row_count(sandbox_postgres_pool, &tenant).await,
+        "start persists its appended entry, not a full-history replay"
+    );
+
+    let stopped_sandbox_session = sandbox_lifecycle_service
+        .stop_sandbox_session(sandbox_session_lifecycle_command_for(
+            &start_sandbox_session,
+        ))
+        .await
+        .unwrap_or_else(|error| panic!("sandbox session stop failed: {error}"));
+    sandbox_lifecycle_service
+        .destroy_sandbox_session(sandbox_session_lifecycle_command_for(
+            &stopped_sandbox_session,
+        ))
+        .await
+        .unwrap_or_else(|error| panic!("sandbox session destroy failed: {error}"));
+
+    let destroyed_sandbox_session = sandbox_session_repository
+        .get_sandbox_session(&tenant, stopped_sandbox_session.sandbox_session_id())
+        .await
+        .unwrap_or_else(|error| panic!("destroyed session lookup failed: {error}"))
+        .unwrap_or_else(|| panic!("destroyed session must exist"));
+    assert_eq!(
+        destroyed_sandbox_session.sandbox_session_state(),
+        SandboxSessionState::Destroyed
+    );
+
+    let sandbox_operation_rows = sqlx::query(
+        "SELECT sandbox_operation_sequence, sandbox_operation_kind, \
+                sandbox_operation_outcome \
+         FROM sandbox_session_operation \
+         WHERE tenant_id = $1 AND sandbox_session_id = $2 \
+         ORDER BY sandbox_operation_sequence",
+    )
+    .bind(tenant.as_str())
+    .bind(stopped_sandbox_session.sandbox_session_id().as_str())
+    .fetch_all(sandbox_postgres_pool)
+    .await
+    .unwrap_or_else(|error| panic!("sandbox operation ledger query failed: {error}"));
+    let sandbox_operation_summary: Vec<(i64, String, String)> = sandbox_operation_rows
+        .iter()
+        .map(|sandbox_operation_row| {
+            (
+                sandbox_operation_row
+                    .try_get::<i64, _>("sandbox_operation_sequence")
+                    .unwrap_or_else(|error| {
+                        panic!("sandbox operation sequence decode failed: {error}")
+                    }),
+                sandbox_operation_row
+                    .try_get::<String, _>("sandbox_operation_kind")
+                    .unwrap_or_else(|error| {
+                        panic!("sandbox operation kind decode failed: {error}")
+                    }),
+                sandbox_operation_row
+                    .try_get::<String, _>("sandbox_operation_outcome")
+                    .unwrap_or_else(|error| {
+                        panic!("sandbox operation outcome decode failed: {error}")
+                    }),
+            )
+        })
+        .collect();
+    assert_eq!(
+        sandbox_operation_summary,
+        vec![
+            (0, "create".into(), "succeeded".into()),
+            (1, "start".into(), "succeeded".into()),
+            (2, "stop".into(), "succeeded".into()),
+            (3, "destroy".into(), "succeeded".into()),
+        ],
+        "the stored ledger must stay contiguous with one row per operation"
+    );
+
+    sandbox_database_pool.close().await;
+}
+
+async fn sandbox_operation_row_count(
+    sandbox_postgres_pool: &sqlx::PgPool,
+    tenant_id: &TenantId,
+) -> i64 {
+    sqlx::query_scalar("SELECT COUNT(*) FROM sandbox_session_operation WHERE tenant_id = $1")
+        .bind(tenant_id.as_str())
+        .fetch_one(sandbox_postgres_pool)
+        .await
+        .unwrap_or_else(|error| panic!("sandbox operation row count failed: {error}"))
 }

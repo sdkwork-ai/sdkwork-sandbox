@@ -306,35 +306,8 @@ async fn a_moved_fingerprint_under_a_live_operation_id_is_an_idempotency_conflic
 
 #[tokio::test]
 async fn the_same_operation_id_under_another_tenant_never_conflicts() {
-    struct BlockingRunner;
-
-    #[async_trait]
-    impl SandboxLocalCommandProcessRunner for BlockingRunner {
-        async fn sandbox_run_admitted(
-            &self,
-            sandbox_command: &SandboxLocalAdmittedCommand,
-        ) -> Result<SandboxCommandOutcome, SandboxCommandExecutionError> {
-            sandbox_command
-                .sandbox_cancellation
-                .sandbox_cancelled()
-                .await;
-            Ok(SandboxCommandOutcome {
-                sandbox_exit_code: None,
-                sandbox_stdout: Vec::new(),
-                sandbox_stderr: Vec::new(),
-                sandbox_stdout_truncated: false,
-                sandbox_stderr_truncated: false,
-            })
-        }
-    }
-
-    let executor = Arc::new(SandboxLocalCommandExecutor::new(
-        Arc::new(SandboxLocalHostBoundary::new(
-            BTreeSet::from(["toybox".to_owned()]),
-            BTreeSet::from(["SANDBOX_MODE".to_owned()]),
-        )),
-        Arc::new(BlockingRunner),
-    ));
+    let (sandbox_admitted_sender, mut sandbox_admitted_receiver) = tokio::sync::mpsc::channel(16);
+    let executor = sandbox_signalling_executor(sandbox_admitted_sender);
     // The registry keys by the contract's execution key triple, so a second
     // tenant reusing the operation id string runs in its own cell.
     let first = sandbox_request();
@@ -343,11 +316,11 @@ async fn the_same_operation_id_under_another_tenant_never_conflicts() {
     let sandbox_first_executor = executor.clone();
     let sandbox_first =
         tokio::spawn(async move { sandbox_first_executor.sandbox_execute(&first).await });
-    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    await_sandbox_admissions(&mut sandbox_admitted_receiver, 1).await;
     let sandbox_second_executor = executor.clone();
     let sandbox_second =
         tokio::spawn(async move { sandbox_second_executor.sandbox_execute(&second).await });
-    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    await_sandbox_admissions(&mut sandbox_admitted_receiver, 1).await;
 
     executor
         .sandbox_cancel("tenant-1", "provider-local", "operation-1", 7)
@@ -363,41 +336,79 @@ async fn the_same_operation_id_under_another_tenant_never_conflicts() {
     assert_eq!(None, sandbox_first.sandbox_exit_code);
     assert_eq!(None, sandbox_second.sandbox_exit_code);
 }
-#[tokio::test]
-async fn the_node_output_budget_refuses_admissions_beyond_the_declared_caps() {
-    struct BlockingRunner;
+/// Blocking runner that signals each admission on a channel before parking
+/// on cancellation. Tests await the signals instead of sleeping, so
+/// assertions about registry occupancy stay deterministic under load.
+struct SignallingBlockingRunner {
+    sandbox_admitted_sender: tokio::sync::mpsc::Sender<()>,
+}
 
-    #[async_trait]
-    impl SandboxLocalCommandProcessRunner for BlockingRunner {
-        async fn sandbox_run_admitted(
-            &self,
-            sandbox_command: &SandboxLocalAdmittedCommand,
-        ) -> Result<SandboxCommandOutcome, SandboxCommandExecutionError> {
-            sandbox_command
-                .sandbox_cancellation
-                .sandbox_cancelled()
-                .await;
-            Ok(SandboxCommandOutcome {
-                sandbox_exit_code: None,
-                sandbox_stdout: Vec::new(),
-                sandbox_stderr: Vec::new(),
-                sandbox_stdout_truncated: false,
-                sandbox_stderr_truncated: false,
-            })
-        }
+#[async_trait]
+impl SandboxLocalCommandProcessRunner for SignallingBlockingRunner {
+    async fn sandbox_run_admitted(
+        &self,
+        sandbox_command: &SandboxLocalAdmittedCommand,
+    ) -> Result<SandboxCommandOutcome, SandboxCommandExecutionError> {
+        let _ = self.sandbox_admitted_sender.send(()).await;
+        sandbox_command
+            .sandbox_cancellation
+            .sandbox_cancelled()
+            .await;
+        Ok(SandboxCommandOutcome {
+            sandbox_exit_code: None,
+            sandbox_stdout: Vec::new(),
+            sandbox_stderr: Vec::new(),
+            sandbox_stdout_truncated: false,
+            sandbox_stderr_truncated: false,
+        })
     }
-    let executor = Arc::new(SandboxLocalCommandExecutor::new(
+}
+
+fn sandbox_signalling_executor(
+    sandbox_admitted_sender: tokio::sync::mpsc::Sender<()>,
+) -> Arc<SandboxLocalCommandExecutor> {
+    Arc::new(SandboxLocalCommandExecutor::new(
         Arc::new(SandboxLocalHostBoundary::new(
             BTreeSet::from(["toybox".to_owned()]),
             BTreeSet::from(["SANDBOX_MODE".to_owned()]),
         )),
-        Arc::new(BlockingRunner),
-    ));
-    // Eight executions at the contract's maximum output caps (64 MiB per
-    // stream) reserve exactly the node's 1 GiB output budget.
+        Arc::new(SignallingBlockingRunner {
+            sandbox_admitted_sender,
+        }),
+    ))
+}
+
+/// Awaits exactly `sandbox_expected_admissions` runner-entry signals with a
+/// generous timeout, so a loaded CI machine cannot race the assertions.
+/// Async on purpose: the default `#[tokio::test]` runtime is single-threaded,
+/// so a blocking recv here would starve the very tasks being awaited.
+async fn await_sandbox_admissions(
+    sandbox_admitted_receiver: &mut tokio::sync::mpsc::Receiver<()>,
+    sandbox_expected_admissions: usize,
+) {
+    for _ in 0..sandbox_expected_admissions {
+        tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            sandbox_admitted_receiver.recv(),
+        )
+        .await
+        .expect("the admitted execution must signal the runner in time")
+        .expect("the admission signal channel must stay open");
+    }
+}
+
+#[tokio::test]
+async fn the_node_output_budget_refuses_admissions_beyond_the_declared_caps() {
+    let (sandbox_admitted_sender, mut sandbox_admitted_receiver) = tokio::sync::mpsc::channel(16);
+    let executor = sandbox_signalling_executor(sandbox_admitted_sender);
+    // Eight executions from eight different tenants at the contract's
+    // maximum output caps (64 MiB per stream, 128 MiB reserved each) fill
+    // exactly the node's 1 GiB output budget. Each tenant stays within its
+    // own 256 MiB share, so the node-wide budget is what saturates.
     let mut sandbox_executions = Vec::new();
     for sandbox_index in 0..8 {
         let mut sandbox_request = sandbox_request();
+        sandbox_request.sandbox_tenant_id = format!("budget-tenant-{sandbox_index}");
         sandbox_request.sandbox_command_operation_id = format!("budget-operation-{sandbox_index}");
         sandbox_request
             .sandbox_command_limits
@@ -410,12 +421,13 @@ async fn the_node_output_budget_refuses_admissions_beyond_the_declared_caps() {
             sandbox_executor.sandbox_execute(&sandbox_request).await
         }));
     }
-    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    await_sandbox_admissions(&mut sandbox_admitted_receiver, 8).await;
 
     // A ninth max-cap admission would push the worst-case buffered output
-    // past the budget, so it is policy-denied instead of admitted.
+    // past the node budget, so it is policy-denied instead of admitted.
     let mut sandbox_ninth = sandbox_request();
-    sandbox_ninth.sandbox_command_operation_id = "budget-operation-9".to_owned();
+    sandbox_ninth.sandbox_tenant_id = "budget-tenant-8".to_owned();
+    sandbox_ninth.sandbox_command_operation_id = "budget-operation-8".to_owned();
     sandbox_ninth
         .sandbox_command_limits
         .sandbox_stdout_byte_limit = 67_108_864;
@@ -430,7 +442,7 @@ async fn the_node_output_budget_refuses_admissions_beyond_the_declared_caps() {
     for sandbox_index in 0..8 {
         executor
             .sandbox_cancel(
-                "tenant-1",
+                &format!("budget-tenant-{sandbox_index}"),
                 "provider-local",
                 &format!("budget-operation-{sandbox_index}"),
                 7,
@@ -439,6 +451,90 @@ async fn the_node_output_budget_refuses_admissions_beyond_the_declared_caps() {
             .expect("settle every budget reservation");
     }
     for sandbox_execution in sandbox_executions {
+        let _ = sandbox_execution.await;
+    }
+}
+#[tokio::test]
+async fn the_per_tenant_budget_partitions_shares_so_one_tenant_cannot_starve_another() {
+    let (sandbox_admitted_sender, mut sandbox_admitted_receiver) = tokio::sync::mpsc::channel(16);
+    let executor = sandbox_signalling_executor(sandbox_admitted_sender);
+    // Two max-cap executions reserve exactly tenant-1's per-tenant output
+    // share (2 x 128 MiB = 256 MiB) without denting the node-wide budget.
+    let mut sandbox_tenant_one_executions = Vec::new();
+    for sandbox_index in 0..2 {
+        let mut sandbox_request = sandbox_request();
+        sandbox_request.sandbox_command_operation_id =
+            format!("tenant-share-operation-{sandbox_index}");
+        sandbox_request
+            .sandbox_command_limits
+            .sandbox_stdout_byte_limit = 67_108_864;
+        sandbox_request
+            .sandbox_command_limits
+            .sandbox_stderr_byte_limit = 67_108_864;
+        let sandbox_executor = executor.clone();
+        sandbox_tenant_one_executions.push(tokio::spawn(async move {
+            sandbox_executor.sandbox_execute(&sandbox_request).await
+        }));
+    }
+    await_sandbox_admissions(&mut sandbox_admitted_receiver, 2).await;
+
+    // Tenant-1's third max-cap admission exceeds its own share only.
+    let mut sandbox_tenant_one_third = sandbox_request();
+    sandbox_tenant_one_third.sandbox_command_operation_id = "tenant-share-operation-2".to_owned();
+    sandbox_tenant_one_third
+        .sandbox_command_limits
+        .sandbox_stdout_byte_limit = 67_108_864;
+    sandbox_tenant_one_third
+        .sandbox_command_limits
+        .sandbox_stderr_byte_limit = 67_108_864;
+    assert_eq!(
+        executor
+            .sandbox_execute(&sandbox_tenant_one_third)
+            .await
+            .unwrap_err(),
+        SandboxCommandExecutionError::PolicyDenied
+    );
+
+    // A different tenant runs at the same caps: its own share is untouched
+    // by tenant-1's reservations, so the admission succeeds.
+    let mut sandbox_tenant_two_first = sandbox_request();
+    sandbox_tenant_two_first.sandbox_tenant_id = "tenant-2".to_owned();
+    sandbox_tenant_two_first.sandbox_command_operation_id = "tenant-share-operation-0".to_owned();
+    sandbox_tenant_two_first
+        .sandbox_command_limits
+        .sandbox_stdout_byte_limit = 67_108_864;
+    sandbox_tenant_two_first
+        .sandbox_command_limits
+        .sandbox_stderr_byte_limit = 67_108_864;
+    let sandbox_tenant_two_executor = executor.clone();
+    let sandbox_tenant_two_execution = tokio::spawn(async move {
+        sandbox_tenant_two_executor
+            .sandbox_execute(&sandbox_tenant_two_first)
+            .await
+    });
+    await_sandbox_admissions(&mut sandbox_admitted_receiver, 1).await;
+    executor
+        .sandbox_cancel("tenant-2", "provider-local", "tenant-share-operation-0", 7)
+        .await
+        .expect("settle the tenant-2 reservation");
+    let sandbox_tenant_two_outcome = sandbox_tenant_two_execution
+        .await
+        .expect("join")
+        .expect("tenant-2 admission must succeed while tenant-1 is at its share");
+    assert_eq!(None, sandbox_tenant_two_outcome.sandbox_exit_code);
+
+    for sandbox_index in 0..2 {
+        executor
+            .sandbox_cancel(
+                "tenant-1",
+                "provider-local",
+                &format!("tenant-share-operation-{sandbox_index}"),
+                7,
+            )
+            .await
+            .expect("settle every tenant-1 reservation");
+    }
+    for sandbox_execution in sandbox_tenant_one_executions {
         let _ = sandbox_execution.await;
     }
 }

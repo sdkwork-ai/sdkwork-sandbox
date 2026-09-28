@@ -125,14 +125,18 @@ impl SandboxLocalTokioProcessRunner {
     /// Resolves the bare executable name to one host path under the
     /// provider-owned roots. Resolution is a filesystem lookup per root, so
     /// the request environment cannot influence it.
+    ///
+    /// Filesystem metadata calls can stall tens of milliseconds on cold
+    /// caches, so callers run this on the blocking pool, never on a Tokio
+    /// worker thread.
     fn sandbox_resolve_executable(
-        &self,
+        sandbox_config: &SandboxLocalProcessRunnerConfig,
         sandbox_executable: &str,
     ) -> Result<PathBuf, SandboxCommandExecutionError> {
         if sandbox_executable.is_empty() || sandbox_executable.contains(['/', '\\']) {
             return Err(SandboxCommandExecutionError::InvalidRequest);
         }
-        for root in &self.sandbox_config.sandbox_executable_roots {
+        for root in &sandbox_config.sandbox_executable_roots {
             for candidate in windows_and_plain_names(sandbox_executable) {
                 let resolved = root.join(&candidate);
                 if resolved.is_file() {
@@ -156,12 +160,14 @@ impl SandboxLocalTokioProcessRunner {
 
     /// Resolves the admitted logical working directory under the workspace
     /// root, re-validating that the canonical path stays inside the root so a
-    /// planted symlink cannot pivot the command out.
+    /// planted symlink cannot pivot the command out. Blocking filesystem
+    /// work: run on the blocking pool (see
+    /// [`Self::sandbox_resolve_executable`]).
     fn sandbox_resolve_working_directory(
-        &self,
+        sandbox_config: &SandboxLocalProcessRunnerConfig,
         sandbox_working_directory: &str,
     ) -> Result<PathBuf, SandboxCommandExecutionError> {
-        let root = &self.sandbox_config.sandbox_workspace_root;
+        let root = &sandbox_config.sandbox_workspace_root;
         let joined = root.join(sandbox_working_directory);
         let canonical = joined
             .canonicalize()
@@ -229,10 +235,29 @@ impl SandboxLocalCommandProcessRunner for SandboxLocalTokioProcessRunner {
         sandbox_command: &SandboxLocalAdmittedCommand,
     ) -> Result<SandboxCommandOutcome, SandboxCommandExecutionError> {
         self.sandbox_config.validate()?;
-        let sandbox_executable_path =
-            self.sandbox_resolve_executable(&sandbox_command.sandbox_executable)?;
-        let sandbox_working_dir =
-            self.sandbox_resolve_working_directory(&sandbox_command.sandbox_working_directory)?;
+        // Resolution is blocking filesystem metadata work (canonicalize on
+        // cold caches can stall tens of milliseconds); keep it off the Tokio
+        // workers so concurrent admissions cannot stall the runtime.
+        let sandbox_runner_config = self.sandbox_config.clone();
+        let sandbox_executable_name = sandbox_command.sandbox_executable.clone();
+        let sandbox_executable_path = tokio::task::spawn_blocking(move || {
+            SandboxLocalTokioProcessRunner::sandbox_resolve_executable(
+                &sandbox_runner_config,
+                &sandbox_executable_name,
+            )
+        })
+        .await
+        .map_err(|_| SandboxCommandExecutionError::InternalFailure)??;
+        let sandbox_runner_config = self.sandbox_config.clone();
+        let sandbox_working_directory = sandbox_command.sandbox_working_directory.clone();
+        let sandbox_working_dir = tokio::task::spawn_blocking(move || {
+            SandboxLocalTokioProcessRunner::sandbox_resolve_working_directory(
+                &sandbox_runner_config,
+                &sandbox_working_directory,
+            )
+        })
+        .await
+        .map_err(|_| SandboxCommandExecutionError::InternalFailure)??;
         let limits: &SandboxCommandLimits = &sandbox_command.sandbox_command_limits;
 
         let mut sandbox_child_command = Command::new(&sandbox_executable_path);
@@ -279,11 +304,11 @@ impl SandboxLocalCommandProcessRunner for SandboxLocalTokioProcessRunner {
             .take()
             .ok_or(SandboxCommandExecutionError::InternalFailure)?;
 
-        let sandbox_stdout_task = tokio::spawn(sandbox_read_bounded(
+        let mut sandbox_stdout_task = tokio::spawn(sandbox_read_bounded(
             sandbox_stdout_pipe,
             limits.sandbox_stdout_byte_limit,
         ));
-        let sandbox_stderr_task = tokio::spawn(sandbox_read_bounded(
+        let mut sandbox_stderr_task = tokio::spawn(sandbox_read_bounded(
             sandbox_stderr_pipe,
             limits.sandbox_stderr_byte_limit,
         ));
@@ -327,9 +352,11 @@ impl SandboxLocalCommandProcessRunner for SandboxLocalTokioProcessRunner {
 
         // The reader join is bounded by the cleanup budget: a descendant that
         // inherited the pipe write ends can hold EOF open past the direct
-        // child's exit, and the runner must never wait unbounded on it.
+        // child's exit, and the runner must never wait unbounded on it. The
+        // handles join by reference so the timed-out path can still abort
+        // them instead of leaving detached tasks and buffers behind.
         let sandbox_streams = tokio::time::timeout(sandbox_cleanup_budget, async {
-            tokio::join!(sandbox_stdout_task, sandbox_stderr_task)
+            tokio::join!(&mut sandbox_stdout_task, &mut sandbox_stderr_task)
         })
         .await;
         let (sandbox_stdout, sandbox_stdout_truncated, sandbox_stderr, sandbox_stderr_truncated) =
@@ -343,6 +370,13 @@ impl SandboxLocalCommandProcessRunner for SandboxLocalTokioProcessRunner {
                     return Err(SandboxCommandExecutionError::InternalFailure);
                 }
                 Err(_elapsed) => {
+                    // An escaped descendant holding the pipe write end can
+                    // keep the readers' EOF open indefinitely. Abort them so
+                    // the execution cannot strand tasks and buffers past the
+                    // cleanup budget; the unconfirmed-cleanup path discards
+                    // captured output anyway.
+                    sandbox_stdout_task.abort();
+                    sandbox_stderr_task.abort();
                     sandbox_cleanup_confirmed = false;
                     (Vec::new(), false, Vec::new(), false)
                 }

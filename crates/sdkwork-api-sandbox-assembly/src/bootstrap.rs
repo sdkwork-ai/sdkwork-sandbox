@@ -12,12 +12,16 @@ use sdkwork_routes_sandbox_internal_api::{AppState, SandboxInternalContextInject
 use sdkwork_sandbox_database_host::{
     bootstrap_sandbox_database, bootstrap_sandbox_database_from_env, SandboxDatabaseHostError,
 };
-use sdkwork_web_bootstrap::{ApiAssemblyContribution, PgPoolReadinessCheck, WebModule};
+use sdkwork_web_bootstrap::{
+    ApiAssemblyContribution, CompositeReadinessCheck, PgPoolReadinessCheck, WebModule,
+};
 use sdkwork_web_core::HttpRouteManifest;
 use sqlx::PgPool;
 use std::error::Error as StdError;
 use std::sync::Arc;
 use thiserror::Error;
+
+use crate::readiness::SandboxDrainGate;
 
 /// Indivisible host-neutral API assembly contribution (web-bootstrap contract).
 pub type ApiAssembly = ApiAssemblyContribution;
@@ -65,7 +69,14 @@ impl SandboxRuntime {
     /// Builds the contribution, so the caller also receives the manifest
     /// validation verdict (unknown owner prefix, auth-shape mismatch, an empty
     /// public path set) instead of a partially wired assembly.
-    fn assemble(self) -> Result<ApiAssembly, SandboxAssemblyError> {
+    ///
+    /// Readiness composes the pool probe with the caller's drain gate, so a
+    /// gracefully draining instance fails `/readyz` and load balancers stop
+    /// routing to it while its last in-flight requests finish.
+    fn assemble(
+        self,
+        sandbox_drain_gate: &SandboxDrainGate,
+    ) -> Result<ApiAssembly, SandboxAssemblyError> {
         let router = sdkwork_routes_sandbox_internal_api::assembly_business_router(AppState {
             service: self.service,
             readiness: None,
@@ -81,7 +92,10 @@ impl SandboxRuntime {
             router,
             route_manifest,
             vec![Arc::new(SandboxInternalContextInjector)],
-            Arc::new(PgPoolReadinessCheck::new(self.pool)),
+            Arc::new(
+                CompositeReadinessCheck::new(vec![Arc::new(PgPoolReadinessCheck::new(self.pool))])
+                    .push(Arc::new(sandbox_drain_gate.clone())),
+            ),
         )
         .map_err(SandboxAssemblyError::Contribution)
     }
@@ -97,8 +111,23 @@ impl SandboxRuntime {
 pub async fn assemble_api_router_with_pool(
     pool: DatabasePool,
 ) -> Result<ApiAssembly, SandboxAssemblyError> {
+    assemble_api_router_with_pool_and_drain(pool, &SandboxDrainGate::new()).await
+}
+
+/// Same as [`assemble_api_router_with_pool`] with an explicit drain gate: the
+/// gateway flips it on shutdown so readiness fails while the drain finishes.
+///
+/// # Errors
+///
+/// Returns [`SandboxAssemblyError`] for the database lifecycle, repository
+/// construction or manifest error.
+pub async fn assemble_api_router_with_pool_and_drain(
+    pool: DatabasePool,
+    sandbox_drain_gate: &SandboxDrainGate,
+) -> Result<ApiAssembly, SandboxAssemblyError> {
     let host = bootstrap_sandbox_database(pool).await?;
-    SandboxRuntime::from_pool(host.pool().clone()).and_then(SandboxRuntime::assemble)
+    SandboxRuntime::from_pool(host.pool().clone())
+        .and_then(|runtime| runtime.assemble(sandbox_drain_gate))
 }
 
 /// Assembles the contribution from environment-resolved configuration.
@@ -108,8 +137,22 @@ pub async fn assemble_api_router_with_pool(
 /// Returns [`SandboxAssemblyError`] for the database lifecycle, repository
 /// construction or manifest error.
 pub async fn assemble_api_router() -> Result<ApiAssembly, SandboxAssemblyError> {
+    assemble_api_router_with_drain(&SandboxDrainGate::new()).await
+}
+
+/// Same as [`assemble_api_router`] with an explicit drain gate (see
+/// [`assemble_api_router_with_pool_and_drain`]).
+///
+/// # Errors
+///
+/// Returns [`SandboxAssemblyError`] for the database lifecycle, repository
+/// construction or manifest error.
+pub async fn assemble_api_router_with_drain(
+    sandbox_drain_gate: &SandboxDrainGate,
+) -> Result<ApiAssembly, SandboxAssemblyError> {
     let host = bootstrap_sandbox_database_from_env().await?;
-    SandboxRuntime::from_pool(host.pool().clone()).and_then(SandboxRuntime::assemble)
+    SandboxRuntime::from_pool(host.pool().clone())
+        .and_then(|runtime| runtime.assemble(sandbox_drain_gate))
 }
 
 /// Runs the Sandbox-owned database lifecycle without constructing HTTP routes.

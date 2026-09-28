@@ -26,16 +26,17 @@ use crate::codec::{
     sandbox_runtime_capabilities_value, sandbox_session_failure_value, sandbox_session_state_value,
 };
 
-/// Maximum lifecycle operations loaded for one sandbox session.
-///
 /// Read-side use of the shared operation-history bound exported by the
 /// service crate: a persisted session whose operation history exceeds the
-/// bound fails closed instead of loading an unbounded row set into process
-/// memory. REQ-2026-0005's Release And Review Boundary freezes the behavior
-/// behind this bound: until REQ-2026-0020 authorizes a retention policy, no
-/// idempotency record may be deleted, truncated, or expired to stay under it
-/// — and the bound must not be relaxed to admit them.
-pub use sdkwork_intelligence_sandbox_service::MAX_SANDBOX_SESSION_OPERATIONS;
+/// persisted-row bound fails closed instead of loading an unbounded row set
+/// into process memory. REQ-2026-0005's Release And Review Boundary freezes
+/// the behavior behind this bound: until REQ-2026-0020 authorizes a
+/// retention policy, no idempotency record may be deleted, truncated, or
+/// expired to stay under it — and the bound must not be relaxed to admit
+/// them. The persisted-row bound additionally admits the terminal-`Destroy`
+/// grace entry, so a session at the retention bound stays loadable and
+/// destroyable.
+use sdkwork_intelligence_sandbox_service::MAX_SANDBOX_SESSION_PERSISTED_OPERATIONS;
 
 /// Statement timeout applied to every sandbox repository transaction,
 /// matching the authoritative-server baseline header contract
@@ -76,22 +77,95 @@ impl SqlxSandboxSessionRepository {
             .ok_or(SandboxSessionRepositoryError::UnsupportedDatabaseEngine)
     }
 
+    /// Runs the single atomic lease-take statement: it takes a free lease,
+    /// takes over an expired lease, or affects zero rows when another
+    /// controller holds the lease live (or the fencing token is exhausted).
+    async fn try_take_sandbox_session_lease(
+        &self,
+        tenant_id: &TenantId,
+        sandbox_session_id: &SandboxSessionId,
+        sandbox_lease_owner_id: &SandboxLeaseOwnerId,
+        sandbox_lease_duration_millis: i64,
+    ) -> SandboxSessionRepositoryResult<Option<(i64, i64)>> {
+        sqlx::query_as(
+            "INSERT INTO sandbox_session_lease AS existing (\
+                tenant_id, sandbox_session_id, sandbox_lease_owner_id, \
+                sandbox_lease_expires_at, sandbox_fencing_token\
+             ) \
+             SELECT $1, $2, $3, \
+                    CURRENT_TIMESTAMP + make_interval(secs => $4::double precision / 1000.0), \
+                    1 \
+             FROM sandbox_session \
+             WHERE tenant_id = $1 AND sandbox_session_id = $2 \
+             ON CONFLICT (tenant_id, sandbox_session_id) DO UPDATE SET \
+                sandbox_lease_owner_id = EXCLUDED.sandbox_lease_owner_id, \
+                sandbox_lease_expires_at = EXCLUDED.sandbox_lease_expires_at, \
+                sandbox_fencing_token = existing.sandbox_fencing_token + 1, \
+                updated_at = CURRENT_TIMESTAMP \
+             WHERE (existing.sandbox_lease_owner_id IS NULL \
+                    OR existing.sandbox_lease_expires_at <= CURRENT_TIMESTAMP) \
+               AND existing.sandbox_fencing_token < 9223372036854775807 \
+             RETURNING sandbox_fencing_token, \
+                (EXTRACT(EPOCH FROM sandbox_lease_expires_at) * 1000)::BIGINT \
+                    AS sandbox_lease_expires_at_unix_millis",
+        )
+        .bind(tenant_id.as_str())
+        .bind(sandbox_session_id.as_str())
+        .bind(sandbox_lease_owner_id.as_str())
+        .bind(sandbox_lease_duration_millis)
+        .fetch_optional(self.sandbox_postgres_pool()?)
+        .await
+        .map_err(Self::map_sandbox_sqlx_error)
+    }
+
+    fn sandbox_session_lease_from_taken_row(
+        tenant_id: &TenantId,
+        sandbox_session_id: &SandboxSessionId,
+        sandbox_lease_owner_id: &SandboxLeaseOwnerId,
+        sandbox_lease_row: (i64, i64),
+    ) -> SandboxSessionRepositoryResult<SandboxSessionLease> {
+        let (sandbox_fencing_token, sandbox_lease_expires_at_unix_millis) = sandbox_lease_row;
+        SandboxSessionLease::new(
+            tenant_id.clone(),
+            sandbox_session_id.clone(),
+            sandbox_lease_owner_id.clone(),
+            SandboxFencingToken::new(
+                u64::try_from(sandbox_fencing_token)
+                    .map_err(|_| SandboxSessionRepositoryError::InvalidStoredData)?,
+            )
+            .map_err(|_| SandboxSessionRepositoryError::InvalidStoredData)?,
+            sandbox_lease_expires_at_unix_millis,
+        )
+        .map_err(|_| SandboxSessionRepositoryError::InvalidStoredData)
+    }
+
     pub(crate) fn map_sandbox_sqlx_error(error: sqlx::Error) -> SandboxSessionRepositoryError {
         let sqlx::Error::Database(database_error) = &error else {
             return SandboxSessionRepositoryError::Unavailable;
         };
         match database_error.code().as_deref() {
-            Some("23505") => {
-                if database_error.constraint() == Some("pk_sandbox_session_operation") {
+            Some("23505") => match database_error.constraint() {
+                Some("pk_sandbox_session_operation") => {
                     SandboxSessionRepositoryError::DuplicateOperation
-                } else if database_error.constraint()
-                    == Some("uk_sandbox_session_operation_sequence")
-                {
-                    SandboxSessionRepositoryError::InvalidStoredData
-                } else {
-                    SandboxSessionRepositoryError::VersionConflict
                 }
-            }
+                // Two rows claiming one ledger position cannot come from a
+                // valid request: sequences are assigned contiguously by the
+                // service, so the stored ledger contradicts the model.
+                Some("uk_sandbox_session_operation_sequence") => {
+                    SandboxSessionRepositoryError::InvalidStoredData
+                }
+                Some("pk_sandbox_session") => {
+                    SandboxSessionRepositoryError::DuplicateSandboxSession
+                }
+                Some("uk_sandbox_runtime_binding_sandbox") => {
+                    SandboxSessionRepositoryError::RuntimeBindingConflict
+                }
+                // A unique violation on an unnamed constraint contradicts the
+                // registered schema contract, which names every unique
+                // constraint; treat it as a store anomaly instead of a
+                // speculative conflict.
+                _ => SandboxSessionRepositoryError::InvalidStoredData,
+            },
             Some("23502" | "23503" | "23514") => SandboxSessionRepositoryError::InvalidStoredData,
             Some("40001" | "40P01" | "55P03" | "57014") => {
                 SandboxSessionRepositoryError::Unavailable
@@ -260,9 +334,11 @@ impl SqlxSandboxSessionRepository {
     /// sandbox_session_operation row family.
     ///
     /// Operation history is window-numbered per session and capped at
-    /// `MAX_SANDBOX_SESSION_OPERATIONS + 1` rows; a session whose history
-    /// exceeds the safety bound fails closed instead of loading an unbounded
-    /// row set into process memory.
+    /// `MAX_SANDBOX_SESSION_PERSISTED_OPERATIONS + 1` rows; a session whose
+    /// history exceeds the safety bound fails closed instead of loading an
+    /// unbounded row set into process memory. The bound includes the
+    /// terminal-`Destroy` grace entry, so a session at the retention bound
+    /// stays loadable and destroyable.
     async fn load_sandbox_session_snapshots(
         sandbox_connection: &mut PgConnection,
         tenant_id: &TenantId,
@@ -276,8 +352,9 @@ impl SqlxSandboxSessionRepository {
             .map(SandboxSessionId::as_str)
             .collect();
         let sandbox_session_id_values: &[&str] = &sandbox_session_id_values;
-        let sandbox_operations_window_limit = i64::try_from(MAX_SANDBOX_SESSION_OPERATIONS + 1)
-            .map_err(|_| SandboxSessionRepositoryError::InvalidStoredData)?;
+        let sandbox_operations_window_limit =
+            i64::try_from(MAX_SANDBOX_SESSION_PERSISTED_OPERATIONS + 1)
+                .map_err(|_| SandboxSessionRepositoryError::InvalidStoredData)?;
 
         let sandbox_session_rows = sqlx::query(
             "SELECT tenant_id, sandbox_workspace_id, sandbox_session_id, \
@@ -359,7 +436,7 @@ impl SqlxSandboxSessionRepository {
         .fetch_all(&mut *sandbox_connection)
         .await
         .map_err(Self::map_sandbox_sqlx_error)?;
-        let max_sandbox_operations = i64::try_from(MAX_SANDBOX_SESSION_OPERATIONS)
+        let max_sandbox_operations = i64::try_from(MAX_SANDBOX_SESSION_PERSISTED_OPERATIONS)
             .map_err(|_| SandboxSessionRepositoryError::InvalidStoredData)?;
         let mut sandbox_operations_by_id: BTreeMap<
             String,
@@ -502,18 +579,27 @@ impl SqlxSandboxSessionRepository {
         Ok(sandbox_snapshots.pop())
     }
 
+    /// Persists the given ledger slice under the snapshot's session row.
+    ///
+    /// `sandbox_first_sandbox_operation_sequence` is the absolute ledger
+    /// position of `sandbox_operations`, so a save that carries only the
+    /// unpersisted tail (see
+    /// [`SandboxSessionRepositorySnapshot::sandbox_operations_to_persist`])
+    /// still writes sequences consistent with the full history. Every
+    /// statement is an upsert guarded by the operation id, session, sequence,
+    /// and kind, so re-persisting the last entry (an `InProgress` outcome
+    /// that resolved) is idempotent.
     async fn insert_sandbox_operations(
         sandbox_connection: &mut PgConnection,
         sandbox_session_snapshot: &SandboxSessionRepositorySnapshot,
+        sandbox_operations: &[SandboxSessionOperationRepositorySnapshot],
+        sandbox_first_sandbox_operation_sequence: usize,
         sandbox_allow_update: bool,
     ) -> SandboxSessionRepositoryResult<()> {
-        for (sandbox_operation_sequence, sandbox_operation) in sandbox_session_snapshot
-            .sandbox_operations()
-            .iter()
-            .enumerate()
-        {
-            let sandbox_operation_sequence = i64::try_from(sandbox_operation_sequence)
-                .map_err(|_| SandboxSessionRepositoryError::InvalidStoredData)?;
+        for (sandbox_operation_offset, sandbox_operation) in sandbox_operations.iter().enumerate() {
+            let sandbox_operation_sequence =
+                i64::try_from(sandbox_first_sandbox_operation_sequence + sandbox_operation_offset)
+                    .map_err(|_| SandboxSessionRepositoryError::InvalidStoredData)?;
             let (sandbox_operation_outcome, sandbox_session_failure) =
                 sandbox_operation_outcome_values(sandbox_operation.sandbox_operation_outcome());
             let sandbox_result = if sandbox_allow_update {
@@ -780,8 +866,14 @@ impl SandboxSessionRepository for SqlxSandboxSessionRepository {
         .execute(&mut *sandbox_transaction)
         .await
         .map_err(Self::map_sandbox_sqlx_error)?;
-        Self::insert_sandbox_operations(&mut sandbox_transaction, &sandbox_session_snapshot, false)
-            .await?;
+        Self::insert_sandbox_operations(
+            &mut sandbox_transaction,
+            &sandbox_session_snapshot,
+            sandbox_session_snapshot.sandbox_operations(),
+            0,
+            false,
+        )
+        .await?;
         Self::sync_sandbox_runtime_binding(&mut sandbox_transaction, &sandbox_session_snapshot)
             .await?;
         Self::ensure_sandbox_session_lease_row(&mut sandbox_transaction, &sandbox_session_snapshot)
@@ -875,8 +967,18 @@ impl SandboxSessionRepository for SqlxSandboxSessionRepository {
                 Err(SandboxSessionRepositoryError::NotFound)
             };
         }
-        Self::insert_sandbox_operations(&mut sandbox_transaction, &sandbox_session_snapshot, true)
-            .await?;
+        let sandbox_persisted_operations = sandbox_session_snapshot.sandbox_operations_to_persist();
+        let sandbox_first_persisted_sandbox_operation_sequence =
+            sandbox_session_snapshot.sandbox_operations().len()
+                - sandbox_persisted_operations.len();
+        Self::insert_sandbox_operations(
+            &mut sandbox_transaction,
+            &sandbox_session_snapshot,
+            sandbox_persisted_operations,
+            sandbox_first_persisted_sandbox_operation_sequence,
+            true,
+        )
+        .await?;
         Self::sync_sandbox_runtime_binding(&mut sandbox_transaction, &sandbox_session_snapshot)
             .await?;
         Self::ensure_sandbox_session_lease_row(&mut sandbox_transaction, &sandbox_session_snapshot)
@@ -896,41 +998,20 @@ impl SandboxSessionRepository for SqlxSandboxSessionRepository {
     ) -> SandboxSessionRepositoryResult<Option<SandboxSessionLease>> {
         let sandbox_lease_duration_millis =
             Self::sandbox_lease_duration_millis(sandbox_lease_duration)?;
-        let sandbox_lease_row = sqlx::query(
-            "INSERT INTO sandbox_session_lease AS existing (\
-                tenant_id, sandbox_session_id, sandbox_lease_owner_id, \
-                sandbox_lease_expires_at, sandbox_fencing_token\
-             ) \
-             SELECT $1, $2, $3, \
-                    CURRENT_TIMESTAMP + make_interval(secs => $4::double precision / 1000.0), \
-                    1 \
-             FROM sandbox_session \
-             WHERE tenant_id = $1 AND sandbox_session_id = $2 \
-             ON CONFLICT (tenant_id, sandbox_session_id) DO UPDATE SET \
-                sandbox_lease_owner_id = EXCLUDED.sandbox_lease_owner_id, \
-                sandbox_lease_expires_at = EXCLUDED.sandbox_lease_expires_at, \
-                sandbox_fencing_token = existing.sandbox_fencing_token + 1, \
-                updated_at = CURRENT_TIMESTAMP \
-             WHERE (existing.sandbox_lease_owner_id IS NULL \
-                    OR existing.sandbox_lease_expires_at <= CURRENT_TIMESTAMP) \
-               AND existing.sandbox_fencing_token < 9223372036854775807 \
-             RETURNING sandbox_fencing_token, \
-                (EXTRACT(EPOCH FROM sandbox_lease_expires_at) * 1000)::BIGINT \
-                    AS sandbox_lease_expires_at_unix_millis",
-        )
-        .bind(tenant_id.as_str())
-        .bind(sandbox_session_id.as_str())
-        .bind(sandbox_lease_owner_id.as_str())
-        .bind(sandbox_lease_duration_millis)
-        .fetch_optional(self.sandbox_postgres_pool()?)
-        .await
-        .map_err(Self::map_sandbox_sqlx_error)?;
-        if let Some(sandbox_lease_row) = sandbox_lease_row {
-            return Self::sandbox_session_lease_from_row(
+        if let Some(sandbox_lease_row) = self
+            .try_take_sandbox_session_lease(
                 tenant_id,
                 sandbox_session_id,
                 sandbox_lease_owner_id,
-                &sandbox_lease_row,
+                sandbox_lease_duration_millis,
+            )
+            .await?
+        {
+            return Self::sandbox_session_lease_from_taken_row(
+                tenant_id,
+                sandbox_session_id,
+                sandbox_lease_owner_id,
+                sandbox_lease_row,
             )
             .map(Some);
         }
@@ -957,7 +1038,31 @@ impl SandboxSessionRepository for SqlxSandboxSessionRepository {
             Some((Some(sandbox_fencing_token), true)) if sandbox_fencing_token == i64::MAX => {
                 Err(SandboxSessionRepositoryError::LeaseConflict)
             }
-            Some((Some(_), _)) => Ok(None),
+            // The lease expired in the window between the failed take and
+            // this classification. One bounded takeover retry converts the
+            // spurious conflict into a success; if another controller wins
+            // that retry, the conflict report is then accurate.
+            Some((Some(_), true)) => {
+                if let Some(sandbox_lease_row) = self
+                    .try_take_sandbox_session_lease(
+                        tenant_id,
+                        sandbox_session_id,
+                        sandbox_lease_owner_id,
+                        sandbox_lease_duration_millis,
+                    )
+                    .await?
+                {
+                    return Self::sandbox_session_lease_from_taken_row(
+                        tenant_id,
+                        sandbox_session_id,
+                        sandbox_lease_owner_id,
+                        sandbox_lease_row,
+                    )
+                    .map(Some);
+                }
+                Ok(None)
+            }
+            Some((Some(_), false)) => Ok(None),
         }
     }
 
@@ -1175,13 +1280,22 @@ mod tests {
             SqlxSandboxSessionRepository::map_sandbox_sqlx_error(sandbox_database_error(
                 TestSandboxDatabaseError::with_constraint("23505", "pk_sandbox_session"),
             )),
-            SandboxSessionRepositoryError::VersionConflict
+            SandboxSessionRepositoryError::DuplicateSandboxSession
+        );
+        assert_eq!(
+            SqlxSandboxSessionRepository::map_sandbox_sqlx_error(sandbox_database_error(
+                TestSandboxDatabaseError::with_constraint(
+                    "23505",
+                    "uk_sandbox_runtime_binding_sandbox",
+                ),
+            )),
+            SandboxSessionRepositoryError::RuntimeBindingConflict
         );
         assert_eq!(
             SqlxSandboxSessionRepository::map_sandbox_sqlx_error(sandbox_database_error(
                 TestSandboxDatabaseError::with_code("23505"),
             )),
-            SandboxSessionRepositoryError::VersionConflict
+            SandboxSessionRepositoryError::InvalidStoredData
         );
     }
 

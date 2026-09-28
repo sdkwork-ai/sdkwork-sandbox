@@ -96,9 +96,8 @@
       "status": "blocked",
       "requiredForCommercialRelease": true,
       "blockers": [
-        "local provider is a test-only fake host boundary",
-        "service host and CLI have no executable composition",
-        "command execution and interactive terminal are not implemented",
+        "local provider command execution is the only implemented capability slice (REQ-2026-0003 and REQ-2026-0007 authorized); terminal filesystem network and browser surfaces remain unimplemented",
+        "service host and CLI have no executable composition wiring the lifecycle stack end to end",
         "device-local residency backup restore export and purge evidence is absent"
       ],
       "localEvidenceRefs": [

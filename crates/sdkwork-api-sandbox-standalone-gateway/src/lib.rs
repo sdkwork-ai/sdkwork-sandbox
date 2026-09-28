@@ -13,15 +13,27 @@
 //! for the auth shape and the route manifest to drift.
 
 use axum::Router;
+use sdkwork_api_sandbox_assembly::SandboxDrainGate;
 use tracing_subscriber::EnvFilter;
 
 /// Serves `router` on `listen_addr` until SIGINT/SIGTERM.
+///
+/// The first signal starts the graceful drain and flips `sandbox_drain_gate`,
+/// so `/readyz` fails immediately and load balancers stop routing new
+/// connections while in-flight requests finish. A second signal force-exits a
+/// stuck drain instead of hanging forever.
 ///
 /// # Panics
 ///
 /// Panics when the address cannot be bound or the server fails, because a
 /// gateway that cannot listen has no useful degraded mode to fall back to.
-pub async fn serve_router(listen_addr: &str, service_name: &str, router: Router) {
+pub async fn serve_router(
+    listen_addr: &str,
+    service_name: &str,
+    router: Router,
+    sandbox_drain_gate: &SandboxDrainGate,
+) {
+    let sandbox_drain_gate = sandbox_drain_gate.clone();
     // Structured observability (OBSERVABILITY_SPEC section 2): `RUST_LOG`
     // keeps precedence, an unset filter falls back to `info` so a default
     // deployment is not silent, and `SDKWORK_SANDBOX_LOG_FORMAT=json` emits
@@ -45,7 +57,7 @@ pub async fn serve_router(listen_addr: &str, service_name: &str, router: Router)
     tracing::info!(%listen_addr, service = service_name, "listening");
 
     axum::serve(listener, router)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(shutdown_signal(sandbox_drain_gate))
         .await
         .expect("serve sandbox gateway");
 }
@@ -53,7 +65,30 @@ pub async fn serve_router(listen_addr: &str, service_name: &str, router: Router)
 /// Resolves on Ctrl+C on every platform and additionally on `SIGTERM` on Unix,
 /// so the container stop signal drains in-flight requests instead of cutting
 /// them off.
-async fn shutdown_signal() {
+///
+/// The first signal begins the drain (readiness fails; see
+/// [`SandboxDrainGate`]) and arms a second-signal watcher: a second Ctrl+C or
+/// `SIGTERM` force-exits a stuck drain with the conventional signal exit
+/// status instead of hanging until an external timeout kills the process.
+async fn shutdown_signal(sandbox_drain_gate: SandboxDrainGate) {
+    wait_for_shutdown_signal().await;
+    sandbox_drain_gate.begin_drain();
+    tracing::info!(
+        "graceful drain started; readiness now fails so load balancers stop routing \
+         (a second signal force-exits a stuck drain)"
+    );
+    // The watcher captures nothing, so it outlives this future and stays
+    // armed for the whole drain.
+    tokio::spawn(async {
+        wait_for_shutdown_signal().await;
+        tracing::warn!("second shutdown signal received; force exit");
+        // 130/143 are the conventional `128 + signal` statuses for SIGINT and
+        // SIGTERM, so supervisors see an intentional termination, not a crash.
+        std::process::exit(if cfg!(unix) { 143 } else { 130 });
+    });
+}
+
+async fn wait_for_shutdown_signal() {
     let ctrl_c = async {
         tokio::signal::ctrl_c()
             .await

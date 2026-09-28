@@ -15,6 +15,15 @@ pub(crate) const MAX_SANDBOX_SESSION_VERSION: u64 = i64::MAX as u64;
 /// dedicated retention policy is owned by REQ-2026-0020.
 pub const MAX_SANDBOX_SESSION_OPERATIONS: usize = 10_000;
 
+/// Hard persisted-row bound per session ledger: the retention bound plus one
+/// grace entry reserved for the terminal `Destroy` operation. The bound never
+/// blocks reaching a terminal state — a session at the retention bound must
+/// stay destroyable so its provider allocation cannot leak — while ordinary
+/// lifecycle growth still fails closed instead of growing without limit.
+/// Production retention (ledger truncation and post-retention late-retry
+/// semantics) remains owned by REQ-2026-0020.
+pub const MAX_SANDBOX_SESSION_PERSISTED_OPERATIONS: usize = MAX_SANDBOX_SESSION_OPERATIONS + 1;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SandboxSessionState {
     Created,
@@ -159,6 +168,17 @@ pub struct SandboxSession {
     sandbox_runtime_binding: Option<SandboxRuntimeBinding>,
     sandbox_last_failure: Option<SandboxSessionFailure>,
     sandbox_operations: Vec<SandboxSessionOperation>,
+    /// Number of leading ledger entries already persisted by the authoritative
+    /// store. Sessions restored from a store mark their whole loaded history
+    /// persisted; saves then carry only the unpersisted tail. At most one
+    /// `InProgress` entry exists and it is always last, so terminal entries
+    /// below the frontier never change.
+    sandbox_persisted_operation_count: usize,
+    /// Outcome the store last recorded for the final ledger entry. The last
+    /// entry is the only mutable one — an `InProgress` entry resolving after
+    /// a crash — so the next save re-persists it exactly when its outcome
+    /// differs from this fingerprint; terminal entries are never rewritten.
+    sandbox_persisted_last_operation_outcome: Option<SandboxOperationOutcome>,
     sandbox_version: u64,
 }
 
@@ -185,6 +205,8 @@ impl SandboxSession {
                 sandbox_operation_kind: SandboxSessionOperationKind::Create,
                 sandbox_operation_outcome: SandboxOperationOutcome::Succeeded,
             }],
+            sandbox_persisted_operation_count: 0,
+            sandbox_persisted_last_operation_outcome: None,
             sandbox_version: 0,
         }
     }
@@ -202,6 +224,10 @@ impl SandboxSession {
         sandbox_operations: Vec<SandboxSessionOperation>,
         sandbox_version: u64,
     ) -> Self {
+        let sandbox_persisted_operation_count = sandbox_operations.len();
+        let sandbox_persisted_last_operation_outcome = sandbox_operations
+            .last()
+            .map(SandboxSessionOperation::sandbox_operation_outcome);
         Self {
             tenant_id,
             sandbox_workspace_id,
@@ -212,6 +238,8 @@ impl SandboxSession {
             sandbox_runtime_binding,
             sandbox_last_failure,
             sandbox_operations,
+            sandbox_persisted_operation_count,
+            sandbox_persisted_last_operation_outcome,
             sandbox_version,
         }
     }
@@ -261,6 +289,39 @@ impl SandboxSession {
         &self.sandbox_operations
     }
 
+    /// Ledger entries a save must persist: the unpersisted tail, plus the
+    /// final entry exactly when its outcome diverges from what the store
+    /// recorded (the only mutable entry — an `InProgress` operation that
+    /// resolved). Fully persisted terminal ledgers yield an empty window.
+    pub(crate) fn sandbox_operations_to_persist(&self) -> &[SandboxSessionOperation] {
+        let sandbox_ledger_len = self.sandbox_operations.len();
+        let mut sandbox_first_unpersisted_operation = self
+            .sandbox_persisted_operation_count
+            .min(sandbox_ledger_len);
+        if sandbox_first_unpersisted_operation == sandbox_ledger_len && sandbox_ledger_len > 0 {
+            let sandbox_last_operation = &self.sandbox_operations[sandbox_ledger_len - 1];
+            let sandbox_outcome_is_unchanged = self
+                .sandbox_persisted_last_operation_outcome
+                .is_some_and(|sandbox_persisted_outcome| {
+                    sandbox_persisted_outcome == sandbox_last_operation.sandbox_operation_outcome()
+                });
+            if !sandbox_outcome_is_unchanged {
+                sandbox_first_unpersisted_operation = sandbox_ledger_len - 1;
+            }
+        }
+        &self.sandbox_operations[sandbox_first_unpersisted_operation..]
+    }
+
+    /// Records that the whole current ledger is persisted, so the next save
+    /// carries only operations appended or resolved after this point.
+    pub(crate) fn mark_sandbox_operations_persisted(&mut self) {
+        self.sandbox_persisted_operation_count = self.sandbox_operations.len();
+        self.sandbox_persisted_last_operation_outcome = self
+            .sandbox_operations
+            .last()
+            .map(SandboxSessionOperation::sandbox_operation_outcome);
+    }
+
     #[must_use]
     pub fn sandbox_version(&self) -> u64 {
         self.sandbox_version
@@ -304,15 +365,24 @@ impl SandboxSession {
     /// # Errors
     ///
     /// Returns `SandboxLifecycleError::InvariantViolation` when the ledger is
-    /// already at the retention bound: writes fail closed instead of growing
-    /// the history without limit, matching the repository read bound that
-    /// refuses to load a session above it.
+    /// at its bound and the operation would grow it further: writes fail
+    /// closed instead of growing the history without limit, matching the
+    /// repository read bound that refuses to load a session above it. The
+    /// terminal `Destroy` kind is exempt up to
+    /// [`MAX_SANDBOX_SESSION_PERSISTED_OPERATIONS`]: the bound must never
+    /// block reaching a terminal state, because a session that cannot be
+    /// destroyed leaks its provider allocation.
     pub(crate) fn begin_sandbox_operation(
         &mut self,
         sandbox_operation_id: OperationId,
         sandbox_operation_kind: SandboxSessionOperationKind,
     ) -> SandboxLifecycleResult<()> {
-        if self.sandbox_operations.len() >= MAX_SANDBOX_SESSION_OPERATIONS {
+        let sandbox_ledger_is_at_retention_bound =
+            self.sandbox_operations.len() >= MAX_SANDBOX_SESSION_OPERATIONS;
+        let sandbox_destroy_is_within_grace_bound = sandbox_operation_kind
+            == SandboxSessionOperationKind::Destroy
+            && self.sandbox_operations.len() < MAX_SANDBOX_SESSION_PERSISTED_OPERATIONS;
+        if sandbox_ledger_is_at_retention_bound && !sandbox_destroy_is_within_grace_bound {
             return Err(SandboxLifecycleError::InvariantViolation(
                 "sandbox operation ledger is at the retention bound",
             ));
@@ -605,5 +675,181 @@ mod tests {
             sandbox_session.sandbox_version(),
             MAX_SANDBOX_SESSION_VERSION
         );
+    }
+
+    #[test]
+    fn sandbox_session_operations_to_persist_tracks_the_unpersisted_tail_and_last_entry() {
+        let mut sandbox_session = sandbox_session_in_state(SandboxSessionState::Created);
+        // A restored session's whole loaded history is persisted and its
+        // terminal last entry cannot change, so a save before any mutation
+        // carries nothing.
+        assert!(sandbox_session.sandbox_operations_to_persist().is_empty());
+
+        let sandbox_start_operation_id = OperationId::generate();
+        sandbox_session
+            .begin_sandbox_operation(
+                sandbox_start_operation_id.clone(),
+                SandboxSessionOperationKind::Start,
+            )
+            .expect("begin below the retention bound");
+        assert_eq!(sandbox_session.sandbox_operations_to_persist().len(), 1);
+        assert_eq!(
+            sandbox_session.sandbox_operations_to_persist()[0].sandbox_operation_id(),
+            &sandbox_start_operation_id
+        );
+
+        // An appended operation that resolves before the next save is
+        // covered by the tail window; the fingerprint path is exercised by
+        // the crash-recovery completion below.
+        sandbox_session.complete_sandbox_operation(&sandbox_start_operation_id);
+        assert_eq!(sandbox_session.sandbox_operations_to_persist().len(), 1);
+        assert!(matches!(
+            sandbox_session.sandbox_operations_to_persist()[0].sandbox_operation_outcome(),
+            SandboxOperationOutcome::Succeeded
+        ));
+
+        // Crash-recovery: the InProgress entry is loaded as persisted, its
+        // later resolution must be re-persisted, and after the save nothing
+        // remains in the window.
+        sandbox_session.mark_sandbox_operations_persisted();
+        assert!(sandbox_session.sandbox_operations_to_persist().is_empty());
+        sandbox_session
+            .fail_sandbox_operation(&sandbox_start_operation_id, SandboxSessionFailure::Provider);
+        assert_eq!(sandbox_session.sandbox_operations_to_persist().len(), 1);
+        assert!(matches!(
+            sandbox_session.sandbox_operations_to_persist()[0].sandbox_operation_outcome(),
+            SandboxOperationOutcome::Failed(SandboxSessionFailure::Provider)
+        ));
+        sandbox_session.mark_sandbox_operations_persisted();
+        assert!(sandbox_session.sandbox_operations_to_persist().is_empty());
+
+        let mut sandbox_created_session = SandboxSession::create(
+            TenantId::parse("tenant-test")
+                .unwrap_or_else(|error| panic!("invalid test tenant id: {error}")),
+            SandboxWorkspaceId::parse("workspace-test")
+                .unwrap_or_else(|error| panic!("invalid test workspace id: {error}")),
+            SandboxSessionId::parse("session-create-test")
+                .unwrap_or_else(|error| panic!("invalid test session id: {error}")),
+            OperationId::generate(),
+            BTreeSet::new(),
+            IsolationAssurance::HostUser,
+        );
+        assert_eq!(
+            sandbox_created_session
+                .sandbox_operations_to_persist()
+                .len(),
+            1
+        );
+        assert_eq!(
+            sandbox_created_session.sandbox_operations_to_persist()[0].sandbox_operation_kind(),
+            SandboxSessionOperationKind::Create
+        );
+    }
+
+    #[test]
+    fn sandbox_session_crash_recovery_repersists_only_the_resolved_in_progress_entry() {
+        // A session restored with a trailing InProgress entry: the entry is
+        // already persisted, so the window is empty until its outcome flips.
+        let sandbox_start_operation_id = OperationId::generate();
+        let mut sandbox_session = sandbox_session_in_state(SandboxSessionState::Starting);
+        sandbox_session
+            .begin_sandbox_operation(
+                sandbox_start_operation_id.clone(),
+                SandboxSessionOperationKind::Start,
+            )
+            .expect("begin below the retention bound");
+        sandbox_session.mark_sandbox_operations_persisted();
+
+        let sandbox_restored_session = SandboxSession::restore(
+            sandbox_session.tenant_id().clone(),
+            sandbox_session.sandbox_workspace_id().clone(),
+            sandbox_session.sandbox_session_id().clone(),
+            SandboxSessionState::Starting,
+            BTreeSet::new(),
+            IsolationAssurance::HostUser,
+            None,
+            None,
+            sandbox_session.sandbox_operations().to_vec(),
+            1,
+        );
+        assert!(sandbox_restored_session
+            .sandbox_operations_to_persist()
+            .is_empty());
+
+        let mut sandbox_session = sandbox_restored_session;
+        sandbox_session.complete_sandbox_operation(&sandbox_start_operation_id);
+        assert_eq!(sandbox_session.sandbox_operations_to_persist().len(), 1);
+        assert_eq!(
+            sandbox_session.sandbox_operations_to_persist()[0].sandbox_operation_id(),
+            &sandbox_start_operation_id
+        );
+    }
+
+    #[test]
+    fn sandbox_session_retention_bound_never_blocks_the_terminal_destroy() {
+        let mut sandbox_session = sandbox_session_in_state(SandboxSessionState::Created);
+        let sandbox_start_operation_id = OperationId::generate();
+        sandbox_session
+            .begin_sandbox_operation(
+                sandbox_start_operation_id.clone(),
+                SandboxSessionOperationKind::Start,
+            )
+            .expect("begin below the retention bound");
+        sandbox_session.complete_sandbox_operation(&sandbox_start_operation_id);
+
+        // Pad the ledger to exactly the retention bound.
+        while sandbox_session.sandbox_operations.len() < MAX_SANDBOX_SESSION_OPERATIONS {
+            let sandbox_operation_id = OperationId::generate();
+            sandbox_session
+                .begin_sandbox_operation(
+                    sandbox_operation_id.clone(),
+                    SandboxSessionOperationKind::Start,
+                )
+                .expect("begin below the retention bound");
+            sandbox_session.complete_sandbox_operation(&sandbox_operation_id);
+        }
+
+        // Ordinary growth fails closed at the bound.
+        assert!(matches!(
+            sandbox_session.begin_sandbox_operation(
+                OperationId::generate(),
+                SandboxSessionOperationKind::Start,
+            ),
+            Err(SandboxLifecycleError::InvariantViolation(
+                "sandbox operation ledger is at the retention bound"
+            ))
+        ));
+
+        // The terminal Destroy stays reachable for exactly one grace entry.
+        let sandbox_destroy_operation_id = OperationId::generate();
+        sandbox_session
+            .begin_sandbox_operation(
+                sandbox_destroy_operation_id.clone(),
+                SandboxSessionOperationKind::Destroy,
+            )
+            .expect("terminal destroy within the grace bound");
+        assert_eq!(
+            sandbox_session.sandbox_operations.len(),
+            MAX_SANDBOX_SESSION_PERSISTED_OPERATIONS
+        );
+
+        // Past the grace bound even Destroy fails closed; a same-id retry
+        // still replays from the persisted ledger without appending.
+        assert!(matches!(
+            sandbox_session.begin_sandbox_operation(
+                OperationId::generate(),
+                SandboxSessionOperationKind::Destroy,
+            ),
+            Err(SandboxLifecycleError::InvariantViolation(
+                "sandbox operation ledger is at the retention bound"
+            ))
+        ));
+        assert!(matches!(
+            sandbox_session.replay_sandbox_operation(
+                &sandbox_destroy_operation_id,
+                SandboxSessionOperationKind::Destroy,
+            ),
+            Ok(Some(SandboxOperationOutcome::InProgress))
+        ));
     }
 }

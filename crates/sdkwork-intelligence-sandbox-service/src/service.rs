@@ -243,7 +243,11 @@ impl SandboxLifecycleService {
             .insert_sandbox_session(sandbox_session.clone())
             .await
         {
-            Ok(()) => Ok(sandbox_session),
+            Ok(()) => {
+                let mut sandbox_session = sandbox_session;
+                sandbox_session.mark_sandbox_operations_persisted();
+                Ok(sandbox_session)
+            }
             Err(SandboxSessionRepositoryError::DuplicateOperation) => {
                 let existing_sandbox_session = self
                     .sandbox_session_repository
@@ -265,12 +269,14 @@ impl SandboxLifecycleService {
                     })
                 }
             }
-            Err(SandboxSessionRepositoryError::VersionConflict) => {
+            Err(SandboxSessionRepositoryError::VersionConflict)
+            | Err(SandboxSessionRepositoryError::DuplicateSandboxSession) => {
                 // A concurrent identical create committed between the
-                // operation lookup and this insert, or the sandbox session id
-                // already belongs to another lifecycle operation. Re-read by
-                // operation id so a completed identical create returns the
-                // authoritative sandbox session instead of a raw conflict.
+                // operation lookup and this insert (row collision or session
+                // row collision), or the sandbox session id already belongs
+                // to another lifecycle operation. Re-read by operation id so
+                // a completed identical create returns the authoritative
+                // sandbox session instead of a raw conflict.
                 let existing_sandbox_session = self
                     .sandbox_session_repository
                     .find_by_sandbox_operation(&command.tenant_id, &command.sandbox_operation_id)
@@ -1508,7 +1514,10 @@ impl SandboxLifecycleService {
             )
             .await
         {
-            Ok(()) => Ok(sandbox_session),
+            Ok(()) => {
+                sandbox_session.mark_sandbox_operations_persisted();
+                Ok(sandbox_session)
+            }
             Err(SandboxSessionRepositoryError::LeaseConflict) => {
                 Err(SandboxLifecycleError::LeaseLost)
             }

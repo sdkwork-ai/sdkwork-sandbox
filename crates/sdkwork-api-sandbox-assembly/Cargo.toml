@@ -21,3 +21,6 @@ sdkwork-intelligence-sandbox-repository-sqlx = { workspace = true }
 sdkwork-intelligence-sandbox-service = { workspace = true }
 sdkwork-sandbox-database-host = { workspace = true }
 sdkwork-routes-sandbox-internal-api.workspace = true
+
+[lints]
+workspace = true

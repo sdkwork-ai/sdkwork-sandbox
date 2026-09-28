@@ -90,7 +90,16 @@ impl SqlxSandboxInstanceRepository {
     fn map_sandbox_sqlx_error(error: sqlx::Error) -> SandboxInstanceRepositoryError {
         match &error {
             sqlx::Error::Database(database_error) => match database_error.code().as_deref() {
-                Some(SQLSTATE_UNIQUE_VIOLATION) => SandboxInstanceRepositoryError::DuplicateName,
+                Some(SQLSTATE_UNIQUE_VIOLATION) => match database_error.constraint() {
+                    Some("uk_sandbox_instance_owner_name") => {
+                        SandboxInstanceRepositoryError::DuplicateName
+                    }
+                    // A unique violation on the primary key or an unnamed
+                    // constraint contradicts the server-generated identity or
+                    // the registered schema contract: a store anomaly, not an
+                    // owner-visible duplicate name.
+                    _ => SandboxInstanceRepositoryError::InvalidStoredData,
+                },
                 // A cast failure cannot originate from a request value: both
                 // timestamp-shaped binds (the keyset cursor and
                 // `sandbox_instance_expires_at`) pass the service's grammar and

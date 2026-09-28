@@ -28,7 +28,7 @@ pub use instance_service::{
 pub use model::{
     SandboxOperationOutcome, SandboxRuntimeBinding, SandboxSession, SandboxSessionFailure,
     SandboxSessionOperation, SandboxSessionOperationKind, SandboxSessionState,
-    MAX_SANDBOX_SESSION_OPERATIONS,
+    MAX_SANDBOX_SESSION_OPERATIONS, MAX_SANDBOX_SESSION_PERSISTED_OPERATIONS,
 };
 pub use port::SandboxSessionLifecyclePort;
 pub use reconciliation::{

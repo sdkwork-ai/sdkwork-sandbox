@@ -1,6 +1,6 @@
 # SDKWork Sandbox Database Lifecycle
 
-Purpose: PostgreSQL authoritative-server contracts and lifecycle assets for durable `SandboxSession`, Operation, `SandboxRuntimeBinding`, and recovery Lease/Fencing state.
+Purpose: PostgreSQL authoritative-server contracts and lifecycle assets for durable `SandboxSession`, Operation, `SandboxRuntimeBinding`, recovery Lease/Fencing state, and the `sandbox_instance` registry.
 
 Owner: SDKWork Runtime Platform.
 
@@ -28,7 +28,7 @@ Production `autoMigrate` is disabled. A dedicated migrator applies reviewed Post
 
 Live PostgreSQL migration, concurrency, key re-encryption, CAS, restart, query-plan, and backup/restore candidate evidence is archived in the linked Engineering Reviews. Production PITR, RPO/RTO, privilege, multi-replica, load/SLO, monitoring, and restore-drill evidence remain release gates rather than assumptions of this schema; REQ-2026-0005 and REQ-2026-0006 remain `in-progress` until their human and production operations gates close.
 
-REQ-2026-0018 defines only a draft Gate 0 for future PostgreSQL-backed `SandboxTenantQuotaState`, `SandboxAdmissionReservation`, `SandboxNodeCapacityState`, and `SandboxCapacityReservation` authorities. The active database registry remains limited to the four lifecycle tables; no quota/capacity table, migration, repository, RLS policy, runtime role, or scheduler integration is authorized. Before any such table is added, a separate human-reviewed pre-release migration plan must align the Domain projection, all existing `tenant_id TEXT` columns, repository bind types, fixtures, and Kernel/Agents mappings with `SUBJECT_ID_SPEC.md` positive `BIGINT` SQL subject semantics.
+REQ-2026-0018 defines only a draft Gate 0 for future PostgreSQL-backed `SandboxTenantQuotaState`, `SandboxAdmissionReservation`, `SandboxNodeCapacityState`, and `SandboxCapacityReservation` authorities. The active database registry remains limited to the five lifecycle tables (`sandbox_session`, `sandbox_session_operation`, `sandbox_runtime_binding`, `sandbox_session_lease`, `sandbox_instance`); no quota/capacity table, migration, repository, RLS policy, runtime role, or scheduler integration is authorized. Before any such table is added, a separate human-reviewed pre-release migration plan must align the Domain projection, all existing `tenant_id TEXT` columns, repository bind types, fixtures, and Kernel/Agents mappings with `SUBJECT_ID_SPEC.md` positive `BIGINT` SQL subject semantics.
 
 ## Verification
 
@@ -47,7 +47,7 @@ This module is in **initialization state** for greenfield deployments: it can be
 - **`baselineStrategy`** — `baseline-plus-migrations`, declared by `database/database.manifest.json#baselineStrategy`.
 - **Committed primary baseline** — `database/ddl/baseline/postgres/0001_sandbox_baseline.sql`, the single immutable bootstrap anchor named `0001_<moduleId>_baseline.sql` for `moduleId: sandbox` (`DATABASE_FRAMEWORK_SPEC.md` section 7.5). It carries the full lifecycle DDL and its `sdkwork:migration` metadata header, and it is the source `pnpm run db:materialize:contract` materializes into `contract/schema.yaml`.
 - **Ordered migration range** — none committed. `database/migrations/postgres/` is reserved for post-baseline incremental schema changes; an empty tree is valid at initialization state and is not debt by itself. The first post-baseline change will be authored as a new ordered `*.up.sql` in that directory. A fresh install applies the baseline followed by every ordered migration, so the baseline alone is not the complete active table inventory.
-- **Consolidation** — no superseded migration history remains to replay, and the four registered tables are the complete owned inventory. Verified by `node ../sdkwork-specs/tools/verify-database-initialization-state.mjs` and `node --test tests/contract/database-framework.contract.test.mjs`, which asserts this state against the effective installed schema (baseline plus ordered migrations).
+- **Consolidation** — no superseded migration history remains to replay, and the five registered tables are the complete owned inventory. Verified by `node ../sdkwork-specs/tools/verify-database-initialization-state.mjs` and `node --test tests/contract/database-framework.contract.test.mjs`, which asserts this state against the effective installed schema (baseline plus ordered migrations).
 - **Drift** — run `pnpm db:drift:check` before release.
 
 ## Commands

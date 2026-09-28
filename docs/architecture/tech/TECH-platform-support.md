@@ -101,15 +101,16 @@ node tools/testing/sandbox-host-capability-evidence.mjs --target wsl:Ubuntu-22.0
 声明表与代码双向一致，且声明总数必须与 §表末的计数一致。测试代码同样计入，因为平台条件的**测试**
 也是一种平台声明。
 
-当前声明：20
+当前声明：21
 
 | 文件 | 标记 | 平台 | 理由 |
 | --- | --- | --- | --- |
 | `crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs` | `cfg-unix` | `linux-x64-wsl2` | 独立监听器的优雅停机：容器 stop 信号 SIGTERM 是 POSIX 进程语义（同一分支亦覆盖 macOS/Linux 原生）；非 Unix 平台退化为仅 Ctrl+C。属传输面运维语义，不是沙箱隔离能力 |
 | `crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs` | `cfg-unix` | `linux-x64-wsl2` | `shutdown_signal` 内第二处 `#[cfg(unix)]`（signal handler 安装），理由同上 |
+| `crates/sdkwork-api-sandbox-standalone-gateway/src/lib.rs` | `cfg-macro` | `linux-x64-wsl2` | 二次信号强制退出的退出码选择：Unix 用常规 `128+SIGTERM`=143，非 Unix（Windows 仅 Ctrl+C）用 130；纯运维语义，非沙箱能力 |
 | `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-unix` | `linux-x64-wsl2` | Unix 分支引入 `process_wrap::tokio::ProcessGroup`（条件导入），Windows 分支引入 `JobObject`/`KillOnDrop` |
 | `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-windows` | `windows-x64` | 同上：`JobObject`/`KillOnDrop` 条件导入 |
-| `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `tokio-process` | `windows-x64` | Local Provider 真实进程派生经 `CommandWrap`（process-wrap 9.1，REQ-2026-0003 已评候选）：Windows 挂起创建→赋 kill-on-close Job→赋值后恢复；Unix 进程组 |
+| `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `tokio-process` | `windows-x64` | Local Provider 真实进程派生经 `CommandWrap`（process-wrap 10.0，REQ-2026-0003 已评候选）：Windows 挂起创建→赋 kill-on-close Job→赋值后恢复；Unix 进程组 |
 | `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-windows` | `windows-x64` | 裸可执行名解析在 Windows 先尝试 `<name>.exe` 候选（provider-owned 根目录解析，请求环境不可影响解析） |
 | `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-windows` | `linux-x64-wsl2` | 同一解析函数的 `#[cfg(not(windows))]` 分支：仅尝试裸名本身 |
 | `crates/sdkwork-sandbox-provider-local/src/process_runner.rs` | `cfg-windows` | `windows-x64` | containment 包装：`KillOnDrop` + `JobObject`（挂起创建、赋值后恢复、`TerminateJobObject` 树杀） |

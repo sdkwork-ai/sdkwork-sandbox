@@ -65,11 +65,20 @@ pub trait SandboxLocalCommandProcessRunner: Send + Sync {
     ) -> Result<SandboxCommandOutcome, SandboxCommandExecutionError>;
 }
 
-/// Upper bound on concurrently live executions. The registry must stay
-/// bounded: an unbounded live map would grow with request volume and never
-/// shrink under a misbehaving caller (OOM rule). At capacity the executor
-/// refuses new work as policy-denied instead of growing without limit.
+/// Upper bound on concurrently live executions node-wide. The registry must
+/// stay bounded: an unbounded live map would grow with request volume and
+/// never shrink under a misbehaving caller (OOM rule). At capacity the
+/// executor refuses new work as policy-denied instead of growing without
+/// limit.
 const MAX_SANDBOX_LIVE_COMMANDS: usize = 1024;
+
+/// Upper bound on concurrently live executions per tenant. The node-wide
+/// bound alone is first-come-first-served: one tenant filling every slot
+/// would policy-deny every other tenant for as long as its commands run
+/// (contract maxima allow hours). The per-tenant partition caps any single
+/// tenant's share so cross-tenant starvation is impossible; fair sharing
+/// beyond this hard bound is admission/capacity territory (REQ-2026-0016).
+const MAX_SANDBOX_LIVE_COMMANDS_PER_TENANT: usize = 128;
 
 /// Node-level budget on buffered command output. Every live execution
 /// reserves its declared stdout plus stderr byte caps at admission (the
@@ -78,6 +87,11 @@ const MAX_SANDBOX_LIVE_COMMANDS: usize = 1024;
 /// their children are. An admission that would exceed the budget is
 /// policy-denied instead of being allowed to grow the node toward OOM.
 const MAX_SANDBOX_LIVE_OUTPUT_BYTES: u64 = 1 << 30;
+
+/// Per-tenant share of the buffered-output budget. One tenant can never
+/// reserve more than this share, so its output appetite cannot consume the
+/// node-wide budget other tenants depend on.
+const MAX_SANDBOX_LIVE_OUTPUT_BYTES_PER_TENANT: u64 = 1 << 28;
 
 /// The contract's execution key triple (`tenantId`, `sandboxProviderId`,
 /// `sandboxCommandOperationId`). Keying live executions by the triple, not the
@@ -93,14 +107,32 @@ struct SandboxLiveCommand {
     sandbox_cancellation: SandboxLiveCommandHandle,
 }
 
-/// Bounded live-execution registry. The map locks only for the brief insert,
-/// remove, and lookup map operations (never across an await), and the
-/// [`SandboxLiveCommandGuard`] removes an entry on every drop path — including
-/// a cancelled or panicked execution future — so the map size tracks
-/// actually-live children only.
+/// Per-tenant live-execution share of the registry: entry count and the
+/// output bytes reserved by those entries, both maintained incrementally so
+/// admission checks stay O(1).
+#[derive(Default)]
+struct SandboxTenantLiveBudget {
+    sandbox_live_commands: usize,
+    sandbox_reserved_output_bytes: u64,
+}
+
+/// Bounded live-execution registry. The lock covers only the brief insert,
+/// remove, and lookup map operations (never an await), and the
+/// [`SandboxLiveCommandGuard`] removes an entry on every drop path —
+/// including a cancelled or panicked execution future — so the map size
+/// tracks actually-live children only. One lock holds the live map, the
+/// per-tenant budgets, and the node-wide reserved-byte total together, so
+/// admission checks are consistent and O(1) instead of scanning entries.
 #[derive(Default)]
 struct SandboxLiveCommandRegistry {
-    sandbox_live: Mutex<HashMap<SandboxLiveCommandKey, SandboxLiveCommand>>,
+    sandbox_state: Mutex<SandboxLiveCommandState>,
+}
+
+#[derive(Default)]
+struct SandboxLiveCommandState {
+    sandbox_live: HashMap<SandboxLiveCommandKey, SandboxLiveCommand>,
+    sandbox_tenant_live: HashMap<String, SandboxTenantLiveBudget>,
+    sandbox_reserved_output_bytes: u64,
 }
 
 impl SandboxLiveCommandRegistry {
@@ -116,11 +148,11 @@ impl SandboxLiveCommandRegistry {
         sandbox_key: &SandboxLiveCommandKey,
         sandbox_entry: SandboxLiveCommand,
     ) -> Result<(), SandboxCommandExecutionError> {
-        let mut sandbox_live = self
-            .sandbox_live
+        let mut sandbox_state = self
+            .sandbox_state
             .lock()
             .unwrap_or_else(PoisonError::into_inner);
-        if let Some(sandbox_existing) = sandbox_live.get(sandbox_key) {
+        if let Some(sandbox_existing) = sandbox_state.sandbox_live.get(sandbox_key) {
             if sandbox_existing.sandbox_fingerprint != sandbox_entry.sandbox_fingerprint {
                 tracing::warn!(
                     sandbox_tenant = %sandbox_key.0,
@@ -132,27 +164,72 @@ impl SandboxLiveCommandRegistry {
             }
             return Err(SandboxCommandExecutionError::OperationInProgress);
         }
-        if sandbox_live.len() >= MAX_SANDBOX_LIVE_COMMANDS {
-            return Err(SandboxCommandExecutionError::PolicyDenied);
-        }
-        let sandbox_reserved: u64 = sandbox_live
-            .values()
-            .map(|entry| entry.sandbox_output_bytes)
-            .sum();
-        if sandbox_reserved.saturating_add(sandbox_entry.sandbox_output_bytes)
-            > MAX_SANDBOX_LIVE_OUTPUT_BYTES
+        let sandbox_tenant_budget = sandbox_state.sandbox_tenant_live.get(&sandbox_key.0);
+        if sandbox_state.sandbox_live.len() >= MAX_SANDBOX_LIVE_COMMANDS
+            || sandbox_tenant_budget.is_some_and(|sandbox_budget| {
+                sandbox_budget.sandbox_live_commands >= MAX_SANDBOX_LIVE_COMMANDS_PER_TENANT
+            })
         {
             return Err(SandboxCommandExecutionError::PolicyDenied);
         }
-        sandbox_live.insert(sandbox_key.clone(), sandbox_entry);
+        let sandbox_tenant_reserved_output_bytes = sandbox_tenant_budget
+            .map(|sandbox_budget| sandbox_budget.sandbox_reserved_output_bytes)
+            .unwrap_or_default();
+        if sandbox_state
+            .sandbox_reserved_output_bytes
+            .saturating_add(sandbox_entry.sandbox_output_bytes)
+            > MAX_SANDBOX_LIVE_OUTPUT_BYTES
+            || sandbox_tenant_reserved_output_bytes
+                .saturating_add(sandbox_entry.sandbox_output_bytes)
+                > MAX_SANDBOX_LIVE_OUTPUT_BYTES_PER_TENANT
+        {
+            return Err(SandboxCommandExecutionError::PolicyDenied);
+        }
+        let sandbox_tenant_budget = sandbox_state
+            .sandbox_tenant_live
+            .entry(sandbox_key.0.clone())
+            .or_default();
+        sandbox_tenant_budget.sandbox_live_commands += 1;
+        sandbox_tenant_budget.sandbox_reserved_output_bytes = sandbox_tenant_budget
+            .sandbox_reserved_output_bytes
+            .saturating_add(sandbox_entry.sandbox_output_bytes);
+        sandbox_state.sandbox_reserved_output_bytes = sandbox_state
+            .sandbox_reserved_output_bytes
+            .saturating_add(sandbox_entry.sandbox_output_bytes);
+        sandbox_state
+            .sandbox_live
+            .insert(sandbox_key.clone(), sandbox_entry);
         Ok(())
     }
 
     fn sandbox_remove(&self, sandbox_key: &SandboxLiveCommandKey) {
-        self.sandbox_live
+        let mut sandbox_state = self
+            .sandbox_state
             .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .remove(sandbox_key);
+            .unwrap_or_else(PoisonError::into_inner);
+        if let Some(((sandbox_tenant_id, _, _), sandbox_removed)) =
+            sandbox_state.sandbox_live.remove_entry(sandbox_key)
+        {
+            if let Some(sandbox_tenant_budget) = sandbox_state
+                .sandbox_tenant_live
+                .get_mut(&sandbox_tenant_id)
+            {
+                sandbox_tenant_budget.sandbox_live_commands = sandbox_tenant_budget
+                    .sandbox_live_commands
+                    .saturating_sub(1);
+                sandbox_tenant_budget.sandbox_reserved_output_bytes = sandbox_tenant_budget
+                    .sandbox_reserved_output_bytes
+                    .saturating_sub(sandbox_removed.sandbox_output_bytes);
+                if sandbox_tenant_budget.sandbox_live_commands == 0 {
+                    // Drop the empty bucket so the per-tenant map never
+                    // accumulates stale entries for long-gone tenants.
+                    sandbox_state.sandbox_tenant_live.remove(&sandbox_tenant_id);
+                }
+            }
+            sandbox_state.sandbox_reserved_output_bytes = sandbox_state
+                .sandbox_reserved_output_bytes
+                .saturating_sub(sandbox_removed.sandbox_output_bytes);
+        }
     }
 
     fn sandbox_lookup_cancel(
@@ -160,11 +237,11 @@ impl SandboxLiveCommandRegistry {
         sandbox_key: &SandboxLiveCommandKey,
         sandbox_fencing_token: u64,
     ) -> Result<(), SandboxCommandExecutionError> {
-        let sandbox_live = self
-            .sandbox_live
+        let sandbox_state = self
+            .sandbox_state
             .lock()
             .unwrap_or_else(PoisonError::into_inner);
-        match sandbox_live.get(sandbox_key) {
+        match sandbox_state.sandbox_live.get(sandbox_key) {
             // Unknown or already-terminal operation: idempotent no-op.
             None => Ok(()),
             Some(entry) if entry.sandbox_fencing_token == sandbox_fencing_token => {

@@ -5,6 +5,7 @@
 //! `application.public-ingress` surface, so the same profile file drives both
 //! the standalone gateway and the browser proxy in front of it.
 
+use sdkwork_api_sandbox_assembly::SandboxDrainGate;
 use sdkwork_api_sandbox_standalone_gateway::serve_router;
 use sdkwork_iam_web_adapter::{
     build_web_framework_builder, iam_web_request_context_resolver_from_env,
@@ -16,9 +17,11 @@ async fn main() {
     let listen_addr = std::env::var("SDKWORK_SANDBOX_APPLICATION_PUBLIC_INGRESS_BIND")
         .unwrap_or_else(|_| "127.0.0.1:18093".to_string());
 
-    let assembly = sdkwork_api_sandbox_assembly::assemble_api_router()
-        .await
-        .expect("assemble sdkwork-sandbox gateway router");
+    let sandbox_drain_gate = SandboxDrainGate::new();
+    let assembly =
+        sdkwork_api_sandbox_assembly::assemble_api_router_with_drain(&sandbox_drain_gate)
+            .await
+            .expect("assemble sdkwork-sandbox gateway router");
     let framework = build_web_framework_builder(
         iam_web_request_context_resolver_from_env().await,
         assembly.route_manifest.clone(),
@@ -36,6 +39,7 @@ async fn main() {
         &listen_addr,
         "sdkwork-api-sandbox-standalone-gateway",
         router,
+        &sandbox_drain_gate,
     )
     .await;
 }
