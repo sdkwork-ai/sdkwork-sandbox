@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "generator": "@sdkwork/sdk-generator",
+  "sdk": {
+    "name": "sdkwork-intelligence-internal-api",
+    "version": "1.0.0",
+    "language": "python",
+    "sdkType": "custom",
+    "protocol": "http",
+    "packageName": "sdkwork-intelligence-internal-sdk"
+  },
+  "changeFingerprint": "16f837151f9627daf697313460163089a7a1cb6ff0dea1549374cc1dad5e84e8",
+  "changes": {
+    "createdGeneratedFiles": [
+      "bin/publish-core.mjs",
+      "bin/publish.ps1",
+      "bin/publish.sh",
+      "CHANGELOG.md",
+      "LICENSE",
+      "MANIFEST.in",
+      "pyproject.toml",
+      "README.md",
+      "requirements.txt",
+      "sdkwork_intelligence_internal_sdk/__init__.py",
+      "sdkwork_intelligence_internal_sdk/api/__init__.py",
+      "sdkwork_intelligence_internal_sdk/api/sandbox_instances.py",
+      "sdkwork_intelligence_internal_sdk/client.py",
+      "sdkwork_intelligence_internal_sdk/http_client.py",
+      "sdkwork_intelligence_internal_sdk/models/__init__.py",
+      "sdkwork_intelligence_internal_sdk/models/create_sandbox_instance_request.py",
+      "sdkwork_intelligence_internal_sdk/models/create_sandbox_instance_response201.py",
+      "sdkwork_intelligence_internal_sdk/models/list_sandbox_instances_response.py",
+      "sdkwork_intelligence_internal_sdk/models/page_info.py",
+      "sdkwork_intelligence_internal_sdk/models/problem_detail.py",
+      "sdkwork_intelligence_internal_sdk/models/retrieve_sandbox_instance_response.py",
+      "sdkwork_intelligence_internal_sdk/models/sandbox_instance.py",
+      "sdkwork_intelligence_internal_sdk/models/sdk_work_api_response.py",
+      "sdkwork_intelligence_internal_sdk/models/sdk_work_page_data.py",
+      "sdkwork_intelligence_internal_sdk/models/sdk_work_resource_data.py",
+      "sdkwork_intelligence_internal_sdk/models/update_sandbox_instance_request.py",
+      "sdkwork_intelligence_internal_sdk/models/update_sandbox_instance_response.py",
+      "sdkwork-sdk.json",
+      "setup.py"
+    ],
+    "updatedGeneratedFiles": [],
+    "unchangedGeneratedFiles": [],
+    "deletedGeneratedFiles": [],
+    "scaffoldedFiles": [
+      "custom/README.md"
+    ],
+    "preservedScaffoldFiles": [],
+    "backedUpFiles": []
+  },
+  "impact": {
+    "schemaVersion": 1,
+    "areas": [
+      "api-surface",
+      "models",
+      "runtime",
+      "build-metadata",
+      "publish-workflow",
+      "documentation",
+      "custom-scaffold",
+      "unknown"
+    ],
+    "details": [
+      {
+        "area": "api-surface",
+        "paths": [
+          "sdkwork_intelligence_internal_sdk/__init__.py",
+          "sdkwork_intelligence_internal_sdk/api/__init__.py",
+          "sdkwork_intelligence_internal_sdk/api/sandbox_instances.py",
+          "sdkwork_intelligence_internal_sdk/client.py",
+          "sdkwork_intelligence_internal_sdk/models/__init__.py"
+        ]
+      },
+      {
+        "area": "models",
+        "paths": [
+          "sdkwork_intelligence_internal_sdk/models/__init__.py",
+          "sdkwork_intelligence_internal_sdk/models/create_sandbox_instance_request.py",
+          "sdkwork_intelligence_internal_sdk/models/create_sandbox_instance_response201.py",
+          "sdkwork_intelligence_internal_sdk/models/list_sandbox_instances_response.py",
+          "sdkwork_intelligence_internal_sdk/models/page_info.py",
+          "sdkwork_intelligence_internal_sdk/models/problem_detail.py",
+          "sdkwork_intelligence_internal_sdk/models/retrieve_sandbox_instance_response.py",
+          "sdkwork_intelligence_internal_sdk/models/sandbox_instance.py",
+          "sdkwork_intelligence_internal_sdk/models/sdk_work_api_response.py",
+          "sdkwork_intelligence_internal_sdk/models/sdk_work_page_data.py",
+          "sdkwork_intelligence_internal_sdk/models/sdk_work_resource_data.py",
+          "sdkwork_intelligence_internal_sdk/models/update_sandbox_instance_request.py",
+          "sdkwork_intelligence_internal_sdk/models/update_sandbox_instance_response.py"
+        ]
+      },
+      {
+        "area": "runtime",
+        "paths": [
+          "sdkwork_intelligence_internal_sdk/http_client.py"
+        ]
+      },
+      {
+        "area": "build-metadata",
+        "paths": [
+          "pyproject.toml",
+          "requirements.txt",
+          "sdkwork-sdk.json",
+          "setup.py"
+        ]
+      },
+      {
+        "area": "publish-workflow",
+        "paths": [
+          "bin/publish-core.mjs",
+          "bin/publish.ps1",
+          "bin/publish.sh"
+        ]
+      },
+      {
+        "area": "documentation",
+        "paths": [
+          "CHANGELOG.md",
+          "custom/README.md",
+          "README.md"
+        ]
+      },
+      {
+        "area": "custom-scaffold",
+        "paths": [
+          "custom/README.md"
+        ]
+      },
+      {
+        "area": "unknown",
+        "paths": [
+          "LICENSE",
+          "MANIFEST.in"
+        ]
+      }
+    ],
+    "requiresVerification": true,
+    "summary": "Detected impact areas: api-surface, models, runtime, build-metadata, publish-workflow, documentation, custom-scaffold, unknown. Verification is required."
+  },
+  "verificationPlan": {
+    "shouldRun": true,
+    "runPhase": "now",
+    "summary": "Detected impact areas: api-surface, models, runtime, build-metadata, publish-workflow, documentation, custom-scaffold, unknown. Verification is required. Run the required verification commands now against the generated SDK output.",
+    "steps": [
+      {
+        "id": "check",
+        "title": "Unified package check",
+        "required": true,
+        "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, models, runtime, build-metadata, publish-workflow, documentation, custom-scaffold, unknown.",
+        "workingDirectory": "D:\\sdkwork-space\\sdkwork-sandbox\\sdks\\sdkwork-intelligence-internal-sdk\\sdkwork-intelligence-internal-sdk-python\\generated\\server-openapi",
+        "command": "node",
+        "args": [
+          "./bin/publish-core.mjs",
+          "--language",
+          "python",
+          "--project-dir",
+          ".",
+          "--action",
+          "check"
+        ],
+        "displayCommand": "node ./bin/publish-core.mjs --language python --project-dir . --action check"
+      }
+    ]
+  },
+  "executionDecision": {
+    "schemaVersion": 1,
+    "riskLevel": "high",
+    "nextAction": "verify",
+    "requiresManualReview": false,
+    "applyRequiresExpectedFingerprint": false,
+    "summary": "Changes have been applied. Run the required verification plan now.",
+    "reasons": [
+      "manual-review-required",
+      "preserved-legacy-files",
+      "unknown-impact",
+      "verification-required"
+    ]
+  },
+  "preservedLegacyFiles": true
+}

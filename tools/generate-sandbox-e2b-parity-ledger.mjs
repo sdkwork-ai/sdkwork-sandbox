@@ -23,7 +23,7 @@ const IMPLEMENTED_MAPPINGS = {
     e2bPath: "POST /sandboxes",
     authority: {
       method: "POST",
-      path: "/sandbox_instances",
+      path: "/internal/v3/api/intelligence/sandbox/sandbox_instances",
       operationId: "createSandboxInstance",
     },
   },
@@ -31,7 +31,7 @@ const IMPLEMENTED_MAPPINGS = {
     e2bPath: "GET /sandboxes/{sandboxID}",
     authority: {
       method: "GET",
-      path: "/sandbox_instances/{sandboxInstanceId}",
+      path: "/internal/v3/api/intelligence/sandbox/sandbox_instances/{sandboxInstanceId}",
       operationId: "retrieveSandboxInstance",
     },
   },
@@ -39,7 +39,7 @@ const IMPLEMENTED_MAPPINGS = {
     e2bPath: "POST /sandboxes/{sandboxID}/timeout",
     authority: {
       method: "PATCH",
-      path: "/sandbox_instances/{sandboxInstanceId}",
+      path: "/internal/v3/api/intelligence/sandbox/sandbox_instances/{sandboxInstanceId}",
       operationId: "updateSandboxInstance",
     },
   },
@@ -47,7 +47,7 @@ const IMPLEMENTED_MAPPINGS = {
     e2bPath: "DELETE /sandboxes/{sandboxID}",
     authority: {
       method: "DELETE",
-      path: "/sandbox_instances/{sandboxInstanceId}",
+      path: "/internal/v3/api/intelligence/sandbox/sandbox_instances/{sandboxInstanceId}",
       operationId: "deleteSandboxInstance",
     },
   },

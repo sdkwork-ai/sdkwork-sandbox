@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "generator": "@sdkwork/sdk-generator",
+  "sdk": {
+    "name": "sdkwork-intelligence-internal-api",
+    "version": "1.0.0",
+    "language": "python",
+    "sdkType": "custom",
+    "protocol": "http",
+    "packageName": "sdkwork-intelligence-internal-sdk"
+  },
+  "generatedFiles": [
+    {
+      "path": "bin/publish-core.mjs",
+      "sha256": "a47e95119bf3eafcbcb2102f7024c147f967924e4e3f343d1a29effb4b6765df"
+    },
+    {
+      "path": "bin/publish.ps1",
+      "sha256": "b383d4f7233b567acd36fa2ff644448730007738901cf1770cb02746f88fbb05"
+    },
+    {
+      "path": "bin/publish.sh",
+      "sha256": "6fd65ff5011e48b24018ab691edd8803c4b1fd293d013b75d1adb3bcd26f7cde"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "ecb55fcda2ed37d190a142ed7f8fe40ecc076276324fd22efd4fd15ab8610ee5"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "7840cc7d2b36ff364ac16c2fc5ec15b861bfe96854eecf81fb59b00edb8b1447"
+    },
+    {
+      "path": "MANIFEST.in",
+      "sha256": "82bc6640c82e47161ba9b7b763703618a7453b7b4858d7c2af01dd3e586abf62"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "48d10a8ef4a8740f7b404e44c45fa1d85e8bb967ff4ad3a99040c10ca18c8693"
+    },
+    {
+      "path": "README.md",
+      "sha256": "0571507ec6ed9618b20ae646f5a9ef093f2eab5b6bbce904062192b254ee07ca"
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "5f3072c051f89b9af1b681381406e0b2466895fb150660d583c85c84396001c8"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/__init__.py",
+      "sha256": "78b2fce336acff8e6ff08ea497baa9eed1dfc6d85e32dd043a0df6d5c741bc7a"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/api/__init__.py",
+      "sha256": "ef79510d581d62b40ba2dd6f5a3a51fd3bd3793a1170cca954734afede72265c"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/api/sandbox_instances.py",
+      "sha256": "9769c4fe220e4164d455200ea16e625d29a654481b1d9c5d5b4e621a8caa7d8b"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/client.py",
+      "sha256": "a7ad8033d05664fc1149b5209941c09cffc91b300017edc1f56959fc642e4945"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/http_client.py",
+      "sha256": "d587e45f9bca33b663d3c87f4eedaeb22bf8f15392de09cb75402c5a1400b8bf"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/models/__init__.py",
+      "sha256": "0dbe1aff30a041205e6ea5c10227a7e6da9ab04dcf1fe65c2a9c73e0c7963fab"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/models/create_sandbox_instance_request.py",
+      "sha256": "7608734b21e5ddb39b611909a7bf121f373d97b542edcb97c68e6330eed67b55"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/models/create_sandbox_instance_response201.py",
+      "sha256": "c6ef5cd12fbd3ffdcfbff9503c62b48e097601821ba2f3b871b9ef586a835c0a"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/models/list_sandbox_instances_response.py",
+      "sha256": "4fcd188aa8e92bf4df87b486422cddfe6c61458770ee1144d94fb077a8ff0f29"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/models/page_info.py",
+      "sha256": "1ec1a6abc16a177ce54174788735b13d358edd629f5372a7be8809c44f934c71"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/models/problem_detail.py",
+      "sha256": "02e675c09803f4933bff0558ae720c3549a65e9454d2efcdb9909f0fb4ba467e"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/models/retrieve_sandbox_instance_response.py",
+      "sha256": "df6c173d76f5d76661b0e8bdf68d3b6a5f99f6945a56ddc818a203763d75c29e"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/models/sandbox_instance.py",
+      "sha256": "f1c9d21dde777fdac4c28b39420ee7f2fb2750b887653a02650fc2ed0fbe2cbe"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/models/sdk_work_api_response.py",
+      "sha256": "c76a9fa3784ba83c7ca1314987ef9811ed94f15164328840ef89b49b00cbd0a4"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/models/sdk_work_page_data.py",
+      "sha256": "1c2375efc67e228a312c1f47078ec03317515b4a9b4654f5bf5f4e32c20d7ee6"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/models/sdk_work_resource_data.py",
+      "sha256": "7059984795cc081cac3df2304da34d275a4409f90c41fcdd59094c9bf5e8f9b7"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/models/update_sandbox_instance_request.py",
+      "sha256": "19820333f6e9c79ac72df9e08659d22d21dfe5267024829f0317567f66467b57"
+    },
+    {
+      "path": "sdkwork_intelligence_internal_sdk/models/update_sandbox_instance_response.py",
+      "sha256": "6f17995a816af9369299ecf0e7e9d1091d2b52c06ceabcd070d0c948a9699645"
+    },
+    {
+      "path": "sdkwork-sdk.json",
+      "sha256": "1083d0bf75cd83ce0da51dabf4e1c1ad3cc7e35f8b524e2bc5b9183ed476bd2f"
+    },
+    {
+      "path": "setup.py",
+      "sha256": "843ac26c38a41abae578250bc0f9419194b320a0f67327d941037a4268f6cfe7"
+    }
+  ],
+  "scaffoldFiles": [
+    "custom/README.md"
+  ],
+  "customRoots": [
+    "custom/"
+  ]
+}

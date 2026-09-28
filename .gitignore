@@ -49,3 +49,9 @@ Thumbs.db
 # committed: upstream code is not this repository's property, and this
 # repository records parity via identifiers in specs/, not vendored bodies.
 /external/
+
+# SDK generated-package build artifacts (generator-owned sources are committed;
+# dist/, target/, and node_modules/ are reproducible build output)
+sdks/**/generated/server-openapi/dist/
+sdks/**/generated/server-openapi/target/
+sdks/**/generated/server-openapi/node_modules/

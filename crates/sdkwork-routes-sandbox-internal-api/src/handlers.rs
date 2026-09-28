@@ -21,7 +21,7 @@ use crate::payloads::{
     SandboxInstanceView, UpdateSandboxInstanceRequest,
 };
 use crate::ports::SandboxInternalRequestContext;
-use crate::response::{cursor_page_data, finish_api_json, item_data};
+use crate::response::{cursor_page_data, finish_api_created, finish_api_json, finish_api_no_content, item_data};
 use crate::AppState;
 
 /// Resolves the tenant from the verified context, failing closed.
@@ -125,7 +125,7 @@ pub async fn create_sandbox_instance<R>(
 where
     R: sdkwork_intelligence_sandbox_service::SandboxInstanceRepository + Send + Sync,
 {
-    finish_api_json(
+    finish_api_created(
         &ctx,
         async {
             let tenant_id = resolve_tenant(&ctx, context.as_ref())?;
@@ -200,7 +200,7 @@ pub async fn delete_sandbox_instance<R>(
 where
     R: sdkwork_intelligence_sandbox_service::SandboxInstanceRepository + Send + Sync,
 {
-    finish_api_json(
+    finish_api_no_content(
         &ctx,
         async {
             let tenant_id = resolve_tenant(&ctx, context.as_ref())?;
@@ -209,10 +209,7 @@ where
                 .service
                 .delete(&tenant_id, &sandbox_instance_id)
                 .await?;
-            Ok(item_data(serde_json::json!({
-                "sandboxInstanceId": sandbox_instance_id.as_str(),
-                "deleted": true,
-            })))
+            Ok(())
         }
         .await,
     )

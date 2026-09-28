@@ -58,7 +58,11 @@ test("every mapped ledger entry points at a real authority operation", () => {
 
 test("the authority declares int64-as-string and the internal-only security scheme", () => {
   const authority = JSON.parse(readFileSync(authorityPath, "utf8"));
-  assert.equal(authority.components.securitySchemes.ingressToken.name, "X-SDKWork-Ingress-Token");
+  // INTERNAL_API_SPEC section 4: generated custom internal SDKs carry the
+  // ingress token as ApiKey / X-API-Key, and runtime hosts accept it as an
+  // ingress-token alias.
+  assert.equal(authority.components.securitySchemes.ApiKey.name, "X-API-Key");
+  assert.equal(authority.components.securitySchemes.ApiKey.in, "header");
   const version = authority.components.schemas.SandboxVersion;
   assert.equal(version.type, "string");
   assert.equal(version.format, "int64");

@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "sdkFamily": "sdkwork-intelligence-internal-sdk",
+  "sdkName": "sdkwork-intelligence-internal-sdk",
+  "packageName": "@sdkwork/intelligence-internal-sdk",
+  "transportPackageName": "sdkwork-intelligence-internal-sdk-generated-typescript",
+  "typescript": {
+    "composedRoot": "sdkwork-intelligence-internal-sdk-typescript",
+    "transportRoot": "sdkwork-intelligence-internal-sdk-typescript/generated/server-openapi",
+    "transportEntry": "sdkwork-intelligence-internal-sdk-typescript/generated/server-openapi/src/index.ts"
+  },
+  "workspace": "sdkwork-intelligence-internal-sdk",
+  "title": "SDKWork Intelligence Internal API SDK",
+  "apiVersion": "0.1.0",
+  "openapiVersion": "3.1.0",
+  "authoritySpec": "openapi/sdkwork-intelligence-internal-api.openapi.yaml",
+  "generationInputSpec": "openapi/sdkwork-intelligence-internal-api.sdkgen.yaml",
+  "derivedSpecs": {
+    "default": "openapi/sdkwork-intelligence-internal-api.sdkgen.yaml"
+  },
+  "sdkOwner": "sdkwork-sandbox",
+  "apiAuthority": "sdkwork-intelligence-internal-api",
+  "sdkSurface": "internal",
+  "sdkDependencies": [],
+  "dependencyApiExports": [],
+  "metadata": {
+    "managedBy": "sdks/materialize-intelligence-v0-openapi-boundaries.mjs",
+    "standardVersion": "2026-09-29"
+  },
+  "generatorMode": {
+    "profile": "sdkwork-v3",
+    "sdkType": "custom",
+    "apiPrefix": "/internal/v3/api/intelligence/sandbox",
+    "note": "INTERNAL_API_SPEC section 5: sdkwork-v3 generation through the custom open-api profile with the explicit internal api-prefix; the profile does not have a dedicated internal-surface mode. Runtime hosts must accept X-API-Key as an ingress-token alias (INTERNAL_API_SPEC section 4) - the alias acceptance in the web framework is a pending cross-repository obligation."
+  },
+  "languages": [
+    {
+      "language": "typescript",
+      "workspace": "sdkwork-intelligence-internal-sdk-typescript",
+      "generationState": "materialized",
+      "releaseState": "not_published",
+      "packagePath": "sdkwork-intelligence-internal-sdk-typescript/generated/server-openapi",
+      "manifestPath": "sdkwork-intelligence-internal-sdk-typescript/generated/server-openapi/package.json",
+      "version": "1.0.0",
+      "description": "Generator-owned TypeScript transport SDK for the SDKWork Intelligence Internal API.",
+      "generatedPath": "sdkwork-intelligence-internal-sdk-typescript/generated/server-openapi",
+      "consumerPackageName": "@sdkwork/intelligence-internal-sdk",
+      "transportPackageName": "sdkwork-intelligence-internal-sdk-generated-typescript"
+    },
+    {
+      "language": "python",
+      "workspace": "sdkwork-intelligence-internal-sdk-python",
+      "generationState": "materialized",
+      "releaseState": "not_published",
+      "packagePath": "sdkwork-intelligence-internal-sdk-python/generated/server-openapi",
+      "manifestPath": "sdkwork-intelligence-internal-sdk-python/generated/server-openapi/pyproject.toml",
+      "name": "sdkwork-intelligence-internal-sdk",
+      "version": "1.0.0",
+      "description": "Generator-owned Python transport SDK for the SDKWork Intelligence Internal API.",
+      "generatedPath": "sdkwork-intelligence-internal-sdk-python/generated/server-openapi"
+    },
+    {
+      "language": "rust",
+      "workspace": "sdkwork-intelligence-internal-sdk-rust",
+      "generationState": "materialized",
+      "releaseState": "not_published",
+      "packagePath": "sdkwork-intelligence-internal-sdk-rust/generated/server-openapi",
+      "manifestPath": "sdkwork-intelligence-internal-sdk-rust/generated/server-openapi/Cargo.toml",
+      "name": "sdkwork-intelligence-internal-sdk",
+      "version": "1.0.0",
+      "description": "Generator-owned Rust transport SDK for the SDKWork Intelligence Internal API.",
+      "generatedPath": "sdkwork-intelligence-internal-sdk-rust/generated/server-openapi"
+    }
+  ]
+}

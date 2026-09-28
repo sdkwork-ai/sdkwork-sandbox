@@ -22,7 +22,7 @@
       },
       "authority": {
         "method": "DELETE",
-        "path": "/sandbox_instances/{sandboxInstanceId}",
+        "path": "/internal/v3/api/intelligence/sandbox/sandbox_instances/{sandboxInstanceId}",
         "operationId": "deleteSandboxInstance"
       },
       "category": "sandbox-lifecycle"
@@ -120,7 +120,7 @@
       },
       "authority": {
         "method": "GET",
-        "path": "/sandbox_instances/{sandboxInstanceId}",
+        "path": "/internal/v3/api/intelligence/sandbox/sandbox_instances/{sandboxInstanceId}",
         "operationId": "retrieveSandboxInstance"
       },
       "category": "sandbox-lifecycle"
@@ -258,7 +258,7 @@
       },
       "authority": {
         "method": "POST",
-        "path": "/sandbox_instances",
+        "path": "/internal/v3/api/intelligence/sandbox/sandbox_instances",
         "operationId": "createSandboxInstance"
       },
       "category": "sandbox-lifecycle"
@@ -296,7 +296,7 @@
       },
       "authority": {
         "method": "PATCH",
-        "path": "/sandbox_instances/{sandboxInstanceId}",
+        "path": "/internal/v3/api/intelligence/sandbox/sandbox_instances/{sandboxInstanceId}",
         "operationId": "updateSandboxInstance"
       },
       "category": "sandbox-lifecycle"

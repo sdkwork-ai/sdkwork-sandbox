@@ -1,0 +1,495 @@
+openapi: 3.1.0
+info:
+  title: SDKWork Sandbox Internal API Authority (E2B-Referenced)
+  version: 0.1.0
+  description: >-
+    Authoritative OpenAPI contract for the SDKWork Sandbox internal-api control
+    plane, aligned with API_SPEC.md (SDKWork v3 wire profile) and the runtime
+    route crate sdkwork-routes-sandbox-internal-api. REQ-2026-0028 authority
+    slice v0 covers the surface this repository owns today (the sandbox instance
+    registry). Every operation carries an x-e2b-reference mapping to the pinned
+    E2B reference (specs/sandbox-e2b-capability-baseline.json); capabilities
+    without an owned implementation are deliberately absent here and recorded as
+    pending-gate entries in sandbox-e2b-parity-ledger.json. Root posture
+    overrides the reference where noted: int64 wire fields are strings
+    (API_SPEC.md section 13.6), errors are RFC 9457 ProblemDetail, and no
+    capability widens isolation or egress beyond the governing requirements.
+x-sdkwork-authority:
+  requirementId: REQ-2026-0028
+  decisionId: ADR-20260924
+  reviewId: REVIEW-20260924-sandbox-e2b-api-sdk-authority
+  referenceBaseline: ../../../specs/sandbox-e2b-capability-baseline.json
+  parityLedger: sandbox-e2b-parity-ledger.json
+  apiSurface: internal-api
+  wireProtocol: sdkwork-v3
+servers:
+  - url: /
+    description: >-
+      Host root; the internal-api prefix is part of every path (route crates
+      mount /internal/v3/api only)
+security:
+  - ApiKey: []
+tags:
+  - name: sandbox-instances
+    description: E2B-referenced sandbox instance registry (control plane)
+paths:
+  /internal/v3/api/intelligence/sandbox/sandbox_instances:
+    get:
+      tags:
+        - sandboxInstances
+      operationId: listSandboxInstances
+      summary: >-
+        Cursor-paged instance listing (store-level keyset seek;
+        PAGINATION_SPEC.md)
+      x-e2b-reference:
+        path: GET /sandboxes
+        operationId: listSandboxes
+        compatibility: capability-level
+      x-sdkwork-request-context: WebRequestContext
+      x-sdkwork-api-surface: internal-api
+      x-sdkwork-wire-protocol: sdkwork-v3
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >-
+            Opaque continuation token; clients must not parse or construct it
+            (PAGINATION_SPEC.md section 3)
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 20
+          description: >-
+            Out of range rejects with 400; never clamped. Aliases (pageSize,
+            limit, page_no, pageNo, per_page, size, page, offset) are forbidden.
+      responses:
+        '200':
+          description: Standard SdkWorkApiResponse envelope (API_SPEC.md section 15)
+          headers:
+            x-sdkwork-trace-id:
+              $ref: '#/components/headers/TraceId'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SdkWorkApiResponse'
+                properties:
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/SdkWorkPageData'
+        '400':
+          description: Client fault; unlogged at server (RFC 9457 problem document)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '503':
+          description: >-
+            Repository temporarily unavailable; retryable (RFC 9457 problem
+            document)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-sdkwork-auth-mode: ingress-token
+      security:
+        - ApiKey: []
+    post:
+      tags:
+        - sandboxInstances
+      operationId: createSandboxInstance
+      summary: Creates one sandbox instance registry record
+      x-e2b-reference:
+        path: POST /sandboxes
+        operationId: postSandboxes
+        compatibility: capability-level
+      x-sdkwork-request-context: WebRequestContext
+      x-sdkwork-api-surface: internal-api
+      x-sdkwork-wire-protocol: sdkwork-v3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSandboxInstanceRequest'
+      responses:
+        '201':
+          description: Standard SdkWorkApiResponse envelope (API_SPEC.md section 15)
+          headers:
+            x-sdkwork-trace-id:
+              $ref: '#/components/headers/TraceId'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SdkWorkApiResponse'
+                properties:
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/SdkWorkResourceData'
+        '400':
+          description: Client fault; unlogged at server (RFC 9457 problem document)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '403':
+          description: >-
+            Missing or unverified tenant/principal context (RFC 9457 problem
+            document)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '409':
+          description: >-
+            Duplicate name, version conflict, or idempotency conflict (RFC 9457
+            problem document)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-sdkwork-auth-mode: ingress-token
+      security:
+        - ApiKey: []
+  /internal/v3/api/intelligence/sandbox/sandbox_instances/{sandboxInstanceId}:
+    parameters:
+      - name: sandboxInstanceId
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+    get:
+      tags:
+        - sandboxInstances
+      operationId: retrieveSandboxInstance
+      summary: Retrieves one sandbox instance
+      x-e2b-reference:
+        path: GET /sandboxes/{sandboxID}
+        operationId: getSandbox
+        compatibility: capability-level
+      x-sdkwork-request-context: WebRequestContext
+      x-sdkwork-api-surface: internal-api
+      x-sdkwork-wire-protocol: sdkwork-v3
+      responses:
+        '200':
+          description: Standard SdkWorkApiResponse envelope (API_SPEC.md section 15)
+          headers:
+            x-sdkwork-trace-id:
+              $ref: '#/components/headers/TraceId'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SdkWorkApiResponse'
+                properties:
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/SdkWorkPageData'
+        '404':
+          description: >-
+            The sandbox instance does not exist in this tenant (RFC 9457 problem
+            document)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-sdkwork-auth-mode: ingress-token
+      security:
+        - ApiKey: []
+    patch:
+      tags:
+        - sandboxInstances
+      operationId: updateSandboxInstance
+      summary: Updates mutable instance fields (name, expiry)
+      x-e2b-reference:
+        path: POST /sandboxes/{sandboxID}/timeout
+        operationId: postSandboxTimeout
+        compatibility: >-
+          capability-level; the authority widens the mutable field set beyond
+          E2B's timeout-only semantics
+      x-sdkwork-request-context: WebRequestContext
+      x-sdkwork-api-surface: internal-api
+      x-sdkwork-wire-protocol: sdkwork-v3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSandboxInstanceRequest'
+      responses:
+        '200':
+          description: Standard SdkWorkApiResponse envelope (API_SPEC.md section 15)
+          headers:
+            x-sdkwork-trace-id:
+              $ref: '#/components/headers/TraceId'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SdkWorkApiResponse'
+                properties:
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/SdkWorkResourceData'
+        '404':
+          description: >-
+            The sandbox instance does not exist in this tenant (RFC 9457 problem
+            document)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '409':
+          description: >-
+            Duplicate name, version conflict, or idempotency conflict (RFC 9457
+            problem document)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-sdkwork-auth-mode: ingress-token
+      security:
+        - ApiKey: []
+    delete:
+      tags:
+        - sandboxInstances
+      operationId: deleteSandboxInstance
+      summary: Deletes one sandbox instance
+      x-e2b-reference:
+        path: DELETE /sandboxes/{sandboxID}
+        operationId: deleteSandbox
+        compatibility: capability-level
+      x-sdkwork-request-context: WebRequestContext
+      x-sdkwork-api-surface: internal-api
+      x-sdkwork-wire-protocol: sdkwork-v3
+      responses:
+        '204':
+          description: >-
+            Deleted; no JSON body, trace correlation header only (API_SPEC.md
+            section 15.4)
+          headers:
+            x-sdkwork-trace-id:
+              $ref: '#/components/headers/TraceId'
+        '404':
+          description: >-
+            The sandbox instance does not exist in this tenant (RFC 9457 problem
+            document)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '409':
+          description: >-
+            Duplicate name, version conflict, or idempotency conflict (RFC 9457
+            problem document)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      x-sdkwork-auth-mode: ingress-token
+      security:
+        - ApiKey: []
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: >-
+        Internal-api ingress token. INTERNAL_API_SPEC section 4: generated
+        custom internal SDKs carry the ingress token in X-API-Key; runtime hosts
+        accept it as an ingress-token alias alongside Authorization: Bearer and
+        x-sdkwork-access-token. This scheme never appears on a data-plane
+        surface, and no data-plane credential schema may appear here.
+  headers:
+    TraceId:
+      description: Server-owned request correlation id; clients must not supply it
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    SdkWorkApiResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - data
+        - traceId
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: >-
+            Numeric success result code; MUST be 0 on HTTP 2xx (API_SPEC.md
+            section 15.3)
+          enum:
+            - 0
+          default: 0
+        data:
+          description: Operation-specific payload; typed per operation through allOf
+        traceId:
+          type: string
+          format: uuid
+          description: >-
+            Server-owned request correlation id; clients must not supply this
+            value
+    SdkWorkResourceData:
+      type: object
+      additionalProperties: false
+      required:
+        - item
+      properties:
+        item:
+          $ref: '#/components/schemas/SandboxInstance'
+    SdkWorkPageData:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+        - pageInfo
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SandboxInstance'
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+    PageInfo:
+      type: object
+      additionalProperties: false
+      required:
+        - mode
+      properties:
+        mode:
+          type: string
+          enum:
+            - cursor
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 200
+          description: Effective page size for this response
+        nextCursor:
+          type:
+            - string
+            - 'null'
+          description: Opaque next-page token; a page that ends the enumeration omits it
+        hasMore:
+          type: boolean
+    ProblemDetail:
+      type: object
+      additionalProperties: true
+      required:
+        - type
+        - title
+        - status
+        - code
+        - traceId
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          description: 'Request endpoint occurrence: {METHOD} {routeTemplate}'
+        operationId:
+          type: string
+        code:
+          type: integer
+          format: int32
+          description: >-
+            Numeric error result code; MUST be non-zero (API_SPEC.md section
+            15.3)
+          minimum: 40001
+          maximum: 79999
+        traceId:
+          type: string
+          format: uuid
+    SandboxInstanceId:
+      type: string
+      minLength: 1
+      maxLength: 128
+    SandboxVersion:
+      type: string
+      format: int64
+      pattern: ^-?[0-9]+$
+      x-sdkwork-int64-string: true
+      description: >-
+        Optimistic-concurrency version; int64-as-string per API_SPEC.md section
+        13.6
+    SandboxInstanceName:
+      type: string
+      minLength: 1
+      maxLength: 128
+    SandboxInstanceState:
+      type: string
+      enum:
+        - created
+        - starting
+        - running
+        - stopping
+        - stopped
+        - failed
+        - destroying
+        - destroyed
+    CreateSandboxInstanceRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - sandboxInstanceName
+      properties:
+        sandboxInstanceName:
+          $ref: '#/components/schemas/SandboxInstanceName'
+    UpdateSandboxInstanceRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        sandboxInstanceName:
+          $ref: '#/components/schemas/SandboxInstanceName'
+    SandboxInstance:
+      type: object
+      additionalProperties: false
+      required:
+        - sandboxInstanceId
+        - sandboxInstanceState
+        - sandboxVersion
+      properties:
+        sandboxInstanceId:
+          $ref: '#/components/schemas/SandboxInstanceId'
+        sandboxInstanceName:
+          $ref: '#/components/schemas/SandboxInstanceName'
+        sandboxInstanceOwnerId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        sandboxInstanceState:
+          $ref: '#/components/schemas/SandboxInstanceState'
+        sandboxInstanceCreatedAt:
+          type: string
+          format: date-time
+        sandboxInstanceExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        sandboxVersion:
+          $ref: '#/components/schemas/SandboxVersion'
+x-sdkwork-generation:
+  derivedFrom: apis/internal-api/intelligence/sandbox-internal-api-authority.openapi.json
+  derivation: identity; no generator-specific normalization required for slice v0

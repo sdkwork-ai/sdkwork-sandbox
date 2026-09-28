@@ -34,7 +34,7 @@
  *   node tools/check-sandbox-workspace-dependency-inheritance.mjs [--json]
  */
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { discoverManifests } from "./check-sandbox-cargo-path-dependencies.mjs";
@@ -166,8 +166,14 @@ export function assessWorkspaceDependencyInheritance({ repoRoot = repositoryRoot
     throw new Error("the root [workspace.dependencies] table is empty or missing");
   }
 
+  // Generated SDK packages (`sdks/**/generated/**`) are generator-owned
+  // (SDK_SPEC.md): the canonical generator declares their dependency versions
+  // and hand-editing them onto workspace inheritance is forbidden. They are
+  // not workspace members, so the member-inheritance rule does not apply.
   const manifests = discoverManifests(repoRoot).filter(
-    (manifestPath) => resolve(manifestPath) !== resolve(rootManifestPath),
+    (manifestPath) =>
+      resolve(manifestPath) !== resolve(rootManifestPath) &&
+      !(manifestPath.includes(`${sep}sdks${sep}`) && manifestPath.includes(`${sep}generated${sep}`)),
   );
   if (manifests.length === 0) {
     throw new Error("no member Cargo.toml found; the inheritance gate would be vacuous");

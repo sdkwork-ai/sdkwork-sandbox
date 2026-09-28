@@ -67,6 +67,46 @@ fn success_response<T: Serialize>(
     Ok(response)
 }
 
+/// Renders one creation result as `201` with the standard envelope
+/// (`API_SPEC.md` section 15.4: create returns `201` and the body `MUST`
+/// still use `SdkWorkApiResponse` with `code: 0`).
+#[must_use]
+pub fn finish_api_created<T: Serialize>(ctx: &WebRequestContext, result: ApiResult<T>) -> Response {
+    match result {
+        Ok(data) => {
+            let trace_id = ctx.resolved_trace_id();
+            let envelope = SdkWorkApiResponse::success(data, trace_id.clone());
+            let mut response = (StatusCode::CREATED, Json(envelope)).into_response();
+            if let Ok(value) = HeaderValue::from_str(&trace_id) {
+                response
+                    .headers_mut()
+                    .insert(HeaderName::from_static("x-sdkwork-trace-id"), value);
+            }
+            response
+        }
+        Err(problem) => problem.into_response_for(ctx),
+    }
+}
+
+/// Renders one delete result as `204` with no JSON body and the trace header
+/// (`API_SPEC.md` section 15.4: delete is header-only `traceId`).
+#[must_use]
+pub fn finish_api_no_content(ctx: &WebRequestContext, result: ApiResult<()>) -> Response {
+    match result {
+        Ok(()) => {
+            let trace_id = ctx.resolved_trace_id();
+            let mut response = StatusCode::NO_CONTENT.into_response();
+            if let Ok(value) = HeaderValue::from_str(&trace_id) {
+                response
+                    .headers_mut()
+                    .insert(HeaderName::from_static("x-sdkwork-trace-id"), value);
+            }
+            response
+        }
+        Err(problem) => problem.into_response_for(ctx),
+    }
+}
+
 /// Renders one handler result as an HTTP response.
 #[must_use]
 pub fn finish_api_json<T: Serialize>(ctx: &WebRequestContext, result: ApiResult<T>) -> Response {

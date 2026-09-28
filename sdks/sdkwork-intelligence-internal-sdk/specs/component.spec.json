@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "component": {
+    "name": "sdkwork-intelligence-internal-sdk",
+    "language": "multi-language-generated",
+    "languages": [
+      "typescript",
+      "python",
+      "rust"
+    ],
+    "surface": "internal-api",
+    "authority": {
+      "requirementId": "REQ-2026-0028",
+      "decisionId": "ADR-20260924",
+      "apiAuthority": "apis/internal-api/intelligence/sandbox-internal-api-authority.openapi.json",
+      "parityLedger": "apis/internal-api/intelligence/sandbox-e2b-parity-ledger.json",
+      "generationInputSpec": "openapi/sdkwork-intelligence-internal-api.sdkgen.yaml"
+    },
+    "generation": {
+      "generator": "../sdkwork-sdk-generator/bin/sdkgen.js",
+      "profile": "sdkwork-v3",
+      "sdkType": "custom",
+      "apiPrefix": "/internal/v3/api/intelligence/sandbox",
+      "materializer": "sdks/materialize-intelligence-v0-openapi-boundaries.mjs",
+      "languages": [
+        "typescript",
+        "python",
+        "rust"
+      ],
+      "outputLayout": "generated/server-openapi per language workspace; generated output is never hand-edited"
+    },
+    "verification": [
+      "node sdks/materialize-intelligence-v0-openapi-boundaries.mjs",
+      "node tools/generate-sandbox-e2b-parity-ledger.mjs --check",
+      "node --test tests/contract/sandbox-e2b-parity-ledger.contract.test.mjs"
+    ],
+    "displayName": "SDKWork Intelligence Internal API SDK",
+    "version": "0.1.0",
+    "type": "sdk-family",
+    "root": "sdks/sdkwork-intelligence-internal-sdk",
+    "domain": "intelligence",
+    "capability": "sandbox",
+    "generated": true
+  },
+  "canonicalSpecs": [
+    {
+      "path": "../../../sdkwork-specs/SDK_SPEC.md",
+      "file": "SDK_SPEC.md"
+    },
+    {
+      "path": "../../../sdkwork-specs/SDK_WORKSPACE_GENERATION_SPEC.md",
+      "file": "SDK_WORKSPACE_GENERATION_SPEC.md"
+    },
+    {
+      "path": "../../../sdkwork-specs/INTERNAL_API_SPEC.md",
+      "file": "INTERNAL_API_SPEC.md"
+    },
+    {
+      "path": "../../../sdkwork-specs/API_SPEC.md",
+      "file": "API_SPEC.md"
+    },
+    {
+      "path": "../../../sdkwork-specs/PAGINATION_SPEC.md",
+      "file": "PAGINATION_SPEC.md"
+    },
+    {
+      "path": "../../../sdkwork-specs/NAMING_SPEC.md",
+      "file": "NAMING_SPEC.md"
+    },
+    {
+      "path": "../../../sdkwork-specs/CODE_STYLE_SPEC.md",
+      "file": "CODE_STYLE_SPEC.md"
+    },
+    {
+      "path": "../../../sdkwork-specs/TYPESCRIPT_CODE_SPEC.md",
+      "file": "TYPESCRIPT_CODE_SPEC.md"
+    },
+    {
+      "path": "../../../sdkwork-specs/RUST_CODE_SPEC.md",
+      "file": "RUST_CODE_SPEC.md"
+    }
+  ]
+}

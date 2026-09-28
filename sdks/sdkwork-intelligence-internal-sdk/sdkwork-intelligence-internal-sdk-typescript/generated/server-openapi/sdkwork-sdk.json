@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "name": "sdkwork-intelligence-internal-api",
+  "version": "1.0.0",
+  "language": "typescript",
+  "sdkType": "custom",
+  "packageName": "sdkwork-intelligence-internal-api-sdk-generated-typescript",
+  "transportPackageName": "sdkwork-intelligence-internal-api-sdk-generated-typescript",
+  "consumerPackageName": "@sdkwork/intelligence-internal-api-sdk",
+  "generator": "@sdkwork/sdk-generator",
+  "capabilities": {
+    "supportsGeneratedTests": true,
+    "supportsReadme": true,
+    "supportsCustomScaffold": true,
+    "supportsPublishWorkflow": true,
+    "hasDistinctBuildStep": true
+  },
+  "generation": {
+    "readme": true,
+    "tests": false
+  },
+  "ownership": {
+    "generatedOwnership": "generated",
+    "scaffoldOwnership": "scaffold",
+    "scaffoldRoots": [
+      "custom/"
+    ],
+    "stateRoots": [
+      ".sdkwork/"
+    ]
+  }
+}

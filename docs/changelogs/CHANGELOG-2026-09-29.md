@@ -69,3 +69,13 @@
 - `apis/internal-api/intelligence/sandbox-e2b-parity-ledger.json`：71 个 E2B 参考操作的双向 ledger——4 个 `mapped`（实现面）+ 67 个 `pending-gate`（无实现能力，按基线类别登记，绝无静默遗漏）。由 `tools/generate-sandbox-e2b-parity-ledger.mjs` 从钉死基线确定性推导，`--check` 即 AC8 回归命令。
 - `tests/contract/sandbox-e2b-parity-ledger.contract.test.mjs`：四向钉死（完备性、映射指向真实权威操作、int64/安全方案规则、可复现性）。
 - 钉面同步：基线 `testInventory`（42 文件/678 测试）、`REAL_CONTRACT_FILES/TESTS`、tools/README 与 parity 文档套件读数（678 pass / 0 fail）。
+
+## REQ-2026-0028 切片 v0（续）：SDK 家族生成 + 运行时 §15.4 对齐
+
+- 运行时对齐 `API_SPEC.md` §15.4：create 返回 `201`（envelope 不变，`finish_api_created`）、delete 返回 `204` 无 JSON body 仅 trace 头（`finish_api_no_content`）——此前两者均 200，属真实规范分歧。
+- 权威 OpenAPI 重写为 SDKWork v3 强 profile 形状：`SdkWorkApiResponse`（code/data/traceId）+ `SdkWorkResourceData`/`SdkWorkPageData`、RFC 9457 `application/problem+json` ProblemDetail、camelCase wire 字段、`x-sdkwork-request-context`/`x-sdkwork-api-surface`/`x-sdkwork-auth-mode: ingress-token`/operation 级 security 全覆盖、tag lowerCamelCase、全路径 `/internal/v3/api/intelligence/sandbox/...`。
+- INTERNAL_API_SPEC §4 采纳：安全方案为 `ApiKey`/`X-API-Key`（ingress-token 别名）；运行时宿主接受该别名是 web framework 的待办跨仓义务（本仓无权修改兄弟仓，已记录于家族 README 与 sdk-manifest）。
+- `sdks/sdkwork-intelligence-internal-sdk/` 家族落地：物化器（`sdks/materialize-intelligence-v0-openapi-boundaries.mjs`，fail-closed 不变量校验）、`openapi/*.openapi.yaml`+`*.sdkgen.yaml`、family `sdk-manifest.json`（generatorMode 记录 custom profile + 显式 internal api-prefix，规范 §5 许可路径）、`specs/component.spec.json`（house 形状，13 个组件 spec 全过）。
+- `sdkgen` 生成三语言 SDK（`sdkwork-v3` custom profile）：TypeScript（package check+build 通过）、Rust（cargo build 通过）、Python（生成成功；package twine 校验缺环境工具）。生成源码提交，`dist/`/`target/`/`node_modules/` 加入 .gitignore。
+- 本地门禁收窄（双规范交叉点）：`check-sandbox-workspace-dependency-inheritance.mjs` 豁免 `sdks/**/generated/**` 的 Cargo.toml——生成包是 generator-owned（SDK_SPEC 禁止手改）且非 workspace 成员（RUST_CODE_SPEC §14 管成员）；家族 component spec 补齐 NAMING/CODE_STYLE/TYPESCRIPT/RUST canonical specs。
+- 已知环境项：`cargo test --workspace` 当前被兄弟仓 sdkwork-iam 的并发未提交 WIP（Cargo.toml/Cargo.lock 变更导致 web-adapter 编译失败）阻断，属外部暂态；本仓受影响 crate 单独验证 142/0 全绿。

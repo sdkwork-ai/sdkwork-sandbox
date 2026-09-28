@@ -1,0 +1,2 @@
+include README.md
+recursive-include sdkwork_intelligence_internal_sdk *.py

@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "generator": "@sdkwork/sdk-generator",
+  "sdk": {
+    "name": "sdkwork-intelligence-internal-api",
+    "version": "1.0.0",
+    "language": "rust",
+    "sdkType": "custom",
+    "protocol": "http",
+    "packageName": "sdkwork-intelligence-internal-sdk"
+  },
+  "generatedFiles": [
+    {
+      "path": "bin/publish-core.mjs",
+      "sha256": "a47e95119bf3eafcbcb2102f7024c147f967924e4e3f343d1a29effb4b6765df"
+    },
+    {
+      "path": "bin/publish.ps1",
+      "sha256": "eb779f44a5ba8879a9d79c708d0ba4bd412221f102e4430b953f0449327827bf"
+    },
+    {
+      "path": "bin/publish.sh",
+      "sha256": "ae8a89ddb314afce79fe910de28017951c3c31f24a67d72915c4153711173b23"
+    },
+    {
+      "path": "Cargo.toml",
+      "sha256": "5ad1734ad703e99618b1de9f4a3241e07d3560969a334a3231b3308fca4121e3"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "ecb55fcda2ed37d190a142ed7f8fe40ecc076276324fd22efd4fd15ab8610ee5"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "7840cc7d2b36ff364ac16c2fc5ec15b861bfe96854eecf81fb59b00edb8b1447"
+    },
+    {
+      "path": "README.md",
+      "sha256": "2c789596dc49da712f7ce48684dfccf87216cbf393ce672d4c5028f91d99b132"
+    },
+    {
+      "path": "sdkwork-sdk.json",
+      "sha256": "36b303be0fecfa67abb4960aa1d7ca446ec5cb09fee4fa6334f8e44a251e1a80"
+    },
+    {
+      "path": "src/api/base.rs",
+      "sha256": "f5bb34b2032aa68650cdc4910046955d521293bec7e2737d0cf1db27bc62ee25"
+    },
+    {
+      "path": "src/api/mod.rs",
+      "sha256": "28db4e156390d271b51e89289e5531049ea8d14645137a4bd93f46d2a3afce41"
+    },
+    {
+      "path": "src/api/paths.rs",
+      "sha256": "cb7082f00698f94ccacde87ec108fd5c2e2460b1936b23065843bdb42fb57f29"
+    },
+    {
+      "path": "src/api/sandbox_instances.rs",
+      "sha256": "139c9e8a9769d83e0c29ed23a98ec9a8ae6f07da2aa27ab4c228f28a4c475660"
+    },
+    {
+      "path": "src/client.rs",
+      "sha256": "9742efa188ecb3551ebd85086f0d6eb874307edd86b1fddd154e7ba058a2305c"
+    },
+    {
+      "path": "src/http/client.rs",
+      "sha256": "c3d1f9e4ab9680f2583b9c5e58cafaf2006609e67983130fbc317a5944e97514"
+    },
+    {
+      "path": "src/http/mod.rs",
+      "sha256": "d09ef1f29c3fa0e631fc4f7287fc93dc7d3cee7e7261ac85091852a09243e90a"
+    },
+    {
+      "path": "src/lib.rs",
+      "sha256": "a44ec6b80092e9671dffb724a9fc9768628723d24fa7147b92908f685f86f068"
+    },
+    {
+      "path": "src/models/common.rs",
+      "sha256": "fce0239d85066b1c42435ab8c96676ea2d5300e5dcb87c52fd3e33d29a603a5e"
+    },
+    {
+      "path": "src/models/create_sandbox_instance_request.rs",
+      "sha256": "2aa77f556c773058594d8cf3031f4eb60029a4c6bee868296db0e8d45e5d1583"
+    },
+    {
+      "path": "src/models/create_sandbox_instance_response201.rs",
+      "sha256": "19f93fef4dc88869c070d8c57e176e501f497def15d8331370ce20d86f0f90b1"
+    },
+    {
+      "path": "src/models/list_sandbox_instances_response.rs",
+      "sha256": "92cc1f095e8055f324393fd43839277aca1ea065aa479a5ad4173644ff7c798e"
+    },
+    {
+      "path": "src/models/mod.rs",
+      "sha256": "77931f629b8aef8c3f2af6d9c0c8f6fd63d9ec48e012bacfa7cfe32d855b712f"
+    },
+    {
+      "path": "src/models/page_info.rs",
+      "sha256": "6601de3a1854052f8432ab3f0edd6dd2422ee9ad9e3dd0c6615576adeaca3157"
+    },
+    {
+      "path": "src/models/problem_detail.rs",
+      "sha256": "9c451b17b3627976041939a246536fca387d5ed376468cc265bb3b7af76266c1"
+    },
+    {
+      "path": "src/models/retrieve_sandbox_instance_response.rs",
+      "sha256": "321d9189cd694f4bb15b650fd1cc727123746390c4214308302eec6f778633c4"
+    },
+    {
+      "path": "src/models/sandbox_instance.rs",
+      "sha256": "9472db9310e6b44a58c2168d9fadb50116fabde85641f0a4c743051cb03ea70f"
+    },
+    {
+      "path": "src/models/sdk_work_api_response.rs",
+      "sha256": "2cf7993850d82b6189afbef0cffc0bf41573ad17ae8647e45450dc995a325793"
+    },
+    {
+      "path": "src/models/sdk_work_page_data.rs",
+      "sha256": "e3dfab4239df1ff7c4dffe44bc98f361ed20f98414a46256539eef119d7cc8da"
+    },
+    {
+      "path": "src/models/sdk_work_resource_data.rs",
+      "sha256": "c33ca76a721d6fea47df619344705ca23f805982f927dd9ad9e54918bf70f782"
+    },
+    {
+      "path": "src/models/update_sandbox_instance_request.rs",
+      "sha256": "4949d4065b87d7ba8ccb9ff3d7ad1b65e5be4601a0206f78bc003e55b8edea8b"
+    },
+    {
+      "path": "src/models/update_sandbox_instance_response.rs",
+      "sha256": "b09570ff9f9856adc020e485149ba60b3d833cd16bfa849f8c5fbc709ced8664"
+    }
+  ],
+  "scaffoldFiles": [
+    "custom/README.md"
+  ],
+  "customRoots": [
+    "custom/"
+  ]
+}
