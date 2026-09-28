@@ -268,7 +268,7 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 | --- | --- | --- | --- | --- |
 | 74 | BYOC（AWS / GCP，托管部署） | 无 | ❌ | `deployments/` 有 8 个 profile 配置，`sandbox.cloud-data-residency.contract.json` 为 draft，无部署产物 |
 | 75 | 多区域（EU cluster） | `REQ-2026-0026` region tuple（draft） | 🟡 | 仅契约：`regionCode` / `providerRegion` / `storageRegion` / `availabilityZone` |
-| 76 | 计划与限额（并发沙箱、vCPU、内存、磁盘、连续运行时长） | `REQ-2026-0015` / `0016` / `0018`（draft） | 🟡 | 仅契约，无 quota runtime |
+| 76 | 计划与限额（并发沙箱、vCPU、内存、磁盘、连续运行时长） | `REQ-2026-0015` / `0016` / `0018`（draft） | 🟡 | 仅契约，无 quota runtime。资源形态的**注册表级候选承载**已落：`SandboxInstanceProfile`（standard / memory_optimized / compute_optimized）+ vCPU/内存/磁盘信封（`service/src/instance.rs`，DB CHECK 同界）与内部实例 CRUD 面可表达 E2B 的 `cpuCount`/`memoryMB` 维度，但背后无运行时强制，quota 执行仍由 draft `REQ-*` 门禁 |
 | 77 | 合规（SOC 2 Type II、静态加密、DPA） | `REQ-2026-0006` 分配元数据加密有**候选实现 + 测试** | 🟡 | 加密机制存在（`repository-sqlx/src/encryption.rs`），但平台合规证据本仓不拥有 |
 
 ### 2.17 Agent 框架集成
@@ -436,6 +436,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 | 5 | Auto-resume / Auto-pause（Idle 收敛） | `resume` `pause` `autopause` `auto-pause` | 矩阵第 9 行；产品要求见 PRD 该文件第 9 节 |
 | 6 | 端口暴露（public URL / `getHost`） | `port` `public` `gethost` | 矩阵第 58 行；产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 8 节 |
 | 7 | MCP 执行面与 Skills | `mcp` `skill` | §4 P2；本仓只有传输级描述 |
+| 8 | Filesystem 执行面（Workspace 内文件读写 / 上传下载 / 目录操作） | `filesystem` | §4 P0；产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 2-3 节，无 `REQ-*` 承载（Local Boundary 契约只约束路径边界，不授权 Filesystem 能力面） |
 
 这张表由 `tools/check-sandbox-e2b-parity-matrix.mjs` 的**第 8 条规则族**核验，判据三条：
 
@@ -505,10 +506,10 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 | 缺口 | 性质 | 说明 |
 | --- | --- | --- |
-| 零运行入口（无 HTTP/RPC、无 CLI、无 Service Host wiring） | 设计级 | `ROUTE_CRATE_COUNT: 0`、`fn main() {}`、service-host 5 行。需要 `REQ-2026-0023`（internal control plane）与 `REQ-2026-0009`（service host）进入 `ready` |
-| 零真实 Provider（Local 只有 fake host boundary） | 设计级 | `REQ-2026-0003` 的 5 条 Readiness Blocker 全是人工评审/接受 |
+| 运行入口不全（HTTP 候选面已物化；RPC、CLI、Service Host wiring 仍缺） | 设计级 | 2026-09-24 起为**部分解除**：internal-api 候选面（5 条 `sandboxInstances.*` ingress-token 路由，`ROUTE_CRATE_COUNT: 1`、assembly 与 standalone gateway 已承载）落了，实例注册表 CRUD 可走 HTTP。仍缺：RPC 面、CLI（`fn main() {}`）、Service Host wiring（service-host 5 行）——需要 `REQ-2026-0023`（internal control plane）与 `REQ-2026-0009`（service host）进入 `ready` |
+| Provider 执行切片不全（真实命令执行已物化；descendant containment 未落地） | 设计级 | 2026-09-24 起为**部分解除**：`REQ-2026-0003`/`0007`/`0008` 三个 packet 经人审进入 `ready`，`specs/sandbox-local-provider-host-boundary.contract.json` 授权实现；真实 tokio 进程切片（有界输出、硬超时 kill、fenced cancel、provider-owned 可执行解析）已落。仍缺：Windows suspended Job Object / Linux delegated cgroup v2 containment 及 `requiredRealEvidence` 的 7+6+3 条真实平台证据，Terminal capability 因此保持不声明 |
 | 无 Template（含定义、构建、缓存、tags、start command） | **设计级** | E2B 快速创建与快速部署的**全部**依赖它。本仓零 `REQ-*`〔§3.4/1〕；与 Firecracker 制品元组的权威边界未定（见 `PRD.md` 第 9 节待决问题） |
-| 无 Command / Terminal / Filesystem 执行面 | 设计级 | `REQ-2026-0007`、`REQ-2026-0024` 仅契约且显式禁止物化 |
+| Command 执行面部分物化；Terminal / Filesystem 执行面仍缺 | 设计级 | `REQ-2026-0007` 已 `ready` 且授权实现，executor/admission/runner 切片已落（见上）；`REQ-2026-0024`（Interactive Terminal）仍 `draft` 禁止物化；Filesystem 无 `REQ-*`〔§3.4/8〕 |
 
 ### P1 — 阻塞"创建得快"
 

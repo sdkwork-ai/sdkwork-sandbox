@@ -773,11 +773,11 @@ test("the repository's own zero-requirement registry is refuted-clean and fully 
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  assert.equal(assessment.claimCount, 7);
+  assert.equal(assessment.claimCount, 8);
 
   const registry = parseRequirementClaimRegistry(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
   assert.deepEqual(registry.header, [...CLAIM_COLUMNS]);
-  assert.equal(registry.rows.length, 7);
+  assert.equal(registry.rows.length, 8);
   assert.equal(registry.malformed.length, 0);
   for (const row of registry.rows) {
     assert.ok(parseClaimKeywords(row["关键词"]).length > 0, `registry row ${row["#"]} names no keyword`);

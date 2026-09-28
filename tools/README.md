@@ -133,7 +133,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs --root <dir>
 node --test tests/contract/e2b-parity-matrix-tool.contract.test.mjs
 ```
 
-Current reading: 17 categories, 78 rows, census `✅ 0 | 🟡 16 | ❌ 60 | ⛔ 2`, 1 residual gap, 7 registered zero-requirement claims, 113 of 113 workspace tests accounted for by section 3.1, 13 component rows and 18 line-numbered anchors resolved by section 1.2, 9 advantage rows and 4 line-numbered anchors resolved by section 5; twelve rule families are declared consistently in all five surfaces that describe this gate.
+Current reading: 17 categories, 78 rows, census `✅ 0 | 🟡 16 | ❌ 60 | ⛔ 2`, 1 residual gap, 8 registered zero-requirement claims, 129 of 129 workspace tests accounted for by section 3.1, 13 component rows and 14 line-numbered anchors resolved by section 1.2, 9 advantage rows and 4 line-numbered anchors resolved by section 5; twelve rule families are declared consistently in all five surfaces that describe this gate.
 
 ## E2B Field Parity Gate
 
