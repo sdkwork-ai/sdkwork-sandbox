@@ -172,7 +172,7 @@ Terminal Stream、Operational Log、Audit Event 与 Metric 是不同数据类别
 | 5 | Restart | **无**；见 [PRD-capabilities.md](PRD-capabilities.md) 第 3 节状态机的 `Stopped -> Starting` 路径（候选） |
 | 6 | Fork | **无**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 6 节 |
 | 7 | Snapshot | **无产品级能力**；仅有 Workspace Checkpoint 与 Firecracker Snapshot 的 Gate 0（`REQ-2026-0021`、`0008`） |
-| 8 | Template | **无**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 4 节 |
+| 8 | Template | `REQ-2026-0029`（draft，权威模型+缓存语义已承载，实现未授权）；产品要求见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 4 节 |
 | 9 | Workspace | `REQ-2026-0004`（Agents 权威 + Attachment 边界，候选） |
 | 10 | Filesystem API | `REQ-2026-0007`（`draft`，部分覆盖）；见 [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 3 节 |
 | 11 | Shell | `REQ-2026-0007`（`draft`） |
@@ -192,7 +192,7 @@ Terminal Stream、Operational Log、Audit Event 与 Metric 是不同数据类别
 | 25 | Snapshot Restore | **无产品级能力**；兼容性门禁见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 5 节 |
 | 26 | COW Storage | **无**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 7.2 节 |
 | 27 | Lazy Memory | **无**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 7.1 节 |
-| 28 | Template Cache | **无**；缓存策略见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 8 节 |
+| 28 | Template Cache | `REQ-2026-0029`（draft，缓存语义边界已承载，实现未授权）；缓存策略见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 8 节 |
 | 29 | Object Storage | **无**；存储分层要求见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 8 节；权威归属未定 |
 | 30 | Local Cache | 同上 |
 | 31 | Edge Router | **无**；见 [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 8 节 |

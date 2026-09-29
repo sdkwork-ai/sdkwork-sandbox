@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.sandbox.template-authority-contract",
+  "status": "draft",
+  "requirementId": "REQ-2026-0029",
+  "implementationAuthorized": false,
+  "templateDefinition": {
+    "type": "SandboxTemplateDefinition",
+    "requiredFields": [
+      "sandbox_template_definition_id",
+      "sandbox_template_definition_version",
+      "sandbox_base_environment_ref",
+      "sandbox_file_layers",
+      "sandbox_set_envs",
+      "sandbox_set_start_cmd",
+      "sandbox_published_at"
+    ],
+    "unknownFieldsRejected": true,
+    "allSandboxOwnedFieldsRequirePrefix": "sandbox_",
+    "immutableAfterPublication": true
+  },
+  "versioning": {
+    "type": "SandboxTemplateVersion",
+    "requiredFields": [
+      "sandbox_template_version_id",
+      "sandbox_template_definition_id",
+      "sandbox_tags",
+      "sandbox_aliases",
+      "sandbox_artifact_tuple_ref"
+    ],
+    "aliasesAreVersionedNames": true,
+    "tagsAreImmutableAfterPublication": true
+  },
+  "buildInput": {
+    "type": "SandboxTemplateBuildInput",
+    "allowedFormats": ["sandbox_dockerfile_ref", "sandbox_build_script_ref"],
+    "dockerfileIsBuildInputOnly": true,
+    "dockerRuntimeBoundaryAllowed": false,
+    "embeddedSignatureOrKeyMaterialAllowed": false,
+    "hostPathAllowed": false,
+    "downloadUrlAllowed": false
+  },
+  "cachePolicy": {
+    "type": "SandboxTemplateCachePolicy",
+    "layers": ["sandbox_hot", "sandbox_warm", "sandbox_cold"],
+    "evictionPolicyExplicit": true,
+    "crossTemplateLayerReuseRequiresExactDigestMatch": true,
+    "cacheImplementationAuthorized": false,
+    "cacheStorageBackendInScope": false
+  },
+  "artifactBoundary": {
+    "artifactAuthority": "REQ-2026-0012",
+    "templateReferencesArtifactTuple": true,
+    "templateOwnsEvidenceOrSignature": false,
+    "secondSupplyChainAuthorityAllowed": false
+  },
+  "forbidden": {
+    "templateBuilderRuntime": true,
+    "templateRegistryService": true,
+    "buildPipelineOrBuildArtifactStorage": true,
+    "cliSurface": true,
+    "publicApiOrSdkSurface": true,
+    "deploymentProfile": true
+  },
+  "x-sdkwork-status": "draft",
+  "x-sdkwork-require-human-review": true
+}

@@ -483,7 +483,9 @@ test("the repository's own parity document is consistent", () => {
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
   assert.equal(assessment.categoryCount, 17);
   assert.equal(assessment.rowCount, 78);
-  assert.deepEqual(assessment.totals, { rows: 78, ok: 0, partial: 16, missing: 60, deliberate: 2 });
+  // 2026-09-29: matrix rows 25/28 moved from missing to partial when REQ-2026-0029
+  // (Sandbox Template authority) registered its draft carrier.
+  assert.deepEqual(assessment.totals, { rows: 78, ok: 0, partial: 18, missing: 58, deliberate: 2 });
   assert.deepEqual(assessment.declaredMarkers, ["✅", "🟡", "❌", "⛔"]);
 });
 
@@ -773,11 +775,12 @@ test("the repository's own zero-requirement registry is refuted-clean and fully 
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  assert.equal(assessment.claimCount, 8);
+  // 2026-09-29: Template rows 1-2 retired when REQ-2026-0029 registered; six claims remain.
+  assert.equal(assessment.claimCount, 6);
 
   const registry = parseRequirementClaimRegistry(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
   assert.deepEqual(registry.header, [...CLAIM_COLUMNS]);
-  assert.equal(registry.rows.length, 8);
+  assert.equal(registry.rows.length, 6);
   assert.equal(registry.malformed.length, 0);
   for (const row of registry.rows) {
     assert.ok(parseClaimKeywords(row["关键词"]).length > 0, `registry row ${row["#"]} names no keyword`);
@@ -1048,17 +1051,18 @@ test("the repository's own cross-document census recount matches its declaration
   // MCP assertions in PRD-capabilities, the MCP row in PRD section 8, and the Port Exposure row of
   // PRD-sandbox-surfaces to the four documents the narrower set counted.
   assert.equal(assessment.claimSurfaceCount, 5);
-  assert.equal(assessment.claimSurfaceClaims, 18);
+  // 2026-09-29: the PRD Template assertion retired with REQ-2026-0029; 17 remain.
+  assert.equal(assessment.claimSurfaceClaims, 17);
 
   const surface = parseClaimSurfaceRegistry(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
   assert.deepEqual(surface.census.header, [...CLAIM_CENSUS_COLUMNS]);
   assert.deepEqual(surface.corrections.header, [...CLAIM_CORRECTION_COLUMNS]);
   assert.deepEqual(surface.attribution.header, [...CLAIM_ATTRIBUTION_COLUMNS]);
   assert.equal(surface.census.malformed.length, 0);
-  // Two corrections on record: the benchmark-capability claim and the SDK-family claim, both
-  // retired into the ledger with probes instead of being edited silently.
-  assert.equal(surface.corrections.rows.length, 2);
-  assert.equal(surface.attribution.rows.length, 18);
+  // Three corrections on record: the benchmark-capability claim, the SDK-family claim, and the
+  // Template claim retired with REQ-2026-0029, each with a probe instead of a silent edit.
+  assert.equal(surface.corrections.rows.length, 3);
+  assert.equal(surface.attribution.rows.length, 17);
 
   // The census is the whole account: every document outside this one that makes the claim is
   // registered. This restates the gate's completeness scan from outside the gate.
@@ -1192,7 +1196,7 @@ test("a broken attribution numbering is rejected", () => {
 
 test("the attribution reader is total on the real document and on one without the section", () => {
   const real = parseClaimSurfaceRegistry(readFileSync(path.join(repoRoot, PARITY_DOC), "utf8"));
-  assert.equal(real.attribution.rows.length, 18);
+  assert.equal(real.attribution.rows.length, 17);
   // A document with no section at all parses to null, the same contract the census reader states.
   assert.equal(parseClaimSurfaceRegistry("# nothing to see\n"), null);
 });
@@ -1252,7 +1256,8 @@ test("every requirement in this repository declares a readable status", () => {
   const directory = path.join(repoRoot, "docs/product/requirements");
   const names = readdirSync(directory).filter((name) => /^REQ-\d{4}-\d{4}-.+\.md$/u.test(name));
 
-  assert.equal(names.length, 28);
+  // 2026-09-29: REQ-2026-0029 (Sandbox Template authority) registered as draft.
+  assert.equal(names.length, 29);
   const ready = [];
   for (const name of names) {
     const record = readRequirementStatus(repoRoot, name.slice(0, 13));
@@ -2030,7 +2035,8 @@ test("the readers discover the fixture's contracts, records and evidence counts"
 
 test("the repository holds exactly the machine contracts, records and evidence counts section 1.1 states", () => {
   const named = listNamedContracts(repoRoot);
-  assert.equal(named.length, 23);
+  // 2026-09-29: specs/sandbox-template-authority.contract.json (REQ-2026-0029) registered.
+  assert.equal(named.length, 24);
   const api = listApiContracts(repoRoot);
   assert.equal(api.length, 2);
   assert.deepEqual(readEvidenceCounts(repoRoot), {
@@ -2049,11 +2055,12 @@ test("the repository holds exactly the machine contracts, records and evidence c
     "apis/commands/sandbox-command-contract.json",
   ]);
   const requirements = readRequirementStatuses(repoRoot);
-  assert.equal(requirements.length, 28);
+  // 2026-09-29: REQ-2026-0029 (Sandbox Template authority) registered as draft.
+  assert.equal(requirements.length, 29);
   // The 2026-09-29 structured decision promoted REQ-2026-0028 (E2B API/SDK authority) to ready.
   assert.equal(requirements.filter((record) => record.status === "ready").length, 4);
   assert.equal(requirements.filter((record) => record.status === "accepted").length, 5);
-  assert.equal(requirements.filter((record) => record.status === "draft").length, 19);
+  assert.equal(requirements.filter((record) => record.status === "draft").length, 20);
   const decisions = readDecisionStatuses(repoRoot);
   assert.equal(decisions.length, 28);
   // The 2026-09-29 structured decision accepted ADR-20260924 (E2B API/SDK authority).

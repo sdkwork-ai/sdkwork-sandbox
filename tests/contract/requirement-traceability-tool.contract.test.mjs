@@ -208,7 +208,8 @@ test("the repository's own traceability chain resolves and the gate is not vacuo
     assessment.decisionReferencesChecked >= 100,
     `the gate must not be vacuous; saw ${assessment.decisionReferencesChecked} decision references`,
   );
-  assert.equal(assessment.requirementsOnRecord, 28);
+  // 2026-09-29: REQ-2026-0029 (Sandbox Template authority) registered as draft.
+  assert.equal(assessment.requirementsOnRecord, 29);
   assert.equal(assessment.decisionsOnRecord, 28);
   assert.equal(assessment.capabilityRowsUnattributed, 0);
 });
@@ -243,13 +244,15 @@ test("the census states what the capability matrix literally says", () => {
   const assessment = assessRequirementTraceability({ repoRoot });
 
   assert.equal(assessment.capabilityRows, 34);
-  assert.equal(assessment.capabilityRowsCitingRequirement, 17);
-  assert.equal(assessment.capabilityRowsNoCarrier, 14);
+  // 2026-09-29: PRD-capabilities rows 8 (Template) and 28 (Template Cache) cite
+  // REQ-2026-0029 after the draft authority registered.
+  assert.equal(assessment.capabilityRowsCitingRequirement, 19);
+  assert.equal(assessment.capabilityRowsNoCarrier, 12);
   assert.equal(assessment.capabilityRowsBackReference, 3);
   const report = formatRequirementTraceabilityReport(assessment);
   assert.match(report, /Capability alignment census/u);
-  assert.match(report, /17 cite a `REQ-\*`/u);
-  assert.match(report, /14 are marked `无`/u);
+  assert.match(report, /19 cite a `REQ-\*`/u);
+  assert.match(report, /12 are marked `无`/u);
 });
 
 test("the census buckets partition the matrix so the line cannot sum past its own row count", () => {

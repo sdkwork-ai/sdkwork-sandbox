@@ -97,3 +97,8 @@
 
 - 所有者会话指令逐字登记（"持续回归对齐，确保完整兼容E2B能力，直到所有能力对齐为止"+"继续"），按 REVIEW-20260924 单一所有者惯例形成结构化决策：ALIGN-01 切片顺序（Template 权威 REQ → 0019 Pool 晋级+切片 → 0021 checkpoint 切片 → 0028 权威 v1 生命周期面+SDK 重生成 → Warm/KVM 证据切片）、ALIGN-02 全表面一提交落地规则、ALIGN-03 无模拟边界（无 KVM/PG/Docker 环境下相关能力保持诚实 pending-gate，禁止用模拟器充证据）、ALIGN-04 载体先行（先登记 draft REQ+契约再谈实现）、ALIGN-05 本包不授权任何实现。
 - 本提交只落决策记录 + exit 包行 + INDEX 登记；REQ-2026-0029（Template 权威）按 ALIGN-04 作为下一提交的完整单元（含 §3.4 行移出+更正账+census+PRD 行联动，四组重算计数一次到位）。
+
+## REVIEW-20260929 对齐切片1：REQ-2026-0029 Template 权威登记
+
+- `REQ-2026-0029`（draft）+ `specs/sandbox-template-authority.contract.json`（draft、实现未授权）：Template 权威模型（声明式定义、tags/aliases 版本化、构建输入仅限 Dockerfile/脚本引用、Hot/Warm/Cold 缓存语义边界）、与 REQ-2026-0012 制品 Tuple 分层（Template 引用不拥有 Evidence）、Docker 仅作构建输入。零实现授权。
+- 钉面全联动（一提交）：parity §3.4 第 1/2 行移出并重编号（3-8→1-6）+ 全部引用改写、矩阵行 4/25/28 与 §3.2 Template 行改写（2 行 ❌→🟡）、census Template 9|0|3|5|1 与合计 78|0|18|58|2、§1.1 三组数字（REQ 29 份/draft 20、契约 24 份中 22 未授权）、§3.5 PRD 断言 11→10、归属账第 3 行判已证伪+更正账第 3 行（缺失探针）、requirements 28→29 / draft 19→20 契约钉、PRD 尚未拆分 Template 行、PRD-capabilities 第 8/28 行、INDEX。

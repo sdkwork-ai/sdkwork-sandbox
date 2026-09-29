@@ -200,6 +200,11 @@ entries:
     layer: work
     audience: [product, architecture, engineering, security, privacy, rpc, sdk, storage, release, reliability, operations, review]
     status: draft
+  - id: REQ-2026-0029
+    path: docs/product/requirements/REQ-2026-0029-sandbox-template-authority.md
+    layer: product
+    audience: [product, architecture, engineering, review]
+    status: draft
   - id: REQ-2026-0028
     path: docs/product/requirements/REQ-2026-0028-sandbox-e2b-compatible-api-sdk-family.md
     layer: work
