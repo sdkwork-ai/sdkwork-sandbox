@@ -55,3 +55,6 @@ Thumbs.db
 sdks/**/generated/server-openapi/dist/
 sdks/**/generated/server-openapi/target/
 sdks/**/generated/server-openapi/node_modules/
+
+# Local tooling config (do not commit)
+.zcodeignore
