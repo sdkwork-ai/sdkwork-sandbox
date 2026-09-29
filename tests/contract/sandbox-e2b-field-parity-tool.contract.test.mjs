@@ -36,9 +36,10 @@ const REAL_DOCUMENTED_OPERATIONS = 71;
 const REAL_CONTRACT_FILES = 42;
 const REAL_CONTRACT_TESTS = 678;
 // 2026-09-29: the lifecycle delta/retention slices, the SQLx service-driven delta
-// integration test, the drain-gate readiness test, and the per-tenant partition test
-// take the workspace to 143 runnable + 2 external-PostgreSQL ignored tests.
-const REAL_RUST_WORKSPACE = { command: "cargo test --workspace", passed: 143, failed: 0, ignored: 2 };
+// integration test, the drain-gate readiness test, the per-tenant partition test,
+// and the Firecracker-provider Gate 0 boundary crate take the workspace to
+// 176 runnable + 2 external-PostgreSQL ignored tests.
+const REAL_RUST_WORKSPACE = { command: "cargo test --workspace", passed: 176, failed: 0, ignored: 2 };
 const REAL_RULE_FAMILIES = 11;
 /** The product matrix join: PRD section 11 rows vs the baseline rows that map onto them. */
 const REAL_MATRIX_ROWS = 34;
@@ -404,7 +405,7 @@ test("the gate's report names the coverage it verified", () => {
   assert.match(report, /0 row\(s\) rest on the documentation index \(ceiling 0\)/);
   assert.match(report, /71 operation\(s\), 70 judged by a row, 1 recorded unjudged/);
   assert.match(report, /34 product row\(s\), 57 baseline row\(s\) mapped, 21 registered unmapped, 9 product row\(s\) registered without a baseline row/);
-  assert.match(report, /678 contract test\(s\) recomputed from tests\/contract, 143 Rust test\(s\) recorded/);
+  assert.match(report, /678 contract test\(s\) recomputed from tests\/contract, 176 Rust test\(s\) recorded/);
   assert.match(report, /11 rule families declared consistently in 4 surface\(s\)/);
 });
 

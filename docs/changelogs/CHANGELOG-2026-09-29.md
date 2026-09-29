@@ -79,3 +79,16 @@
 - `sdkgen` 生成三语言 SDK（`sdkwork-v3` custom profile）：TypeScript（package check+build 通过）、Rust（cargo build 通过）、Python（生成成功；package twine 校验缺环境工具）。生成源码提交，`dist/`/`target/`/`node_modules/` 加入 .gitignore。
 - 本地门禁收窄（双规范交叉点）：`check-sandbox-workspace-dependency-inheritance.mjs` 豁免 `sdks/**/generated/**` 的 Cargo.toml——生成包是 generator-owned（SDK_SPEC 禁止手改）且非 workspace 成员（RUST_CODE_SPEC §14 管成员）；家族 component spec 补齐 NAMING/CODE_STYLE/TYPESCRIPT/RUST canonical specs。
 - 已知环境项：`cargo test --workspace` 当前被兄弟仓 sdkwork-iam 的并发未提交 WIP（Cargo.toml/Cargo.lock 变更导致 web-adapter 编译失败）阻断，属外部暂态；本仓受影响 crate 单独验证 142/0 全绿。
+
+## REQ-2026-0008 授权切片：Firecracker Provider Gate 0 边界 crate
+
+- `crates/sdkwork-sandbox-provider-firecracker/` 落地（`REQ-2026-0008`，2026-09-24 已 `ready` 授权）：
+  - `artifact`：Release-published `SandboxFirecrackerArtifactManifest` 的精确 Tuple 校验（Role 必备、sha256 小写 hex、Firecracker/Jailer 同 Release、Tuple↔Descriptor digest 一致、跨架构拒绝；无下载 URL/Host Path/运行时下载）。
+  - `preflight`：对注入 Host Facts 的 fail-closed 判定——平台核心（Linux KVM x86_64/aarch64、`/dev/kvm`、cgroup v2、Jailer 验证、Runtime Data Root、Broker、Manifest）任一缺失即 `Unavailable`，策略集成（Workspace/Network/Resource/Guest Channel）缺失即 `Degraded`；不降级 `MicroVm` Assurance，`missing_preflight_is_ready=false`。
+  - `fencing`：每 `SandboxRuntimeBindingId` 的 max-observed Fencing Token；文件 store（temp+rename 原子写、严格解析、损坏 fail-closed、绑定名 hex 文件名）+ 内存 store 同语义；重启恢复与 stale 拒绝先于副作用均有测试。
+  - `broker`：REQ-2026-0011 接缝（Prepare/Boot/Shutdown/Terminate/Cleanup 固定操作、opaque 引用、Quarantined 错误族），真实 Broker 属后续切片。
+  - `guest_boundary`/`command_admission`/`command_executor`/`guest_channel`：与 Local 同语义的纯数据边界 + bounded 注册表（1024/128、1 GiB/256 MiB 输出预算）+ executor 侧硬超时与输出截断；共享 `SandboxCommandExecutor` 端口，无 Firecracker-private DTO。
+  - `lifecycle`：中性 `SandboxProvider`——allocate/start/stop/destroy 全部先 Fencing 后 Registry 后 Broker；Readiness 逐字段从 Broker 验证声明挣取；Stop 先 Guest 有界 Shutdown 后 VMM Termination；Destroy 幂等、cleanup 失败置 `Quarantined`；Descriptor 固定 Kind `firecracker`/Assurance `MicroVm`，Capability 仅由显式证据派生（默认零声明）。
+- 无 KVM/Jailer/VMM 运行时、无网络/资源/Workspace 机制 Port、无 KVM 证据；Windows/macOS/WSL Host 在 Preflight 报 `Unavailable`，绝不回退弱 Provider。
+- 钉面同步：§3.1 覆盖表 +7 行 / +33 用例（总 39 行 / 178 用例 = 176 passed + 2 ignored）、`cargo test --workspace` 读数 143→176、`testInventory.rustWorkspace` 与 `tools/README` 同步；crates/README、`TECH-modules-and-contracts`（表格 + 布局 + 切片段落）入册；workspace tokio 增加 `fs` feature。
+- 本仓顺带修复 HEAD 上一处既有 `cargo fmt --check` 漂移（`sdkwork-routes-sandbox-internal-api/src/handlers.rs` 的 use 重排）。

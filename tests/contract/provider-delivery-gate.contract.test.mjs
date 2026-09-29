@@ -150,10 +150,30 @@ test("Gate 0 keeps the Local component free of public ports and entrypoints", ()
 });
 
 test("Gate 0 keeps deferred Provider crates out and confines process spawning to the Local runner", () => {
+  // 2026-09-29: the Firecracker boundary slice (REQ-2026-0008, ready) exists as a
+  // crate, but it is boundary-only: no process spawning, no VMM/KVM runtime - the
+  // boot sequence runs through the host isolation broker seam, whose real adapter
+  // is a later evidence-gated slice. The assertion below pins exactly that; the
+  // Docker provider stays out entirely.
   assert.equal(
     existsSync(path.join(repoRoot, "crates/sdkwork-sandbox-provider-firecracker")),
-    false,
+    true,
   );
+  const firecrackerSources = collectRustSources(
+    "crates/sdkwork-sandbox-provider-firecracker/src",
+  ).join("\n");
+  const firecrackerForbiddenPatterns = [
+    [/\b(?:std::process|tokio::process|Command::new)\b/u, "process spawning"],
+    [/\b(?:unsafe|std::os::unix|std::os::windows|libc::)\b/u, "unsafe or raw OS access"],
+    [/#\[cfg\((?:unix|windows|target_os)[)=]/u, "platform-conditional code"],
+  ];
+  for (const [firecrackerPattern, firecrackerLabel] of firecrackerForbiddenPatterns) {
+    assert.doesNotMatch(
+      firecrackerSources,
+      firecrackerPattern,
+      `the Firecracker boundary crate must stay free of ${firecrackerLabel}`,
+    );
+  }
   assert.equal(
     existsSync(path.join(repoRoot, "crates/sdkwork-sandbox-provider-docker")),
     false,

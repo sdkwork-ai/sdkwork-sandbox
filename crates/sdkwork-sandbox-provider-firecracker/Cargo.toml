@@ -1,0 +1,24 @@
+[package]
+rust-version.workspace = true
+name = "sdkwork-sandbox-provider-firecracker"
+description = "Fail-closed Firecracker microVM Sandbox provider boundary: artifact tuple, preflight, fencing, broker seam, and guest command execution."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+name = "sdkwork_sandbox_provider_firecracker"
+path = "src/lib.rs"
+
+[dependencies]
+async-trait.workspace = true
+sdkwork-sandbox-provider-spi.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

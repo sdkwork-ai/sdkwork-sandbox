@@ -7,6 +7,7 @@ members = [
     "crates/sdkwork-intelligence-sandbox-repository-memory",
     "crates/sdkwork-intelligence-sandbox-repository-sqlx",
     "crates/sdkwork-sandbox-provider-local",
+    "crates/sdkwork-sandbox-provider-firecracker",
     "crates/sdkwork-sandbox-service-host",
     "crates/sdkwork-sandbox-cli",
     "crates/sdkwork-routes-sandbox-internal-api",
@@ -28,7 +29,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "json"] }
 thiserror = "2"
-tokio = { version = "1.53", features = ["io-util", "macros", "process", "rt", "rt-multi-thread", "net", "signal", "sync", "time"] }
+tokio = { version = "1.53", features = ["fs", "io-util", "macros", "process", "rt", "rt-multi-thread", "net", "signal", "sync", "time"] }
 process-wrap = { version = "10.0", default-features = false, features = ["creation-flags", "job-object", "kill-on-drop", "process-group", "tokio1"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
@@ -37,6 +38,8 @@ zeroize = "1"
 
 sdkwork-api-sandbox-assembly = { path = "crates/sdkwork-api-sandbox-assembly" }
 sdkwork-sandbox-provider-spi = { path = "crates/sdkwork-sandbox-provider-spi" }
+sdkwork-sandbox-provider-local = { path = "crates/sdkwork-sandbox-provider-local" }
+sdkwork-sandbox-provider-firecracker = { path = "crates/sdkwork-sandbox-provider-firecracker" }
 sdkwork-intelligence-sandbox-service = { path = "crates/sdkwork-intelligence-sandbox-service" }
 sdkwork-intelligence-sandbox-repository-sqlx = { path = "crates/sdkwork-intelligence-sandbox-repository-sqlx" }
 sdkwork-routes-sandbox-internal-api = { path = "crates/sdkwork-routes-sandbox-internal-api" }

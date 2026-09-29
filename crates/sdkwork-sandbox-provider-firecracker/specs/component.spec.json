@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.component.spec",
+  "component": {
+    "name": "sdkwork-sandbox-provider-firecracker",
+    "displayName": "SDKWork Sandbox Firecracker Provider",
+    "version": "0.1.0",
+    "type": "rust-crate",
+    "root": "sdkwork-sandbox/crates/sdkwork-sandbox-provider-firecracker",
+    "domain": "intelligence",
+    "capability": "sandbox-firecracker-execution",
+    "surfaceNotRequiredReason": "This L4 Firecracker provider adapter owns no HTTP, SDK, UI, or admin surface.",
+    "languages": [
+      "rust"
+    ],
+    "generated": false,
+    "manifests": [
+      "Cargo.toml"
+    ]
+  },
+  "canonicalSpecs": [
+    {
+      "file": "COMPONENT_SPEC.md",
+      "path": "../../../sdkwork-specs/COMPONENT_SPEC.md",
+      "purpose": "Provider component contract and integration rules."
+    },
+    {
+      "file": "APPLICATION_LAYERED_ARCHITECTURE_SPEC.md",
+      "path": "../../../sdkwork-specs/APPLICATION_LAYERED_ARCHITECTURE_SPEC.md",
+      "purpose": "L4 provider adapter dependency direction."
+    },
+    {
+      "file": "CODE_STYLE_SPEC.md",
+      "path": "../../../sdkwork-specs/CODE_STYLE_SPEC.md",
+      "purpose": "Authored adapter source boundaries."
+    },
+    {
+      "file": "NAMING_SPEC.md",
+      "path": "../../../sdkwork-specs/NAMING_SPEC.md",
+      "purpose": "Provider adapter naming."
+    },
+    {
+      "file": "RUST_CODE_SPEC.md",
+      "path": "../../../sdkwork-specs/RUST_CODE_SPEC.md",
+      "purpose": "Rust adapter structure and verification."
+    },
+    {
+      "file": "SECURITY_SPEC.md",
+      "path": "../../../sdkwork-specs/SECURITY_SPEC.md",
+      "purpose": "MicroVm isolation, least privilege, and secret redaction."
+    },
+    {
+      "file": "RUNTIME_DIRECTORY_SPEC.md",
+      "path": "../../../sdkwork-specs/RUNTIME_DIRECTORY_SPEC.md",
+      "purpose": "Composition-owned runtime roots for provider-private fencing records."
+    },
+    {
+      "file": "OBSERVABILITY_SPEC.md",
+      "path": "../../../sdkwork-specs/OBSERVABILITY_SPEC.md",
+      "purpose": "Redacted logs and bounded metrics without host/guest private identifiers."
+    },
+    {
+      "file": "PERFORMANCE_SPEC.md",
+      "path": "../../../sdkwork-specs/PERFORMANCE_SPEC.md",
+      "purpose": "Hard bounds for boot, command, timeout, and cleanup work."
+    },
+    {
+      "file": "SUPPLY_CHAIN_SECURITY_SPEC.md",
+      "path": "../../../sdkwork-specs/SUPPLY_CHAIN_SECURITY_SPEC.md",
+      "purpose": "Artifact tuple digest/signature evidence gates."
+    },
+    {
+      "file": "TEST_SPEC.md",
+      "path": "../../../sdkwork-specs/TEST_SPEC.md",
+      "purpose": "Provider conformance and security verification."
+    }
+  ],
+  "contracts": {
+    "layerRole": "backend-provider",
+    "publicExports": [
+      "artifact",
+      "broker",
+      "command_admission",
+      "command_executor",
+      "fencing",
+      "guest_boundary",
+      "guest_channel",
+      "lifecycle",
+      "preflight"
+    ],
+    "providedPorts": [],
+    "requiredPorts": [],
+    "runtimeEntrypoints": [],
+    "routeManifest": null,
+    "sdkClients": [],
+    "sdkDependencies": [],
+    "permissionComposition": {},
+    "dependencyApiExports": [],
+    "dependencyApiSurfaces": [],
+    "events": [],
+    "configKeys": []
+  },
+  "verification": {
+    "commands": [
+      "cargo test -p sdkwork-sandbox-provider-firecracker"
+    ]
+  }
+}

@@ -31,6 +31,7 @@ The L0 command contract candidate is authored under [`apis/commands/`](../../../
 | `sdkwork-sandbox-provider-spi` | L3 `backend-domain` | `SandboxProvider`、`SandboxProviderAllocationRequest`、`SandboxProviderStartRequest`、`SandboxProviderStopRequest`、`SandboxProviderDestroyRequest`、Capability/Assurance 与 Sandbox-qualified Identity。 |
 | `sdkwork-intelligence-sandbox-service` | L2 `backend-service` | `SandboxSessionLifecyclePort`、`SandboxSessionRepository`、`SandboxSessionState`、幂等和 Sandbox Provider Selection。 |
 | `sdkwork-sandbox-provider-local` | L4 `backend-provider` | 无 Host Access；仅提供 `#[cfg(test)]` Fake Host Boundary 负向 Harness，预留 Local Adapter Ownership。 |
+| `sdkwork-sandbox-provider-firecracker` | L4 `backend-provider` | `REQ-2026-0008` Gate 0 边界切片：Exact-Tuple Artifact Manifest 校验、fail-closed Preflight、可持久化 Fencing Store、Host Isolation Broker/Guest Channel 接缝、带界命令执行器（共享 conformance 矩阵通过）；无 KVM/Jailer/VMM 运行时，无证据不声明 Capability。 |
 | `sdkwork-intelligence-sandbox-repository-memory` | L4 `backend-repository` | 非生产、单进程 `InMemorySandboxSessionRepository`。 |
 | `sdkwork-intelligence-sandbox-repository-sqlx` | L4 `backend-repository` | PostgreSQL `SandboxSessionRepository`、受保护 Provider Allocation Reference、Tenant-scoped CAS 与 Lease/Fencing 候选实现。 |
 | `sdkwork-sandbox-service-host` | L5 `runtime-service-host` | 无 Runtime Entrypoint；`REQ-2026-0009` draft 机器契约预留 typed Composition，并以跨契约 Profile/Capability Gate 关闭 Local、Cold Firecracker、Cloud Firecracker、Command/Terminal 和可选 Pool Readiness。 |
@@ -53,7 +54,9 @@ Local Provider 的 Fake Host Boundary 仅在测试配置中编译，验证 `.` W
 
 Local Host Boundary 当前由 repository-level `specs/sandbox-local-provider-host-boundary.contract.json` 作为集中候选权威，并被 Provider Delivery Gate 作为 Local Preflight 依赖。它固定 opened Runtime/Workspace Capability Handle 与请求 Identity 一致性、Runtime-Binding-scoped immutable Execution Policy、Provider-owned Logical Executable Registry、无 PATH/CWD Search、Protected Environment Denial、handle-relative no-follow/file-identity Filesystem、Windows suspended Job Object、Linux race-free delegated cgroup v2、macOS Terminal denial、Bounded Cleanup/Quarantine、Sensitive Observability 与 conditional Supply-chain Candidate；明确 String canonicalization/check-then-open、Process Group-only 和 spawn 后 attach 均不是安全保证。契约保持 `draft`、`implementationAuthorized: false`，不创建 Rust Port/Adapter、Host I/O、Process Spawn、Secret Resolver、Runtime Dependency、Config 或 Deployment Profile。
 
-Firecracker Artifact Compatibility 当前只有 repository-level `specs/sandbox-firecracker-artifact-compatibility.contract.json`。它定义 draft `SandboxFirecrackerArtifactManifest`、精确 Architecture Tuple、Evidence、只读原子 Materialization、Revocation 与 Rollback；不创建 Rust Crate/Port、Artifact Builder/Downloader/Resolver、Runtime Path、Config、Release Artifact 或 `MicroVm` Assurance。
+Firecracker Artifact Compatibility 当前只有 repository-level `specs/sandbox-firecracker-artifact-compatibility.contract.json`。它定义 draft `SandboxFirecrackerArtifactManifest`、精确 Architecture Tuple、Evidence、只读原子 Materialization、Revocation 与 Rollback；不创建 Artifact Builder/Downloader/Resolver、Runtime Path、Config、Release Artifact 或 `MicroVm` Assurance。
+
+Firecracker Provider 的 Gate 0 边界切片落在 `crates/sdkwork-sandbox-provider-firecracker`（`REQ-2026-0008`，`ready`）：`artifact` 在宿主侧校验 Release-published Manifest 的精确 Tuple/Digest/Role 规则，`preflight` 对注入的 Host Facts 做 fail-closed 判定（Linux KVM、cgroup v2、Jailer 验证、Runtime Data Root、Broker/Policy 依赖；缺失即 Degraded/Unavailable，不降级 Assurance），`fencing` 持久化每 Binding 的 max-observed Fencing Token（临时文件 + rename 原子写、严格解析、损坏 fail-closed、重启恢复有测试），`broker` 与 `guest_channel`/`guest_boundary` 是可注入接缝（真实 Broker/VMM/Vsock 属于后续证据门切片），`lifecycle` 实现中性 `SandboxProvider`（先 Fencing 后副作用、boot 序列逐字段挣取 Readiness、Stop 先 Guest 后 VMM、Destroy 幂等且 cleanup 失败即 Quarantine）。Descriptor 固定 Kind `firecracker`、Assurance `MicroVm`，Capability 仅由显式证据派生；该切片不实现网络/资源/Workspace 机制 Port、不产生 KVM 证据、不构成 SaaS 能力。
 
 Workspace Block Device/Sanitization 当前只有 repository-level `specs/sandbox-workspace-block-device-attachment.contract.json`。Service Host 仍只注入 provider-neutral `SandboxWorkspaceAttachmentPort`；该契约定义其后的 draft L4 `SandboxWorkspaceBlockDevicePort` 机制、Agents/Drive-or-approved-storage Ownership、Grant、Fencing、At-rest Protection、Guest Device、Readiness、Sanitization、Residue 与 Quarantine；不创建 Rust Crate/Port、Storage Backend、KMS、Device/Mount、Runtime Path 或 `MicroVm` Assurance。
 
@@ -129,6 +132,7 @@ sdkwork-sandbox/
     sdkwork-sandbox-provider-spi/
     sdkwork-intelligence-sandbox-service/
     sdkwork-sandbox-provider-local/
+    sdkwork-sandbox-provider-firecracker/
     sdkwork-intelligence-sandbox-repository-memory/
     sdkwork-intelligence-sandbox-repository-sqlx/
     sdkwork-sandbox-service-host/

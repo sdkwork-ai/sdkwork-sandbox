@@ -11,6 +11,7 @@ Phase 0 components:
 - `sdkwork-sandbox-provider-spi`: L3 provider port boundary.
 - `sdkwork-intelligence-sandbox-service`: L2 sandbox use-case boundary.
 - `sdkwork-sandbox-provider-local`: L4 local-provider adapter boundary.
+- `sdkwork-sandbox-provider-firecracker`: L4 firecracker-provider adapter boundary (`REQ-2026-0008` Gate 0 slice: exact-tuple artifact manifest, fail-closed preflight, durable fencing, broker/guest seams).
 - `sdkwork-sandbox-service-host`: L5 composition host boundary.
 - `sdkwork-sandbox-cli`: L6 local command entrypoint boundary.
 

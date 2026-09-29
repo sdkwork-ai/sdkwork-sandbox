@@ -21,7 +21,9 @@ use crate::payloads::{
     SandboxInstanceView, UpdateSandboxInstanceRequest,
 };
 use crate::ports::SandboxInternalRequestContext;
-use crate::response::{cursor_page_data, finish_api_created, finish_api_json, finish_api_no_content, item_data};
+use crate::response::{
+    cursor_page_data, finish_api_created, finish_api_json, finish_api_no_content, item_data,
+};
 use crate::AppState;
 
 /// Resolves the tenant from the verified context, failing closed.
