@@ -92,3 +92,8 @@
 - 无 KVM/Jailer/VMM 运行时、无网络/资源/Workspace 机制 Port、无 KVM 证据；Windows/macOS/WSL Host 在 Preflight 报 `Unavailable`，绝不回退弱 Provider。
 - 钉面同步：§3.1 覆盖表 +7 行 / +33 用例（总 39 行 / 178 用例 = 176 passed + 2 ignored）、`cargo test --workspace` 读数 143→176、`testInventory.rustWorkspace` 与 `tools/README` 同步；crates/README、`TECH-modules-and-contracts`（表格 + 布局 + 切片段落）入册；workspace tokio 增加 `fs` feature。
 - 本仓顺带修复 HEAD 上一处既有 `cargo fmt --check` 漂移（`sdkwork-routes-sandbox-internal-api/src/handlers.rs` 的 use 重排）。
+
+## E2B 能力对齐程序决策（REVIEW-20260929）
+
+- 所有者会话指令逐字登记（"持续回归对齐，确保完整兼容E2B能力，直到所有能力对齐为止"+"继续"），按 REVIEW-20260924 单一所有者惯例形成结构化决策：ALIGN-01 切片顺序（Template 权威 REQ → 0019 Pool 晋级+切片 → 0021 checkpoint 切片 → 0028 权威 v1 生命周期面+SDK 重生成 → Warm/KVM 证据切片）、ALIGN-02 全表面一提交落地规则、ALIGN-03 无模拟边界（无 KVM/PG/Docker 环境下相关能力保持诚实 pending-gate，禁止用模拟器充证据）、ALIGN-04 载体先行（先登记 draft REQ+契约再谈实现）、ALIGN-05 本包不授权任何实现。
+- 本提交只落决策记录 + exit 包行 + INDEX 登记；REQ-2026-0029（Template 权威）按 ALIGN-04 作为下一提交的完整单元（含 §3.4 行移出+更正账+census+PRD 行联动，四组重算计数一次到位）。

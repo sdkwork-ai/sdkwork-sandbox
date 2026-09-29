@@ -610,6 +610,11 @@ entries:
     layer: work
     audience: [product, architecture, engineering, sdk, api, security, review]
     status: accepted
+  - id: REVIEW-20260929-E2B-CAPABILITY-ALIGNMENT
+    path: docs/engineering/reviews/REVIEW-20260929-sandbox-e2b-capability-alignment.md
+    layer: work
+    audience: [product, architecture, engineering, sdk, api, security, review]
+    status: accepted
   - id: REVIEW-20260929-PROCESS-WRAP-SELECTION-CLOSURE
     path: docs/engineering/reviews/REVIEW-20260929-process-wrap-selection-closure.md
     layer: work

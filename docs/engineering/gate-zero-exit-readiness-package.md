@@ -48,6 +48,7 @@ Updated: 2026-09-22
 | 21 | REVIEW-20260801-sandbox-cloud-data-residency-and-recovery | ADR-20260801-sandbox-cloud-data-residency-and-recovery | REQ-2026-0026 | critical | pending-human-review |
 | 22 | REVIEW-20260801-sandbox-cross-repository-version-compatibility | ADR-20260801-sandbox-cross-repository-version-compatibility | REQ-2026-0027 | critical | pending-human-review |
 | 23 | REVIEW-20260924-sandbox-e2b-api-sdk-authority | ADR-20260924-sandbox-e2b-api-sdk-authority | REQ-2026-0028 | high | accepted |
+| 24 | REVIEW-20260929-sandbox-e2b-capability-alignment | ADR-20260924-sandbox-e2b-api-sdk-authority | REQ-2026-0028 | high | accepted |
 
 **这张表的来源与校验**（2026-09-22 复核）：`风险` 列不是本页判定，它是每个 Review Packet 自己 `Risk:` 头的投影；`状态` 列同理取包内 `Status:`。第 18–22 行是本轮复核新补的——此前它们已处于 `pending-human-review`，却既不在本页表中、也不被任何 `specs/` 契约具名，因此**任何只读本页的评审者都会漏掉它们**。
 
