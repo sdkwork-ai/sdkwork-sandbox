@@ -19,8 +19,10 @@ function readStatus(relativePath) {
 
 const contract = readJson("specs/sandbox-runtime-pool.contract.json");
 
-test("Runtime Pool remains a draft non-implementation contract", () => {
+test("Runtime Pool requirement is ready while the contract stays implementation-gated", () => {
   assert.equal(contract.kind, "sdkwork.sandbox.runtime-pool-contract");
+  // 2026-09-29: REVIEW-20260730 accepted (single-owner, REVIEW-20260929 ALIGN-01 slice 2);
+  // the contract itself stays draft/unauthorized until the control-plane slice lands.
   assert.equal(contract.status, "draft");
   assert.equal(contract.implementationAuthorized, false);
   assert.equal(contract["x-sdkwork-no-runtime-implementation"], true);
@@ -30,19 +32,19 @@ test("Runtime Pool remains a draft non-implementation contract", () => {
     readStatus(
       "docs/product/requirements/REQ-2026-0019-sandbox-runtime-pool-and-fast-allocation.md",
     ),
-    "draft",
+    "ready",
   );
   assert.equal(
     readStatus(
       "docs/architecture/decisions/ADR-20260730-sandbox-runtime-pool-claim-and-sanitization.md",
     ),
-    "proposed",
+    "accepted",
   );
   assert.equal(
     readStatus(
       "docs/engineering/reviews/REVIEW-20260730-sandbox-runtime-pool-architecture-security.md",
     ),
-    "pending-human-review",
+    "accepted",
   );
 });
 

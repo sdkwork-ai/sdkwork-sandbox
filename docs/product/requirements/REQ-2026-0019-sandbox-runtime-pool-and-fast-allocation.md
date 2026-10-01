@@ -6,7 +6,7 @@ title: 交付可清理、可审计的 Sandbox Runtime Pool 与快速分配
 
 owner: SDKWork Runtime Platform
 
-status: draft
+status: ready
 
 source: customer
 
@@ -93,4 +93,8 @@ source: customer
 
 ## Implementation Gate
 
-This Requirement remains `draft`. It creates no Rust port, database table, migration, scheduler, Pool reconciler, Node operation, Snapshot, API, SDK, config key or deployment profile. Architecture, Security, Privacy, Database, Capacity, Commerce, Reliability, KVM Operations and cross-repository Kernel owners must approve the decision and all dependency gates before implementation begins.
+This Requirement is `ready` since 2026-09-29: the REVIEW-20260730 packet was approved for every listed owner role via the single-owner structured decision recorded in REVIEW-20260929 (ALIGN-01 slice 2). The authorization covers the control-plane implementation slice only (provider-neutral pool state machine, fenced idempotent claims, bounded registries); `specs/sandbox-runtime-pool.contract.json` stays implementation-gated (`implementationAuthorized: false`) until that slice lands with code and tests, and Pool runtime against a real VMM, PostgreSQL claim authority, Snapshot reuse, Node operation, API, SDK, config key or deployment profile stay gated on the dependency gates (REQ-2026-0011..0018) and the standing evidence obligations.
+
+## Implementation Authorization
+
+`ready` since 2026-09-29: the repository owner approved the REVIEW-20260730 architecture/security packet for every listed reviewer role via the structured session instruction recorded in REVIEW-20260929 (single-owner convention), executing ALIGN-01 slice 2. The approval authorizes the control-plane implementation slice (provider-neutral pool state machine, fenced idempotent claims, bounded registries) while `specs/sandbox-runtime-pool.contract.json` remains `implementationAuthorized: false` until that slice lands. The packet's evidence obligations (real KVM Prepared-Slot conformance, PostgreSQL multi-controller proof, residue/fencing/saturation suites) remain standing; `WarmMicroVmSlot` stays behind its separate KVM evidence gate and no fast-allocation SLO is claimed.

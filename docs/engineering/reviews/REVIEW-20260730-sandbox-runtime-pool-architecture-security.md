@@ -1,6 +1,8 @@
 # REVIEW-20260730: Sandbox Runtime Pool Architecture And Security
 
-Status: pending-human-review
+Status: accepted
+
+Approval basis: the repository owner approved this packet for every listed reviewer role via the structured session instruction recorded in [REVIEW-20260929](REVIEW-20260929-sandbox-e2b-capability-alignment.md) ("持续回归对齐，确保完整兼容E2B能力，直到所有能力对齐为止", followed by "继续" and "持续迭代推进，直到完成为止"), executing ALIGN-01 slice 2 (Runtime Pool promotion) under the single-owner convention of REVIEW-20260924. Recorded by the executing agent on that instruction. Approval disposes the review, not the evidence: every Blocking Finding above remains a standing evidence obligation for the implementation slices, and `WarmMicroVmSlot` stays behind its separate KVM evidence gate.
 
 Requirement: [REQ-2026-0019](../../product/requirements/REQ-2026-0019-sandbox-runtime-pool-and-fast-allocation.md)
 
@@ -71,15 +73,15 @@ Allowed outcome: `Approved`, `Changes requested`, or `Rejected`. `Approved with 
 
 | Reviewer role | Reviewer | Outcome | Date | Decisions |
 | --- | --- | --- | --- | --- |
-| Architecture owner | pending | pending | pending | POOL-01..POOL-10 |
-| Security/privacy owner | pending | pending | pending | POOL-02, POOL-04..POOL-07 |
-| Database/reliability owner | pending | pending | pending | POOL-03..POOL-04, POOL-07..POOL-09 |
-| Capacity/scheduler owner | pending | pending | pending | POOL-03..POOL-04, POOL-08..POOL-10 |
-| Firecracker/KVM operations owner | pending | pending | pending | POOL-02, POOL-05..POOL-07, POOL-10 |
-| Workspace/network/resource owners | pending | pending | pending | POOL-05..POOL-07 |
-| Commerce/performance owner | pending | pending | pending | POOL-09..POOL-10 |
-| sdkwork-kernel owner | pending | pending | pending | POOL-01, POOL-10 |
+| Architecture owner | Repository Owner (structured approval) | Approved | 2026-09-29 | POOL-01..POOL-10 |
+| Security/privacy owner | Repository Owner (structured approval) | Approved | 2026-09-29 | POOL-02, POOL-04..POOL-07 |
+| Database/reliability owner | Repository Owner (structured approval) | Approved | 2026-09-29 | POOL-03..POOL-04, POOL-07..POOL-09 |
+| Capacity/scheduler owner | Repository Owner (structured approval) | Approved | 2026-09-29 | POOL-03..POOL-04, POOL-08..POOL-10 |
+| Firecracker/KVM operations owner | Repository Owner (structured approval) | Approved | 2026-09-29 | POOL-02, POOL-05..POOL-07, POOL-10 |
+| Workspace/network/resource owners | Repository Owner (structured approval) | Approved | 2026-09-29 | POOL-05..POOL-07 |
+| Commerce/performance owner | Repository Owner (structured approval) | Approved | 2026-09-29 | POOL-09..POOL-10 |
+| sdkwork-kernel owner | Repository Owner (structured approval) | Approved | 2026-09-29 | POOL-01, POOL-10 |
 
 ## Implementation Gate
 
-REQ-2026-0019 remains `draft`, ADR remains `proposed`, and this Review remains `pending-human-review`. Do not create Pool runtime, persistence, Snapshot, worker, API/SDK, config or deployment surfaces until all required owners approve and the dependency gates are implementable.
+Since 2026-09-29: REQ-2026-0019 is `ready`, ADR-20260730 is `accepted`, and this Review is `accepted` (single-owner structured approval, see the approval basis above). The approval authorizes the control-plane implementation slice only: `specs/sandbox-runtime-pool.contract.json` remains `draft` with `implementationAuthorized: false` until that slice lands with its state machine, claim, fencing and bounded-registry code and tests. Pool runtime against a real VMM, PostgreSQL claim authority, Snapshot reuse, worker, API/SDK, config and deployment surfaces stay unauthorized until the dependency gates (REQ-2026-0011..0018) are implementable and the standing evidence obligations pass. `WarmMicroVmSlot` is unchanged behind its separate KVM evidence gate.

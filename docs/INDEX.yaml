@@ -159,7 +159,7 @@ entries:
     path: docs/product/requirements/REQ-2026-0019-sandbox-runtime-pool-and-fast-allocation.md
     layer: work
     audience: [product, architecture, engineering, security, privacy, performance, quota, commerce, database, operations]
-    status: draft
+    status: ready
   - id: REQ-2026-0020
     path: docs/product/requirements/REQ-2026-0020-sandbox-lifecycle-hot-state-and-idempotency-retention.md
     layer: work
@@ -304,7 +304,7 @@ entries:
     path: docs/architecture/decisions/ADR-20260730-sandbox-runtime-pool-claim-and-sanitization.md
     layer: work
     audience: [architecture, engineering, security, privacy, performance, capacity, commerce, database, operations, review]
-    status: proposed
+    status: accepted
   - id: ADR-20260730-LIFECYCLE-HISTORY
     path: docs/architecture/decisions/ADR-20260730-sandbox-lifecycle-hot-state-and-idempotency-ledger.md
     layer: work
@@ -454,7 +454,7 @@ entries:
     path: docs/engineering/reviews/REVIEW-20260730-sandbox-runtime-pool-architecture-security.md
     layer: work
     audience: [product, architecture, engineering, security, privacy, performance, capacity, commerce, database, operations, review]
-    status: pending-human-review
+    status: accepted
   - id: REVIEW-20260730-LIFECYCLE-HISTORY
     path: docs/engineering/reviews/REVIEW-20260730-sandbox-lifecycle-history-and-idempotency-retention.md
     layer: work

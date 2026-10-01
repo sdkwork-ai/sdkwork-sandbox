@@ -102,3 +102,9 @@
 
 - `REQ-2026-0029`（draft）+ `specs/sandbox-template-authority.contract.json`（draft、实现未授权）：Template 权威模型（声明式定义、tags/aliases 版本化、构建输入仅限 Dockerfile/脚本引用、Hot/Warm/Cold 缓存语义边界）、与 REQ-2026-0012 制品 Tuple 分层（Template 引用不拥有 Evidence）、Docker 仅作构建输入。零实现授权。
 - 钉面全联动（一提交）：parity §3.4 第 1/2 行移出并重编号（3-8→1-6）+ 全部引用改写、矩阵行 4/25/28 与 §3.2 Template 行改写（2 行 ❌→🟡）、census Template 9|0|3|5|1 与合计 78|0|18|58|2、§1.1 三组数字（REQ 29 份/draft 20、契约 24 份中 22 未授权）、§3.5 PRD 断言 11→10、归属账第 3 行判已证伪+更正账第 3 行（缺失探针）、requirements 28→29 / draft 19→20 契约钉、PRD 尚未拆分 Template 行、PRD-capabilities 第 8/28 行、INDEX。
+
+## REVIEW-20260929 对齐切片2：REQ-2026-0019 Runtime Pool 晋级 ready
+
+- 单一所有者结构化决策（REVIEW-20260929 ALIGN-01 切片 2，会话指令逐字登记）：`REVIEW-20260730` 评审包接受（POOL-01..10 全部批准，8 个评审角色）、`ADR-20260730` 进入 `accepted`、`REQ-2026-0019` 进入 `ready`（含 Implementation Authorization 节）。
+- 边界保持诚实：`specs/sandbox-runtime-pool.contract.json` 仍为 `draft` 且 `implementationAuthorized: false`，授权范围仅控制面切片（状态机/fenced 幂等 Claim/有界注册表）；WarmMicroVmSlot 不变地锁在 KVM 证据门后；Blocking Findings 全部转为实现切片的持续证据义务；无 p95<500ms SLO 声明。
+- 钉面联动：pool 契约测试首测改名并钉新状态三元组（REQ ready/ADR accepted/packet accepted/契约仍 draft+false）、契约套件 ready 4→5+draft 20→19+decisions proposed 24→23/accepted 4→5+ready 名单+REQ-2026-0019、INDEX 三条目、parity §1.1/§4 计数与 Pool 空档行、exit 包第 14 行+pending 计数 19→18、gate-zero 视图当前读数行刷新（🟡18/❌58、6 零需求断言、178/178、13 形状 14 锚——顺手修复上一轮遗留的陈旧自述）。

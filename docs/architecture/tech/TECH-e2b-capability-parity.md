@@ -53,7 +53,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 具体到三个数字：
 
 - E2B 的能力集合共 **78 项**（本分片逐行展开），本仓 ✅ **0**、🟡 **18**、❌ **58**、⛔ **2**。
-- 29 份 `REQ-*` 中 **4 份 `ready`**（5 `accepted` / 20 `draft`）——2026-09-29 起 `REQ-2026-0028` E2B API/SDK 权威随所有者结构化决策进入 `ready`，同日 `REQ-2026-0029`（Template 权威）以 `draft` 登记承载 Template 能力类；28 份 `ADR` 中 24 份 `proposed`（4 份 `accepted`）——新增 `ADR-20260924`；机器契约授权状态：24 份 `*.contract.json` 中 22 份显式声明 `implementationAuthorized: false`（含 2026-09-29 新增的 `specs/sandbox-template-authority.contract.json`）、**1 份已授权实现**——`specs/sandbox-local-provider-host-boundary.contract.json`（其人审 packet 已于 2026-09-24 由仓库所有者全部评审角色签署），第 24 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约：`apis/commands/sandbox-command-contract.json` 已于 2026-09-24 随 `REQ-2026-0007` 进入 `ready` 授权实现，`apis/async/sandbox-observability-catalog.json` 仍为 `false`。
+- 29 份 `REQ-*` 中 **5 份 `ready`**（5 `accepted` / 19 `draft`）——2026-09-29 起 `REQ-2026-0028` E2B API/SDK 权威随所有者结构化决策进入 `ready`，同日 `REQ-2026-0029`（Template 权威）以 `draft` 登记承载 Template 能力类、`REQ-2026-0019`（Runtime Pool）随 `REVIEW-20260730` 接受进入 `ready`；28 份 `ADR` 中 23 份 `proposed`（5 份 `accepted`）——`ADR-20260924` 与 `ADR-20260730` 相继接受；机器契约授权状态：24 份 `*.contract.json` 中 22 份显式声明 `implementationAuthorized: false`（含 2026-09-29 新增的 `specs/sandbox-template-authority.contract.json`）、**1 份已授权实现**——`specs/sandbox-local-provider-host-boundary.contract.json`（其人审 packet 已于 2026-09-24 由仓库所有者全部评审角色签署），第 24 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约：`apis/commands/sandbox-command-contract.json` 已于 2026-09-24 随 `REQ-2026-0007` 进入 `ready` 授权实现，`apis/async/sandbox-observability-catalog.json` 仍为 `false`。
 - 8 份契约声明的 **127 个证据 id** 中，只有 **2 个**有 host-precondition 半产出，**125 个**仍被真实 runner 或人工评审完全阻塞。
 
 因此本仓对用户画像的承诺（`PRD.md` 第 2 节"AI Agent 应用开发者：用少量代码获得一个可执行代码、可读写文件、可访问网络、可持久化的独立运行环境"）**当前为零兑现**。
@@ -348,7 +348,7 @@ node --test tests/contract/*.test.mjs
 
 | 优先级 | 空档 | 性质 | 取证 | 说明 |
 | --- | --- | --- | --- | --- |
-| 1 | **500 ms 热分配目标没有测量者，三份性能文档互不 join** | 治理阻塞 | `REQ-2026-0019` | 目标（`PRD.md` 第 6 节）说的是"公开参考环境中 Pool 到 Workspace 绑定 p95 小于 500 ms"；基线（`docs/architecture/tech/TECH-performance-baseline.md`）自述**发布门禁资格：不合格**，且其第 0.2 条明确"分子（编排）已测、分母（真实沙箱启动）不存在"，测的是编排地板；容量分片（`docs/architecture/tech/TECH-performance-and-capacity.md`）声明"全部数值都是工程目标"。三份文件各说各话、无人同时读它们。而 500 ms 对应的 Pool 路径由 `REQ-2026-0019` 承载且仍是 `draft`，所以**这里连可测的实现都还没有**，只能先作为阻塞登记 |
+| 1 | **500 ms 热分配目标没有测量者，三份性能文档互不 join** | 缺产物 | `tools/bench-sandbox-pool-claim.mjs` | 目标（`PRD.md` 第 6 节）说的是"公开参考环境中 Pool 到 Workspace 绑定 p95 小于 500 ms"；基线（`docs/architecture/tech/TECH-performance-baseline.md`）自述**发布门禁资格：不合格**，且其第 0.2 条明确"分子（编排）已测、分母（真实沙箱启动）不存在"，测的是编排地板；容量分片（`docs/architecture/tech/TECH-performance-and-capacity.md`）声明"全部数值都是工程目标"。三份文件各说各话、无人同时读它们。500 ms 对应的 Pool 路径由 `REQ-2026-0019` 承载——该记录 2026-09-29 已随 `REVIEW-20260730` 接受进入 `ready`，原来的"无需求承载"治理阻塞已解除；现在的缺口是测量者产物本身：Pool Claim→Running 基准承载要等控制面实现切片落地才会创建，故按 `缺产物` 重新登记 |
 
 **本表此前有一行是假的，这正是新增门禁的由来。** 原第 5 行写作「"快速创建/快速部署"的性能断言全为零测试」，性质一栏写着"既无参考硬件也无 Benchmark 套件，且该目标没有任何需求承载"——**这句有一半不成立**：`REQ-2026-0019` 承载的正是这个目标，`tools/bench-sandbox-lifecycle.mjs` 与两平台原始样本也都在树里（样本落在 gitignore 的 `target/` 下，是证据不是缓存）。一张"缺什么"的清单如果不可被目录列举推翻，它就会越写越旧。所以本节改成带性质的表，并由门禁按性质**反向核验**：`缺产物` 点名的路径必须**不存在**、`缺门禁` 点名的路径必须**存在**、`治理阻塞` 必须点名一份**记录在案且尚未 `ready`** 的需求——三者问的都是"这句话能不能被证伪"，不是措辞问题。
 
@@ -524,7 +524,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 | 缺口 | 性质 | 说明 |
 | --- | --- | --- |
-| 无 Runtime Pool（`PreparedSlot` / `WarmMicroVmSlot` / fenced Claim） | 设计级 | `REQ-2026-0019`（draft）。无 Pool 则每次都是冷启动，"快"无从谈起 |
+| 无 Runtime Pool 实现（`PreparedSlot` / `WarmMicroVmSlot` / fenced Claim） | 设计级 | `REQ-2026-0019` 已 `ready`（2026-09-29，`REVIEW-20260730` 接受；机器契约仍 `implementationAuthorized: false`，控制面切片先行）。无 Pool 则每次都是冷启动，"快"无从谈起 |
 | 无 Snapshot / Fork（含 `Sandbox.create(snapshotId)`） | 设计级 | 产品要求已写，`REQ-*` 为零〔§3.4/2〕；Fork 一致性语义未定 |
 | 无 Pause / Resume（含 fs-only 与 reboot-on-resume） | 设计级 | Provider trait 无 `pause`/`resume`；实现状态枚举无 `Paused` |
 | 无 Auto Pause / Auto Resume（Idle 收敛） | 纯增量 | 依赖可观测事实组合，而非单一定时器 |
@@ -575,12 +575,12 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 本仓不是"有些功能没做完"，而是**治理门禁未打开**。四条硬门禁互相依赖：
 
-1. 29 份 `REQ-*` 中 4 份 `ready`（5 `accepted` / 20 `draft`）→ 其余逐份人工评审进 `ready`（2026-09-29 起 `REQ-2026-0028` 已进入 `ready`；`REQ-2026-0029` Template 权威同日以 `draft` 登记）。
-2. 28 份 `ADR` 中 24 份 `proposed`（4 份 `accepted`）→ 其余需 `accepted`（`ADR-20260924` 已 `accepted`）。
+1. 29 份 `REQ-*` 中 5 份 `ready`（5 `accepted` / 19 `draft`）→ 其余逐份人工评审进 `ready`（2026-09-29 起 `REQ-2026-0028`、`REQ-2026-0019` 已进入 `ready`；`REQ-2026-0029` Template 权威同日以 `draft` 登记）。
+2. 28 份 `ADR` 中 23 份 `proposed`（5 份 `accepted`）→ 其余需 `accepted`（`ADR-20260924`、`ADR-20260730` 已 `accepted`）。
 3. 机器契约除已授权的 Local Host Boundary 外全部未授权（24 份 `*.contract.json` + 2 份 `apis/` 机器契约，全部 `implementationAuthorized: false` 或独立声明 `runtimeImplementationAuthorizationGranted: false`）→ 需人工评审签字后翻转。
 4. 8 份契约声明的 127 个证据 id 中 125 个无产出者 → 需真实 runner 与人工评审闭合。
 
-当前签字积压（机器读数）：28 份评审记录中 22 份为 `pending-human-review`，其中 **14 份被机器契约点名门控**。完整清单与 5 步签字程序见 [human-review-signoff-backlog.md](../../engineering/human-review-signoff-backlog.md)。
+当前签字积压（机器读数）：28 份评审记录中 21 份为 `pending-human-review`，其中 **13 份被机器契约点名门控**（`REVIEW-20260730` Runtime Pool 已于 2026-09-29 随单一所有者结构化决策接受）。完整清单与 5 步签字程序见 [human-review-signoff-backlog.md](../../engineering/human-review-signoff-backlog.md)。
 
 `node tools/check-sandbox-commercial-readiness.mjs` 输出 `NO-GO`：6 个交付切片 blocked、5 个缺 `ready` 契约、4 个跨仓权威 blocked。这是**预期行为**，不是缺陷；任何把它读成"就差一点"的解释都是错的。
 

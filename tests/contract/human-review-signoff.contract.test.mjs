@@ -36,16 +36,16 @@ test("the live repository human-review sign-off state is coherent", () => {
 
   assert.equal(assessment.ok, true, assessment.failures.join("\n"));
   assert.equal(assessment.summary.sandbox_named_by_contracts, 14);
-  // Since 2026-09-24 three of the fourteen contract-gated packets are signed off (local provider,
-  // command execution, firecracker provider) and their contracts' shared delivery gate stays closed
-  // on the remaining eleven; the API/SDK authority packet gates no contract.
-  assert.equal(assessment.summary.sandbox_named_by_contracts_and_pending, 11);
+  // Since 2026-09-24 four of the fourteen contract-gated packets are signed off (local provider,
+  // command execution, firecracker provider, runtime pool) and their contracts' shared delivery
+  // gate stays closed on the remaining ten; the API/SDK authority packet gates no contract.
+  assert.equal(assessment.summary.sandbox_named_by_contracts_and_pending, 10);
   assert.ok(assessment.summary.sandbox_pending_human_review > 0);
   // The backlog only ever holds pending packets, so the count is the filter itself.
   assert.equal(
     assessment.backlog.filter((item) => item.gatingContracts.length > 0).length,
-    11,
-    "the eleven unapproved contract-gated packets must still be pending",
+    10,
+    "the ten unapproved contract-gated packets must still be pending",
   );
 });
 

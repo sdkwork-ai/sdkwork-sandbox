@@ -16,7 +16,7 @@ Updated: 2026-09-22
 
 1. Provider Delivery Gate 的 11 个 Review Packet 全部完成人工评审前，`implementationAuthorized` 保持 `false`
 2. Service Host 与 Observability/Event/Outbox 是运行时激活和商业发布的补充门禁，不能因不在 Provider Delivery Gate 的 `humanReview.reviewPackets` 数组中而跳过
-3. 当前全部 **19** 个相关 Review Packet 状态均为 `pending-human-review`（2026-09-24 首批 4 个包——local-provider、command-execution、firecracker-provider、e2b-api-sdk-authority——已获仓库所有者全部评审角色批准进入 `accepted`）。该计数不手工维护：它必须等于 `node tools/check-sandbox-human-review-signoff.mjs` 输出里的 `pending human review`，并且下文表格必须逐行列全这 19 个待签包与已签包的当前状态——两道一致性由同一门禁校验（见本节末尾）。
+3. 当前全部 **18** 个相关 Review Packet 状态为 `pending-human-review`（2026-09-24 首批 4 个包——local-provider、command-execution、firecracker-provider、e2b-api-sdk-authority——与 2026-09-29 的 REVIEW-20260730 Runtime Pool 包已获仓库所有者全部评审角色批准进入 `accepted`，后者按 REVIEW-20260929 ALIGN-01 切片 2 的单一所有者结构化决策记录）。该计数不手工维护：它必须等于 `node tools/check-sandbox-human-review-signoff.mjs` 输出里的 `pending human review`，并且下文表格必须逐行列全这 19 个待签包与已签包的当前状态——两道一致性由同一门禁校验（见本节末尾）。
 4. 人工评审通过后，REQ、ADR、门禁契约、Component Contract 与实现证据必须同步更新，不能只修改 `implementationAuthorized`
 
 当前商业发布判定为 **No-Go**。完整问题、交付顺序和发布证据见 [PLAN-2026-0002](plans/PLAN-2026-0002-commercial-cloud-agent-runtime-delivery.md)。
@@ -38,7 +38,7 @@ Updated: 2026-09-22
 | 11 | REVIEW-20260729-sandbox-postgresql-quota-and-capacity-persistence | ADR-20260729-sandbox-postgresql-quota-and-capacity-reservation-persistence | REQ-2026-0018 | critical | pending-human-review |
 | 12 | REVIEW-20260729-sandbox-service-host-composition-and-readiness | ADR-20260729-sandbox-service-host-composition-and-readiness | REQ-2026-0009 | high | pending-human-review |
 | 13 | REVIEW-20260729-sandbox-observability-event-audit-outbox | ADR-20260729-sandbox-observability-event-audit-outbox-boundary | REQ-2026-0010 | 未声明 | pending-human-review |
-| 14 | REVIEW-20260730-sandbox-runtime-pool-architecture-security | ADR-20260730-sandbox-runtime-pool-claim-and-sanitization | REQ-2026-0019 | critical | pending-human-review |
+| 14 | REVIEW-20260730-sandbox-runtime-pool-architecture-security | ADR-20260730-sandbox-runtime-pool-claim-and-sanitization | REQ-2026-0019 | critical | accepted |
 | 15 | REVIEW-20260730-sandbox-lifecycle-history-and-idempotency-retention | ADR-20260730-sandbox-lifecycle-hot-state-and-idempotency-ledger | REQ-2026-0020 | high | pending-human-review |
 | 16 | REVIEW-20260730-sandbox-workspace-runtime-transaction-architecture-security | ADR-20260730-sandbox-workspace-runtime-transaction-and-checkpoint | REQ-2026-0021 | critical | pending-human-review |
 | 17 | REVIEW-20260730-sandbox-standalone-data-residency-and-recovery | ADR-20260730-sandbox-standalone-data-residency-and-recovery | REQ-2026-0022 | critical | pending-human-review |

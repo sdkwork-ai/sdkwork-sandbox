@@ -1273,6 +1273,7 @@ test("every requirement in this repository declares a readable status", () => {
     "REQ-2026-0003-secure-local-provider.md",
     "REQ-2026-0007-sandbox-command-execution-contract.md",
     "REQ-2026-0008-firecracker-sandbox-provider.md",
+    "REQ-2026-0019-sandbox-runtime-pool-and-fast-allocation.md",
     "REQ-2026-0028-sandbox-e2b-compatible-api-sdk-family.md",
   ]);
 });
@@ -2058,14 +2059,16 @@ test("the repository holds exactly the machine contracts, records and evidence c
   // 2026-09-29: REQ-2026-0029 (Sandbox Template authority) registered as draft.
   assert.equal(requirements.length, 29);
   // The 2026-09-29 structured decision promoted REQ-2026-0028 (E2B API/SDK authority) to ready.
-  assert.equal(requirements.filter((record) => record.status === "ready").length, 4);
+  // 2026-09-29: REQ-2026-0019 (Runtime Pool) promoted to ready with REVIEW-20260730 accepted.
+  assert.equal(requirements.filter((record) => record.status === "ready").length, 5);
   assert.equal(requirements.filter((record) => record.status === "accepted").length, 5);
-  assert.equal(requirements.filter((record) => record.status === "draft").length, 20);
+  assert.equal(requirements.filter((record) => record.status === "draft").length, 19);
   const decisions = readDecisionStatuses(repoRoot);
   assert.equal(decisions.length, 28);
   // The 2026-09-29 structured decision accepted ADR-20260924 (E2B API/SDK authority).
-  assert.equal(decisions.filter((record) => record.status === "proposed").length, 24);
-  assert.equal(decisions.filter((record) => record.status === "accepted").length, 4);
+  // 2026-09-29: ADR-20260730 (Runtime Pool) accepted with the REVIEW-20260730 packet.
+  assert.equal(decisions.filter((record) => record.status === "proposed").length, 23);
+  assert.equal(decisions.filter((record) => record.status === "accepted").length, 5);
 });
 
 test("the repository's own answer section compares every restated figure", () => {

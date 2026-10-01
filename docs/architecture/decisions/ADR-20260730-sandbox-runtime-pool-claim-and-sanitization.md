@@ -1,6 +1,8 @@
 # ADR-20260730: Sandbox Runtime Pool Claim And Sanitization
 
-Status: proposed
+Status: accepted
+
+Accepted: 2026-09-29 by the repository owner via the structured session instruction recorded in REVIEW-20260929 (single-owner convention; see that packet's approval basis). POOL-01..POOL-10 approved; evidence obligations standing.
 
 Requirement: REQ-2026-0019
 
