@@ -173,6 +173,26 @@ pub struct SandboxFirecrackerProvider {
     sandbox_facts_source: Arc<dyn SandboxFirecrackerHostFactsSource>,
     sandbox_budgets: SandboxFirecrackerLifecycleBudgets,
     sandbox_registry: Mutex<HashMap<String, SandboxFirecrackerRegistryEntry>>,
+    sandbox_inflight: Mutex<BTreeSet<String>>,
+}
+
+/// Marks one binding as inside a mutating broker sequence. Entered
+/// synchronously before any await and removed on every drop path, so two
+/// concurrent `start` calls can never drive two boots of one binding, and a
+/// concurrent stop/destroy cannot interleave with a boot.
+struct SandboxInFlightGuard<'a> {
+    sandbox_provider: &'a SandboxFirecrackerProvider,
+    sandbox_binding: String,
+}
+
+impl Drop for SandboxInFlightGuard<'_> {
+    fn drop(&mut self) {
+        self.sandbox_provider
+            .sandbox_inflight
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(&self.sandbox_binding);
+    }
 }
 
 impl fmt::Debug for SandboxFirecrackerProvider {
@@ -217,6 +237,7 @@ impl SandboxFirecrackerProvider {
             sandbox_facts_source,
             sandbox_budgets,
             sandbox_registry: Mutex::new(HashMap::new()),
+            sandbox_inflight: Mutex::new(BTreeSet::new()),
         })
     }
 
@@ -226,6 +247,29 @@ impl SandboxFirecrackerProvider {
         self.sandbox_registry
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Marks a binding in-flight for one mutating broker sequence, failing
+    /// with a Conflict error when a sequence is already running for it. The
+    /// returned guard removes the mark on every drop path, so a failed or
+    /// cancelled operation never leaves the binding permanently locked.
+    fn sandbox_enter_inflight(
+        &self,
+        sandbox_operation: SandboxProviderOperation,
+        sandbox_runtime_binding_id: &str,
+    ) -> Result<SandboxInFlightGuard<'_>, SandboxProviderError> {
+        let mut sandbox_inflight = self
+            .sandbox_inflight
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if !sandbox_inflight.insert(sandbox_runtime_binding_id.to_owned()) {
+            return Err(self.sandbox_error(sandbox_operation, SandboxProviderErrorKind::Conflict));
+        }
+        drop(sandbox_inflight);
+        Ok(SandboxInFlightGuard {
+            sandbox_provider: self,
+            sandbox_binding: sandbox_runtime_binding_id.to_owned(),
+        })
     }
 
     fn sandbox_error(
@@ -421,6 +465,14 @@ impl SandboxProvider for SandboxFirecrackerProvider {
             }
         };
 
+        // One mutating broker sequence per binding at a time: the in-flight
+        // mark is entered before the first await and removed on every drop
+        // path, so a concurrent start/stop/destroy of the same binding
+        // conflicts instead of interleaving host side effects.
+        let sandbox_inflight = self.sandbox_enter_inflight(
+            SandboxProviderOperation::Start,
+            sandbox_request.sandbox_runtime_binding_id.as_str(),
+        )?;
         let sandbox_prepared = self
             .sandbox_run_broker(
                 SandboxProviderOperation::Start,
@@ -545,6 +597,13 @@ impl SandboxProvider for SandboxFirecrackerProvider {
             return Ok(());
         }
 
+        // Same one-sequence-per-binding rule as start: a concurrent stop or
+        // destroy of an in-flight binding conflicts instead of interleaving.
+        let sandbox_inflight = self.sandbox_enter_inflight(
+            SandboxProviderOperation::Stop,
+            sandbox_request.sandbox_runtime_binding_id.as_str(),
+        )?;
+
         // Stop upgrades in the REQ's order: bounded guest shutdown first, VMM
         // termination second. A shutdown transport failure is not fatal - the
         // bounded shutdown is best effort; termination is the enforcement.
@@ -631,6 +690,12 @@ impl SandboxProvider for SandboxFirecrackerProvider {
             }
         }
 
+        // Same one-sequence-per-binding rule as start and stop: cleanup never
+        // interleaves with a boot or a shutdown of the same binding.
+        let sandbox_inflight = self.sandbox_enter_inflight(
+            SandboxProviderOperation::Destroy,
+            sandbox_request.sandbox_runtime_binding_id.as_str(),
+        )?;
         if let Err(sandbox_cleanup_error) = self
             .sandbox_run_broker(
                 SandboxProviderOperation::Destroy,

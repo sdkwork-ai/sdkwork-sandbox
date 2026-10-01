@@ -108,3 +108,9 @@
 - 单一所有者结构化决策（REVIEW-20260929 ALIGN-01 切片 2，会话指令逐字登记）：`REVIEW-20260730` 评审包接受（POOL-01..10 全部批准，8 个评审角色）、`ADR-20260730` 进入 `accepted`、`REQ-2026-0019` 进入 `ready`（含 Implementation Authorization 节）。
 - 边界保持诚实：`specs/sandbox-runtime-pool.contract.json` 仍为 `draft` 且 `implementationAuthorized: false`，授权范围仅控制面切片（状态机/fenced 幂等 Claim/有界注册表）；WarmMicroVmSlot 不变地锁在 KVM 证据门后；Blocking Findings 全部转为实现切片的持续证据义务；无 p95<500ms SLO 声明。
 - 钉面联动：pool 契约测试首测改名并钉新状态三元组（REQ ready/ADR accepted/packet accepted/契约仍 draft+false）、契约套件 ready 4→5+draft 20→19+decisions proposed 24→23/accepted 4→5+ready 名单+REQ-2026-0019、INDEX 三条目、parity §1.1/§4 计数与 Pool 空档行、exit 包第 14 行+pending 计数 19→18、gate-zero 视图当前读数行刷新（🟡18/❌58、6 零需求断言、178/178、13 形状 14 锚——顺手修复上一轮遗留的陈旧自述）。
+
+## Firecracker provider 并发加固（深度回归第一轮）
+
+- `fencing.rs`：FileFencingStore 读-改-写竞态修复——并发写 8/9 曾可双双读到旧最大值、低值后落盘破坏单调性；改为 std Mutex 串行化的同步文件段（锁内无 await、temp+rename 原子写不变），新增双写竞态测试钉死"最大值存活+低值事后 StaleRecord"。
+- `lifecycle.rs`：start/stop/destroy 增加 per-binding in-flight 守卫（同步进出、Drop 兜底）——两并发 start 曾可各自通过阶段检查、对同一 Binding 双跑 prepare/boot；现在第二个操作得到 Conflict 且不触碰 Broker，新增并发 start 测试钉死"恰好一次 boot"。
+- 记账同步：§3.1 两行各 +1 用例（总 180 用例 = 178 passed + 2 ignored）、baseline/tools/README/契约钉/§3.1 散文/gate-zero 视图读数全部 178/176→180/178。

@@ -1292,14 +1292,14 @@ test("the repository's own coverage table accounts for every test the workspace 
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  // 2026-09-29: 178 declared tests (176 runnable + the two external-PostgreSQL
+  // 2026-09-29: 180 declared tests (178 runnable + the two external-PostgreSQL
   // ignored ones) after the lifecycle-ledger delta/retention slices, the SQLx
   // service-driven delta integration test, the API-assembly drain-gate
   // readiness test, the executor per-tenant partition test, and the
   // Firecracker-provider Gate 0 boundary crate (33 tests); the coverage
   // table in the audit document accounts for each of them.
-  assert.equal(assessment.workspaceTests, 178);
-  assert.equal(assessment.coveredTests, 178);
+  assert.equal(assessment.workspaceTests, 180);
+  assert.equal(assessment.coveredTests, 180);
 
   const discovered = discoverWorkspaceTests(repoRoot);
   let runnable = 0;
@@ -1310,9 +1310,9 @@ test("the repository's own coverage table accounts for every test the workspace 
       else runnable += 1;
     }
   }
-  // The two readings the audit quotes have to agree with the code: 178 declared, 176 of them
+  // The two readings the audit quotes have to agree with the code: 180 declared, 178 of them
   // runnable because two declare they need an external PostgreSQL.
-  assert.equal(runnable + ignored, 178);
+  assert.equal(runnable + ignored, 180);
   assert.equal(ignored, 2);
 });
 

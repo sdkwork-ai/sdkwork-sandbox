@@ -86,8 +86,17 @@ pub trait SandboxFirecrackerFencingStore: Send + Sync {
 /// binding under a composition-owned runtime data root. Writes go to a
 /// temporary file that is flushed and then renamed over the record, so a
 /// crash mid-write leaves the previous maximum intact.
+///
+/// The record decision is a read-modify-write, so concurrent writers are
+/// serialized under a process-local lock: without it, two racing writers
+/// could both observe the old maximum and the lower write could land after
+/// the higher one, silently breaking the monotonicity the fencing authority
+/// depends on. The lock guards only the synchronous file work (one tiny
+/// token read plus one atomic rename - no await is held under it); a
+/// multi-process node replaces this store via the same port.
 pub struct SandboxFirecrackerFileFencingStore {
     sandbox_records_root: PathBuf,
+    sandbox_write_lock: std::sync::Mutex<()>,
 }
 
 impl SandboxFirecrackerFileFencingStore {
@@ -103,6 +112,7 @@ impl SandboxFirecrackerFileFencingStore {
         std::fs::create_dir_all(&sandbox_records_root)?;
         Ok(Self {
             sandbox_records_root,
+            sandbox_write_lock: std::sync::Mutex::new(()),
         })
     }
 
@@ -151,23 +161,37 @@ impl SandboxFirecrackerFileFencingStore {
         Ok(sandbox_parsed)
     }
 
-    async fn sandbox_write_record(
+    fn sandbox_read_record_sync(
         &self,
-        sandbox_record_path: PathBuf,
+        sandbox_record_path: &Path,
+    ) -> Result<u64, SandboxFirecrackerFencingStoreError> {
+        match std::fs::read_to_string(sandbox_record_path) {
+            Ok(sandbox_contents) => Self::sandbox_parse_record(&sandbox_contents),
+            Err(sandbox_error) if sandbox_error.kind() == std::io::ErrorKind::NotFound => Ok(0),
+            Err(sandbox_error) => Err(SandboxFirecrackerFencingStoreError::StoreUnavailable(
+                sandbox_error,
+            )),
+        }
+    }
+
+    /// Synchronous atomic record write: temporary file, full sync, rename.
+    /// Callers hold [`Self::sandbox_write_lock`] so only this serialized
+    /// section mutates a record.
+    fn sandbox_write_record_sync(
+        &self,
+        sandbox_record_path: &Path,
         sandbox_fencing_token: u64,
     ) -> Result<(), SandboxFirecrackerFencingStoreError> {
-        let mut sandbox_temporary_name = sandbox_record_path.clone().into_os_string();
+        let mut sandbox_temporary_name = sandbox_record_path.as_os_str().to_os_string();
         sandbox_temporary_name.push(".tmp");
         let sandbox_temporary_path = PathBuf::from(sandbox_temporary_name);
-        let mut sandbox_file = tokio::fs::File::create(&sandbox_temporary_path).await?;
-        tokio::io::AsyncWriteExt::write_all(
-            &mut sandbox_file,
-            sandbox_fencing_token.to_string().as_bytes(),
-        )
-        .await?;
-        sandbox_file.sync_all().await?;
-        drop(sandbox_file);
-        tokio::fs::rename(&sandbox_temporary_path, &sandbox_record_path).await?;
+        {
+            use std::io::Write;
+            let mut sandbox_file = std::fs::File::create(&sandbox_temporary_path)?;
+            sandbox_file.write_all(sandbox_fencing_token.to_string().as_bytes())?;
+            sandbox_file.sync_all()?;
+        }
+        std::fs::rename(&sandbox_temporary_path, sandbox_record_path)?;
         Ok(())
     }
 }
@@ -193,19 +217,25 @@ impl SandboxFirecrackerFencingStore for SandboxFirecrackerFileFencingStore {
         sandbox_runtime_binding_id: &str,
         sandbox_fencing_token: u64,
     ) -> Result<SandboxFirecrackerFencingDecision, SandboxFirecrackerFencingStoreError> {
-        let sandbox_recorded = self
-            .sandbox_max_observed_fencing_token(sandbox_runtime_binding_id)
-            .await?;
-        if sandbox_fencing_token < sandbox_recorded {
-            return Err(SandboxFirecrackerFencingStoreError::StaleRecord);
-        }
-        if sandbox_fencing_token == sandbox_recorded {
-            return Ok(SandboxFirecrackerFencingDecision::Replayed);
-        }
+        // The serialized read-modify-write section: a std lock around
+        // synchronous file work, so no await is ever held under a guard and
+        // two racing writers cannot interleave read-decide-write steps.
+        let sandbox_guard = self
+            .sandbox_write_lock
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let sandbox_record_path = self.sandbox_record_path(sandbox_runtime_binding_id);
-        self.sandbox_write_record(sandbox_record_path, sandbox_fencing_token)
-            .await?;
-        Ok(SandboxFirecrackerFencingDecision::Advanced)
+        let sandbox_recorded = self.sandbox_read_record_sync(&sandbox_record_path)?;
+        let sandbox_decision = if sandbox_fencing_token < sandbox_recorded {
+            return Err(SandboxFirecrackerFencingStoreError::StaleRecord);
+        } else if sandbox_fencing_token == sandbox_recorded {
+            SandboxFirecrackerFencingDecision::Replayed
+        } else {
+            self.sandbox_write_record_sync(&sandbox_record_path, sandbox_fencing_token)?;
+            SandboxFirecrackerFencingDecision::Advanced
+        };
+        drop(sandbox_guard);
+        Ok(sandbox_decision)
     }
 }
 
@@ -390,6 +420,73 @@ mod tests {
             Err(SandboxFirecrackerFencingAuthorityError::StaleFencing)
         ));
         std::fs::remove_file(sandbox_root.join("binding-62696e64696e672f6f64643a6964.token"))
+            .expect("enumerated fencing record must remove");
+        std::fs::remove_dir(sandbox_root).expect("enumerated fencing root must remove");
+    }
+
+    #[tokio::test]
+    async fn racing_writers_cannot_lose_the_higher_token() {
+        let sandbox_root = sandbox_temp_root("race");
+        let sandbox_store = std::sync::Arc::new(
+            SandboxFirecrackerFileFencingStore::new(sandbox_root.clone())
+                .expect("fencing records root must create"),
+        );
+        // Two racing records for one binding: whatever the interleaving, the
+        // serialized read-modify-write must keep the maximum monotonic - the
+        // record ends at the higher token and later rejects the lower one.
+        let sandbox_writer_low = std::sync::Arc::clone(&sandbox_store);
+        let sandbox_writer_high = std::sync::Arc::clone(&sandbox_store);
+        let (sandbox_low, sandbox_high) = tokio::join!(
+            async move {
+                SandboxFirecrackerFencingStore::sandbox_record_observed_fencing_token(
+                    sandbox_writer_low.as_ref(),
+                    "binding-race",
+                    8,
+                )
+                .await
+            },
+            async move {
+                SandboxFirecrackerFencingStore::sandbox_record_observed_fencing_token(
+                    sandbox_writer_high.as_ref(),
+                    "binding-race",
+                    9,
+                )
+                .await
+            },
+        );
+        // Exactly one advance wins per token; the loser of the ordering sees
+        // its write land while the record already holds an equal-or-higher
+        // maximum, which is either an Advanced (it wrote the new max) or a
+        // Replayed (the other writer had already recorded the same value) -
+        // never a stale overwrite.
+        assert!(
+            sandbox_low.is_ok() && sandbox_high.is_ok(),
+            "both racing records must succeed: {sandbox_low:?} / {sandbox_high:?}"
+        );
+        assert!(
+            matches!(
+                SandboxFirecrackerFencingStore::sandbox_max_observed_fencing_token(
+                    sandbox_store.as_ref(),
+                    "binding-race"
+                )
+                .await,
+                Ok(9)
+            ),
+            "the maximum must survive the race at the higher token"
+        );
+        assert!(
+            matches!(
+                SandboxFirecrackerFencingStore::sandbox_record_observed_fencing_token(
+                    sandbox_store.as_ref(),
+                    "binding-race",
+                    8
+                )
+                .await,
+                Err(super::SandboxFirecrackerFencingStoreError::StaleRecord)
+            ),
+            "the lower token must be stale after the race"
+        );
+        std::fs::remove_file(sandbox_root.join("binding-62696e64696e672d72616365.token"))
             .expect("enumerated fencing record must remove");
         std::fs::remove_dir(sandbox_root).expect("enumerated fencing root must remove");
     }

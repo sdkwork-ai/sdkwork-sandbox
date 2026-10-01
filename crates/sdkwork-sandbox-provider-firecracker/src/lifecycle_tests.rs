@@ -368,6 +368,50 @@ async fn cleanup_failure_quarantines_the_binding_until_a_later_cleanup_succeeds(
 }
 
 #[tokio::test]
+async fn concurrent_start_of_one_binding_conflicts_instead_of_double_booting() {
+    let (sandbox_provider, sandbox_broker) = sandbox_provider();
+    sandbox_broker
+        .sandbox_enforcement_holds
+        .store(true, Ordering::SeqCst);
+    sandbox_broker
+        .sandbox_guest_authenticates
+        .store(true, Ordering::SeqCst);
+    sandbox_provider
+        .allocate(sandbox_allocation_request("binding-race-start", 5))
+        .await
+        .unwrap_or_else(|error| panic!("allocate must hold: {error}"));
+
+    // Two concurrent starts of the same binding: exactly one may drive the
+    // boot sequence; the other conflicts without touching the broker.
+    let sandbox_first = sandbox_provider.start(sandbox_start_request("binding-race-start", 5));
+    let sandbox_second = sandbox_provider.start(sandbox_start_request("binding-race-start", 5));
+    let (sandbox_first, sandbox_second) = tokio::join!(sandbox_first, sandbox_second);
+    let sandbox_outcomes = [sandbox_first, sandbox_second];
+    let sandbox_ok_count = sandbox_outcomes.iter().filter(|r| r.is_ok()).count();
+    let sandbox_conflict_count = sandbox_outcomes
+        .iter()
+        .filter(|r| {
+            matches!(
+                r,
+                Err(sandbox_error)
+                    if sandbox_error.sandbox_provider_error_kind() == SandboxProviderErrorKind::Conflict
+            )
+        })
+        .count();
+    assert_eq!(
+        (sandbox_ok_count, sandbox_conflict_count),
+        (1, 1),
+        "exactly one start wins and one conflicts: {sandbox_outcomes:?}"
+    );
+    assert_eq!(
+        1,
+        sandbox_broker.sandbox_boot_count(),
+        "the boot sequence must have run exactly once"
+    );
+    assert_eq!(1, sandbox_broker.sandbox_prepare_count());
+}
+
+#[tokio::test]
 async fn fencing_survives_a_node_restart_through_the_durable_store() {
     fn sandbox_record_file_name(sandbox_binding: &str) -> String {
         let sandbox_hex: String = sandbox_binding
