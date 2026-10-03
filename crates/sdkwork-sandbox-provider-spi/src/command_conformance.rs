@@ -620,7 +620,7 @@ async fn sandbox_scenario_stale_fencing(
         sandbox_stale,
         Err(SandboxCommandExecutionError::StaleFencing)
     );
-    let sandbox_live_terminated = matches!(&sandbox_live_result, Ok(_));
+    let sandbox_live_terminated = sandbox_live_result.is_ok();
     SandboxCommandConformanceFinding {
         sandbox_scenario_id,
         sandbox_status: if sandbox_stale_holds && sandbox_live_terminated {
@@ -675,7 +675,7 @@ async fn sandbox_scenario_fingerprint_recomputation(
         sandbox_conflict,
         Err(SandboxCommandExecutionError::IdempotencyConflict)
     );
-    let sandbox_live_terminated = matches!(&sandbox_live_result, Ok(_));
+    let sandbox_live_terminated = sandbox_live_result.is_ok();
     let sandbox_status = if sandbox_conflict_holds && sandbox_live_terminated {
         SandboxCommandConformanceStatus::Enforced
     } else {
@@ -736,7 +736,7 @@ async fn sandbox_scenario_same_fingerprint_replay(
         sandbox_duplicate,
         Err(SandboxCommandExecutionError::OperationInProgress)
     );
-    let sandbox_live_terminated = matches!(&sandbox_live_result, Ok(_));
+    let sandbox_live_terminated = sandbox_live_result.is_ok();
     let sandbox_status = if sandbox_conflict_holds && sandbox_live_terminated {
         SandboxCommandConformanceStatus::PartiallyEnforced(SANDBOX_DURABLE_ARBITRATION_PENDING)
     } else {

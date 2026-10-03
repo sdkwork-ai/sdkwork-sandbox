@@ -105,7 +105,10 @@ async fn boundary_denials_fail_before_the_runner_is_consulted() {
     denied.sandbox_executable = "curl".to_owned();
     // A denied executable is a policy refusal, not a malformed request.
     assert_eq!(
-        executor.sandbox_execute(&denied).await.unwrap_err(),
+        executor
+            .sandbox_execute(&denied)
+            .await
+            .expect_err("expected an execution error"),
         SandboxCommandExecutionError::PolicyDenied
     );
 
@@ -114,7 +117,10 @@ async fn boundary_denials_fail_before_the_runner_is_consulted() {
         .sandbox_environment
         .insert("API_TOKEN".to_owned(), "x".to_owned());
     assert_eq!(
-        executor.sandbox_execute(&sensitive).await.unwrap_err(),
+        executor
+            .sandbox_execute(&sensitive)
+            .await
+            .expect_err("expected an execution error"),
         SandboxCommandExecutionError::PolicyDenied
     );
 }
@@ -126,7 +132,7 @@ async fn runner_failures_map_to_the_typed_execution_error() {
         executor
             .sandbox_execute(&sandbox_request())
             .await
-            .unwrap_err(),
+            .expect_err("expected an execution error"),
         SandboxCommandExecutionError::UnsupportedCapability
     );
 }
@@ -137,7 +143,10 @@ async fn a_zero_fencing_token_is_a_malformed_request() {
     let mut zero_token = sandbox_request();
     zero_token.sandbox_fencing_token = 0;
     assert_eq!(
-        executor.sandbox_execute(&zero_token).await.unwrap_err(),
+        executor
+            .sandbox_execute(&zero_token)
+            .await
+            .expect_err("expected an execution error"),
         SandboxCommandExecutionError::InvalidRequest
     );
 }
@@ -186,7 +195,7 @@ async fn a_fenced_cancel_reaches_the_live_execution_and_a_stale_token_is_refused
         executor
             .sandbox_cancel("tenant-1", "provider-local", "operation-1", 6)
             .await
-            .unwrap_err(),
+            .expect_err("expected an execution error"),
         SandboxCommandExecutionError::StaleFencing
     );
     executor
@@ -240,7 +249,10 @@ async fn a_same_fingerprint_live_replay_is_operation_in_progress() {
 
     let replay = sandbox_request();
     assert_eq!(
-        executor.sandbox_execute(&replay).await.unwrap_err(),
+        executor
+            .sandbox_execute(&replay)
+            .await
+            .expect_err("expected an execution error"),
         SandboxCommandExecutionError::OperationInProgress
     );
 
@@ -293,7 +305,10 @@ async fn a_moved_fingerprint_under_a_live_operation_id_is_an_idempotency_conflic
     let mut tampered = sandbox_request();
     tampered.sandbox_arguments.push("moved".to_owned());
     assert_eq!(
-        executor.sandbox_execute(&tampered).await.unwrap_err(),
+        executor
+            .sandbox_execute(&tampered)
+            .await
+            .expect_err("expected an execution error"),
         SandboxCommandExecutionError::IdempotencyConflict
     );
 
@@ -435,7 +450,10 @@ async fn the_node_output_budget_refuses_admissions_beyond_the_declared_caps() {
         .sandbox_command_limits
         .sandbox_stderr_byte_limit = 67_108_864;
     assert_eq!(
-        executor.sandbox_execute(&sandbox_ninth).await.unwrap_err(),
+        executor
+            .sandbox_execute(&sandbox_ninth)
+            .await
+            .expect_err("expected an execution error"),
         SandboxCommandExecutionError::PolicyDenied
     );
 
@@ -491,7 +509,7 @@ async fn the_per_tenant_budget_partitions_shares_so_one_tenant_cannot_starve_ano
         executor
             .sandbox_execute(&sandbox_tenant_one_third)
             .await
-            .unwrap_err(),
+            .expect_err("expected an execution error"),
         SandboxCommandExecutionError::PolicyDenied
     );
 

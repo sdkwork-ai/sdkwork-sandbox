@@ -86,22 +86,14 @@ impl Default for SandboxFirecrackerLifecycleBudgets {
 ///   (`REQ-2026-0013`).
 /// - `sandbox_terminal_evidence`: authenticated guest readiness evidence for
 ///   terminal supervision.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// Fails closed: the derived default carries no evidence, so a provider
+/// built from it claims zero capabilities.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct SandboxFirecrackerCapabilityEvidence {
     /// The guest block-device attachment evidence landed.
     pub sandbox_filesystem_evidence: bool,
     /// The authenticated guest readiness evidence landed.
     pub sandbox_terminal_evidence: bool,
-}
-
-impl Default for SandboxFirecrackerCapabilityEvidence {
-    fn default() -> Self {
-        // Fail closed: no evidence, no claim.
-        Self {
-            sandbox_filesystem_evidence: false,
-            sandbox_terminal_evidence: false,
-        }
-    }
 }
 
 impl SandboxFirecrackerCapabilityEvidence {
@@ -469,7 +461,7 @@ impl SandboxProvider for SandboxFirecrackerProvider {
         // mark is entered before the first await and removed on every drop
         // path, so a concurrent start/stop/destroy of the same binding
         // conflicts instead of interleaving host side effects.
-        let sandbox_inflight = self.sandbox_enter_inflight(
+        let _sandbox_inflight = self.sandbox_enter_inflight(
             SandboxProviderOperation::Start,
             sandbox_request.sandbox_runtime_binding_id.as_str(),
         )?;
@@ -599,7 +591,7 @@ impl SandboxProvider for SandboxFirecrackerProvider {
 
         // Same one-sequence-per-binding rule as start: a concurrent stop or
         // destroy of an in-flight binding conflicts instead of interleaving.
-        let sandbox_inflight = self.sandbox_enter_inflight(
+        let _sandbox_inflight = self.sandbox_enter_inflight(
             SandboxProviderOperation::Stop,
             sandbox_request.sandbox_runtime_binding_id.as_str(),
         )?;
@@ -667,12 +659,11 @@ impl SandboxProvider for SandboxFirecrackerProvider {
 
         let sandbox_allocation_reference = {
             let sandbox_registry = self.sandbox_lock_registry();
-            match sandbox_registry.get(sandbox_request.sandbox_runtime_binding_id.as_str()) {
-                Some(sandbox_entry) => Some(sandbox_entry.sandbox_allocation_reference.clone()),
-                // Destroy is idempotent: an unknown binding has nothing to
-                // clean, so the destroy succeeds without broker work.
-                None => None,
-            }
+            // Destroy is idempotent: an unknown binding has nothing to
+            // clean, so the destroy succeeds without broker work.
+            sandbox_registry
+                .get(sandbox_request.sandbox_runtime_binding_id.as_str())
+                .map(|sandbox_entry| sandbox_entry.sandbox_allocation_reference.clone())
         };
         let Some(sandbox_allocation_reference) = sandbox_allocation_reference else {
             return Ok(());
@@ -692,7 +683,7 @@ impl SandboxProvider for SandboxFirecrackerProvider {
 
         // Same one-sequence-per-binding rule as start and stop: cleanup never
         // interleaves with a boot or a shutdown of the same binding.
-        let sandbox_inflight = self.sandbox_enter_inflight(
+        let _sandbox_inflight = self.sandbox_enter_inflight(
             SandboxProviderOperation::Destroy,
             sandbox_request.sandbox_runtime_binding_id.as_str(),
         )?;

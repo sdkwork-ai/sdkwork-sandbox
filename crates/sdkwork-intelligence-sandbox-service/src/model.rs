@@ -723,7 +723,7 @@ mod tests {
         sandbox_session.mark_sandbox_operations_persisted();
         assert!(sandbox_session.sandbox_operations_to_persist().is_empty());
 
-        let mut sandbox_created_session = SandboxSession::create(
+        let sandbox_created_session = SandboxSession::create(
             TenantId::parse("tenant-test")
                 .unwrap_or_else(|error| panic!("invalid test tenant id: {error}")),
             SandboxWorkspaceId::parse("workspace-test")
