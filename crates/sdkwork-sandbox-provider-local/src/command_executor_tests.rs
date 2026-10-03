@@ -94,7 +94,10 @@ fn sandbox_terminal_outcome() -> SandboxCommandOutcome {
 #[tokio::test]
 async fn admitted_commands_reach_the_runner_and_map_the_outcome() {
     let executor = sandbox_executor(Ok(sandbox_terminal_outcome()));
-    let outcome = executor.sandbox_execute(&sandbox_request()).await.unwrap();
+    let outcome = executor
+        .sandbox_execute(&sandbox_request())
+        .await
+        .expect("admitted execution should produce a terminal outcome");
     assert_eq!(outcome.sandbox_exit_code, Some(0));
 }
 

@@ -65,7 +65,6 @@ fn sandbox_internal_context_from_web_request(
 /// is an authored source defect, not a runtime condition: the manifest and the
 /// prefix list live in this crate and are checked at startup rather than
 /// silently allowing an unauthenticated path through.
-#[must_use]
 pub fn wrap_router_with_web_framework(
     resolver: IamWebRequestContextResolver,
     router: Router,

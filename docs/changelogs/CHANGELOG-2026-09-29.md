@@ -114,3 +114,14 @@
 - `fencing.rs`：FileFencingStore 读-改-写竞态修复——并发写 8/9 曾可双双读到旧最大值、低值后落盘破坏单调性；改为 std Mutex 串行化的同步文件段（锁内无 await、temp+rename 原子写不变），新增双写竞态测试钉死"最大值存活+低值事后 StaleRecord"。
 - `lifecycle.rs`：start/stop/destroy 增加 per-binding in-flight 守卫（同步进出、Drop 兜底）——两并发 start 曾可各自通过阶段检查、对同一 Binding 双跑 prepare/boot；现在第二个操作得到 Conflict 且不触碰 Broker，新增并发 start 测试钉死"恰好一次 boot"。
 - 记账同步：§3.1 两行各 +1 用例（总 180 用例 = 178 passed + 2 ignored）、baseline/tools/README/契约钉/§3.1 散文/gate-zero 视图读数全部 178/176→180/178。
+
+## 深度回归第二轮：全仓 clippy 静态面归零
+
+- 首次以 `cargo clippy --workspace --all-targets` 扫描本仓（Phase 0 门禁此前不含 clippy），修复全部本仓发现，兄弟仓 web-core 的 3 处超范围不动：
+  - SPI `command_conformance.rs`：3 处 `matches!(&r, Ok(_))` → `is_ok()`。
+  - Firecracker `lifecycle.rs`：3 处 in-flight 守卫绑定改 `_` 前缀（保持作用域内存活的 Drop 语义）；`SandboxFirecrackerCapabilityEvidence` 改派生 `Default`（fail-closed 注释移到类型文档）；destroy 的手工 Option match 改 `.map`。
+  - Local `command_executor_tests.rs`：9 处 `.unwrap_err()` → `.expect_err(...)`（workspace `unwrap_used = deny` 覆盖 unwrap_err；家规 expect+消息）；1 处 `.unwrap()` → `.expect(...)`。
+  - routes `web_bootstrap.rs`：移除冗余 `#[must_use]`（返回类型已 must_use）。
+  - service `model.rs`：1 处测试内多余 `mut`。
+- 验证：本仓 crate clippy 零输出；`cargo test --workspace` 178/0/2；契约套件 678/678；fmt 干净。
+- 注：本会话一次工具中断时 harness 以 `chore: commit pending working-tree changes`（b5f67f4）自动提交了前半批修复；本提交按 fix-forward 固化余下修复与证据，不回改历史。

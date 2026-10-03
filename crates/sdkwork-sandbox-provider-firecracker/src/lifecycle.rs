@@ -80,14 +80,13 @@ impl Default for SandboxFirecrackerLifecycleBudgets {
 /// The capability evidence a composition may hand over once the corresponding
 /// real-platform evidence exists. Every flag maps one contract capability
 /// policy to a claimable capability; anything without a flag here stays
-/// unclaimed by construction.
+/// unclaimed by construction. Fails closed: the derived default carries no
+/// evidence, so a provider built from it claims zero capabilities.
 ///
 /// - `sandbox_filesystem_evidence`: guest block-device attachment evidence
 ///   (`REQ-2026-0013`).
 /// - `sandbox_terminal_evidence`: authenticated guest readiness evidence for
 ///   terminal supervision.
-/// Fails closed: the derived default carries no evidence, so a provider
-/// built from it claims zero capabilities.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct SandboxFirecrackerCapabilityEvidence {
     /// The guest block-device attachment evidence landed.
