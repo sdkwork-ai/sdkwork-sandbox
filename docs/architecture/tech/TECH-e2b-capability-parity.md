@@ -340,7 +340,7 @@ cargo test --workspace
 node --test tests/contract/*.test.mjs
 ```
 
-`678 pass / 0 fail`（其中 E2B 矩阵门禁 172 个、E2B 基准门禁 30 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
+`686 pass / 0 fail`（其中 E2B 矩阵门禁 172 个、E2B 基准门禁 30 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
 
 ### 3.2 覆盖空档
 

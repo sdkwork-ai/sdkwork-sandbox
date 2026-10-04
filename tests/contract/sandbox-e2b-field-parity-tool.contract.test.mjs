@@ -33,8 +33,10 @@ const REAL_CATEGORIES = 17;
 const REAL_ROWS = 78;
 const REAL_CAPTURED_AT = "2026-09-22T09:36:31Z";
 const REAL_DOCUMENTED_OPERATIONS = 71;
-const REAL_CONTRACT_FILES = 42;
-const REAL_CONTRACT_TESTS = 678;
+const REAL_CONTRACT_FILES = 43;
+const REAL_CONTRACT_TESTS = 686;
+// 2026-10-04: the Template-authority contract pin (REQ-2026-0029) adds one file
+// and 8 tests to the suite counted above.
 // 2026-09-29: the lifecycle delta/retention slices, the SQLx service-driven delta
 // integration test, the drain-gate readiness test, the per-tenant partition test,
 // and the Firecracker-provider Gate 0 boundary crate take the workspace to
@@ -405,7 +407,7 @@ test("the gate's report names the coverage it verified", () => {
   assert.match(report, /0 row\(s\) rest on the documentation index \(ceiling 0\)/);
   assert.match(report, /71 operation\(s\), 70 judged by a row, 1 recorded unjudged/);
   assert.match(report, /34 product row\(s\), 57 baseline row\(s\) mapped, 21 registered unmapped, 9 product row\(s\) registered without a baseline row/);
-  assert.match(report, /678 contract test\(s\) recomputed from tests\/contract, 178 Rust test\(s\) recorded/);
+  assert.match(report, /686 contract test\(s\) recomputed from tests\/contract, 178 Rust test\(s\) recorded/);
   assert.match(report, /11 rule families declared consistently in 4 surface\(s\)/);
 });
 
