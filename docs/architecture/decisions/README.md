@@ -32,6 +32,7 @@ New ADRs use `ADR-YYYYMMDD-<short-title>.md` in this directory.
 - [ADR-20260801: Sandbox Cloud Data Residency And Recovery](ADR-20260801-sandbox-cloud-data-residency-and-recovery.md) - proposed; four-layer region tuple, Drive/Agents/Sandbox authority split, explicit cross-region replication, ordered restore, class-complete export/delete, tenant isolation and Secret exclusion.
 - [ADR-20260801: Sandbox Cross-Repository Version Compatibility And Release Set](ADR-20260801-sandbox-cross-repository-version-compatibility.md) - proposed; immutable BirdCoder/Agents/Kernel/Sandbox release set, canonical SDK/RPC/storage/artifact provenance, explicit compatibility matrix, preflight, drain, migration-aware rollback, downgrade denial and bounded support windows.
 - [ADR-20261004: Sandbox App API Console Face](ADR-20261004-sandbox-app-api-console-face.md) - accepted; dual-token `/app/v3/api/sandbox/*` face for the Web Server console, self-scoped by construction, platform offset pagination, federated IAM permission catalog, one composed contribution beside the internal-api face.
+- [ADR-20261004: Sandbox Template Authority](ADR-20261004-sandbox-template-authority.md) - accepted; provider-neutral definition/version/build-input record model with publication immutability, Docker as build-input only, Hot/Warm/Cold cache-semantics authority, exact `REQ-2026-0012` artifact-tuple layering, and the Builder/Registry/cache/CLI/API surfaces kept forbidden until their own slices.
 
 Retired layout: `docs/adr/` must not be used for new ADRs.
 

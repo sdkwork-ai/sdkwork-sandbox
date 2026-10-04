@@ -19,17 +19,72 @@ function readStatus(relativePath) {
 
 const contract = readJson("specs/sandbox-template-authority.contract.json");
 
-test("Template authority requirement and contract stay draft and implementation-gated", () => {
+test("Template authority requirement is ready and the contract authorizes the authority-model slice", () => {
   assert.equal(contract.kind, "sdkwork.sandbox.template-authority-contract");
-  // 2026-09-29: REQ-2026-0029 registered as the Template capability carrier; the
-  // naming/review packet is still pending, so nothing may implement behind it.
+  // 2026-10-04: REVIEW-20261004 accepted the public naming, data ownership,
+  // build-input boundary, cache-semantics authority and forbidden surfaces
+  // (single-owner structured approval); the authority-model slice landed as
+  // crates/sdkwork-intelligence-sandbox-template-authority, so the contract's
+  // implementation gate is open for that slice only. Builder runtime, Registry
+  // service, build pipeline/storage, cache backends, CLI, public API/SDK and
+  // deployment profiles stay forbidden until their own requirement slices.
   assert.equal(contract.status, "draft");
-  assert.equal(contract.implementationAuthorized, false);
+  assert.equal(contract.implementationAuthorized, true);
   assert.equal(contract["x-sdkwork-status"], "draft");
   assert.equal(contract["x-sdkwork-require-human-review"], true);
   assert.equal(
     readStatus("docs/product/requirements/REQ-2026-0029-sandbox-template-authority.md"),
-    "draft",
+    "ready",
+  );
+  assert.equal(
+    readStatus("docs/architecture/decisions/ADR-20261004-sandbox-template-authority.md"),
+    "accepted",
+  );
+  assert.equal(
+    readStatus(
+      "docs/engineering/reviews/REVIEW-20261004-sandbox-template-authority-naming-and-boundaries.md",
+    ),
+    "accepted",
+  );
+});
+
+test("The landed template-authority crate implements the pinned records, formats, layers and boundary", () => {
+  const crateRoot = path.join(repoRoot, "crates/sdkwork-intelligence-sandbox-template-authority");
+  const source = (relative) => readFileSync(path.join(crateRoot, "src", relative), "utf8");
+  const definitionSource = source("definition.rs");
+  assert.ok(
+    definitionSource.includes("pub struct SandboxTemplateDefinition") &&
+      definitionSource.includes("pub struct SandboxTemplateFileLayer"),
+    "the definition record shapes must exist in the crate",
+  );
+  assert.ok(
+    source("version.rs").includes("pub struct SandboxTemplateVersion"),
+    "the version record shape must exist in the crate",
+  );
+  const buildInputSource = source("build_input.rs");
+  for (const format of contract.buildInput.allowedFormats) {
+    assert.ok(
+      buildInputSource.includes(`"${format}"`),
+      `build-input format ${format} must exist in the crate`,
+    );
+  }
+  assert.equal(
+    buildInputSource.includes("SANDBOX_TEMPLATE_DOCKER_RUNTIME_BOUNDARY_ALLOWED: bool = false"),
+    contract.buildInput.dockerRuntimeBoundaryAllowed === false,
+  );
+  const cacheSource = source("cache.rs");
+  for (const layer of contract.cachePolicy.layers) {
+    assert.ok(cacheSource.includes(`"${layer}"`), `cache layer ${layer} must exist in the crate`);
+  }
+  const authoritySource = source("authority.rs");
+  assert.ok(
+    authoritySource.includes(`"${contract.artifactBoundary.artifactAuthority}"`),
+    `the artifact authority ${contract.artifactBoundary.artifactAuthority} must be named by the crate`,
+  );
+  const forbiddenFlags = Object.values(contract.forbidden);
+  assert.ok(
+    forbiddenFlags.length === 6 && forbiddenFlags.every((flag) => flag === true),
+    "the contract forbidden block must stay closed",
   );
 });
 

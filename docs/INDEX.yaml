@@ -204,7 +204,7 @@ entries:
     path: docs/product/requirements/REQ-2026-0029-sandbox-template-authority.md
     layer: product
     audience: [product, architecture, engineering, review]
-    status: draft
+    status: ready
   - id: REQ-2026-0030
     path: docs/product/requirements/REQ-2026-0030-sandbox-app-api-console-face.md
     layer: product
@@ -359,6 +359,11 @@ entries:
     path: docs/architecture/decisions/ADR-20261004-sandbox-app-api-console-face.md
     layer: work
     audience: [product, architecture, engineering, sdk, api, security, review]
+    status: accepted
+  - id: ADR-20261004-SANDBOX-TEMPLATE-AUTHORITY
+    path: docs/architecture/decisions/ADR-20261004-sandbox-template-authority.md
+    layer: work
+    audience: [product, architecture, engineering, security, supply-chain, sdk, api, review]
     status: accepted
   - id: PLAN-2026-0001
     path: docs/engineering/plans/PLAN-2026-0001-local-and-firecracker-provider-delivery.md
@@ -634,6 +639,11 @@ entries:
     path: docs/engineering/reviews/REVIEW-20260929-process-wrap-selection-closure.md
     layer: work
     audience: [architecture, engineering, security, review]
+    status: accepted
+  - id: REVIEW-20261004-TEMPLATE-AUTHORITY
+    path: docs/engineering/reviews/REVIEW-20261004-sandbox-template-authority-naming-and-boundaries.md
+    layer: work
+    audience: [product, architecture, engineering, security, supply-chain, sdk, api, review]
     status: accepted
 domains:
   - name: intelligence

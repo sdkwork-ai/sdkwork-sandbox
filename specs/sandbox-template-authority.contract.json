@@ -3,7 +3,7 @@
   "kind": "sdkwork.sandbox.template-authority-contract",
   "status": "draft",
   "requirementId": "REQ-2026-0029",
-  "implementationAuthorized": false,
+  "implementationAuthorized": true,
   "templateDefinition": {
     "type": "SandboxTemplateDefinition",
     "requiredFields": [

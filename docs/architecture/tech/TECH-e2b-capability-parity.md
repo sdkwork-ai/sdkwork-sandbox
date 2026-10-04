@@ -52,8 +52,8 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 
 具体到三个数字：
 
-- E2B 的能力集合共 **78 项**（本分片逐行展开），本仓 ✅ **0**、🟡 **18**、❌ **58**、⛔ **2**。
-- 30 份 `REQ-*` 中 **6 份 `ready`**（5 `accepted` / 19 `draft`）——2026-09-29 起 `REQ-2026-0028` E2B API/SDK 权威随所有者结构化决策进入 `ready`，同日 `REQ-2026-0029`（Template 权威）以 `draft` 登记承载 Template 能力类、`REQ-2026-0019`（Runtime Pool）随 `REVIEW-20260730` 接受进入 `ready`，`REQ-2026-0030`（App API console face）随后登记并进入 `ready`；29 份 `ADR` 中 23 份 `proposed`（6 份 `accepted`）——`ADR-20260924`、`ADR-20260730` 与 `ADR-20261004` 相继接受；机器契约授权状态：24 份 `*.contract.json` 中 21 份显式声明 `implementationAuthorized: false`（含 2026-09-29 新增的 `specs/sandbox-template-authority.contract.json`）、**2 份已授权实现**——`specs/sandbox-local-provider-host-boundary.contract.json`（其人审 packet 已于 2026-09-24 由仓库所有者全部评审角色签署）与 `specs/sandbox-runtime-pool.contract.json`（`REQ-2026-0019` 的控制面实现切片——provider-neutral 池状态机、fenced 幂等 claim、有界注册表——已于 2026-10-04 带码与测试落地为 `crates/sdkwork-intelligence-sandbox-pool-control`；真实 VMM runtime、PostgreSQL claim 权威、Snapshot 复用与 API/SDK/deployment 面仍被该契约的 `x-sdkwork-no-*` 门锁住），第 24 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约：`apis/commands/sandbox-command-contract.json` 已于 2026-09-24 随 `REQ-2026-0007` 进入 `ready` 授权实现，`apis/async/sandbox-observability-catalog.json` 仍为 `false`。
+- E2B 的能力集合共 **78 项**（本分片逐行展开），本仓 ✅ **0**、🟡 **19**、❌ **57**、⛔ **2**。
+- 30 份 `REQ-*` 中 **7 份 `ready`**（5 `accepted` / 18 `draft`）——2026-09-29 起 `REQ-2026-0028` E2B API/SDK 权威随所有者结构化决策进入 `ready`，同日 `REQ-2026-0029`（Template 权威）以 `draft` 登记承载 Template 能力类、`REQ-2026-0019`（Runtime Pool）随 `REVIEW-20260730` 接受进入 `ready`，`REQ-2026-0030`（App API console face）与 `REQ-2026-0029`（Template 权威，2026-10-04 随 REVIEW-20261004）相继进入 `ready`；30 份 `ADR` 中 23 份 `proposed`（7 份 `accepted`）——`ADR-20260924`、`ADR-20260730`、`ADR-20261004`（console face 与 Template 权威两份）相继接受；机器契约授权状态：24 份 `*.contract.json` 中 20 份显式声明 `implementationAuthorized: false`、**3 份已授权实现**——`specs/sandbox-local-provider-host-boundary.contract.json`（其人审 packet 已于 2026-09-24 由仓库所有者全部评审角色签署）、`specs/sandbox-runtime-pool.contract.json` 与 `specs/sandbox-template-authority.contract.json`（`REQ-2026-0029` 的权威模型切片——三个记录类型、fail-closed 校验、缓存语义词汇——已于 2026-10-04 带码与测试落地；Builder/Registry/缓存后端/CLI/API-SDK/部署面仍被契约 `forbidden` 块锁住）（`REQ-2026-0019` 的控制面实现切片——provider-neutral 池状态机、fenced 幂等 claim、有界注册表——已于 2026-10-04 带码与测试落地为 `crates/sdkwork-intelligence-sandbox-pool-control`；真实 VMM runtime、PostgreSQL claim 权威、Snapshot 复用与 API/SDK/deployment 面仍被该契约的 `x-sdkwork-no-*` 门锁住），第 24 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约：`apis/commands/sandbox-command-contract.json` 已于 2026-09-24 随 `REQ-2026-0007` 进入 `ready` 授权实现，`apis/async/sandbox-observability-catalog.json` 仍为 `false`。
 - 8 份契约声明的 **127 个证据 id** 中，只有 **2 个**有 host-precondition 半产出，**125 个**仍被真实 runner 或人工评审完全阻塞。
 
 因此本仓对用户画像的承诺（`PRD.md` 第 2 节"AI Agent 应用开发者：用少量代码获得一个可执行代码、可读写文件、可访问网络、可持久化的独立运行环境"）**当前为零兑现**。
@@ -73,7 +73,8 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | Sandbox Internal API Route Crate | `crates/sdkwork-routes-sandbox-internal-api` | 10 模块 | `INTERNAL_API_SPEC.md` 对齐：前缀 `/internal/v3/api/intelligence/sandbox/*`（`paths.rs`），`internal_route_manifest` 声明 5 条 `ingress_token` 路由（`http_route_manifest.rs`），operator-trusted 无权限码声明；handler 面租户缺验证上下文即拒绝（fail-closed，无默认租户），唯一公开路径是健康探针 |
 | Sandbox Database Host | `crates/sdkwork-sandbox-database-host` | 1 模块 | `bootstrap_sandbox_database`（`lib.rs:93`）编排 init / migrate / 漂移分析，error 级漂移即失败；模块 id `sandbox`（`lib.rs:26`） |
 | Command Executor | `crates/sdkwork-sandbox-provider-spi` | 7 模块 | 端口（`SandboxCommandExecutor`、规范指纹）之上已有 Local 实现（兄弟 crate `sdkwork-sandbox-provider-local` 的 `SandboxLocalCommandExecutor` admission + 有界 live 注册表 + fenced cancel，以及 `SandboxLocalTokioProcessRunner` 真实进程切片：有界流式输出、硬超时 kill+reap、kill-on-drop、provider-owned 可执行解析、空环境）；2026-09-27 起 SPI 另承载 REQ-2026-0007 的 20 场景共享 Conformance 套件（`command_conformance.rs`），Local executor 已端到端通过其可执行子集）；Windows 舷道 descendant containment 已落地（评审候选 process-wrap 9.1：挂起创建→kill-on-close Job Object 赋值→赋值后恢复，`TerminateJobObject` 树杀，三代树探针证明），已记录 `start` shell 脱离逃逸为 `detached-and-breakaway-attempt-denial` 证据义务）；Terminal capability 仍未声明（Linux cgroup v2 舷道与真实平台证据矩阵未闭环） |
-| Template / Snapshot / Fork | — | 不存在 | `crates/` 下无 `template` / `snapshot` / `fork` 同名 crate，无对应实现；Template 权威已登记为 `REQ-2026-0029`（draft，实现未授权），Snapshot / Fork 无产品级 `REQ-*`〔§3.4/2〕 |
+| Template 权威模型 | `crates/sdkwork-intelligence-sandbox-template-authority` | 10 模块 | `REQ-2026-0029` 权威模型切片（2026-10-04 落地）：发布不可变的定义/版本记录、构建输入边界（`SandboxTemplateBuildInput`）、缓存三层语义（`cache.rs`）、制品分层与 forbidden 面（`authority.rs`）；Builder/Registry/缓存后端/CLI/API-SDK/部署仍 forbidden |
+| Snapshot / Fork | — | 不存在 | `crates/` 下无 `snapshot` / `fork` 同名 crate，无对应实现，也无产品级 `REQ-*`〔§3.4/1〕 |
 | Runtime Pool 控制面 | `crates/sdkwork-intelligence-sandbox-pool-control` | 11 模块 | `REQ-2026-0019` 控制面切片（2026-10-04 落地）：`SandboxPoolSlot` / `SandboxPoolClaim` 状态机、fenced 幂等 claim、有界注册表实现 8 个契约操作（`SandboxRuntimePoolPort`，`port.rs`）；真实 VMM runtime、PostgreSQL claim 权威、Snapshot 复用与 API/SDK/deployment 仍未授权（`specs/sandbox-runtime-pool.contract.json` 的 `x-sdkwork-no-*` 门） |
 | SDK | `sdks/` | 目录 + README | **零生成产物**，`apis/` 无权威 OpenAPI |
 
@@ -91,7 +92,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | Sandbox 生命周期 | 11 | 0 | 3 | 8 | 0 |
 | 持久化（Pause / Resume） | 8 | 0 | 1 | 7 | 0 |
 | Snapshot 与 Fork | 5 | 0 | 0 | 5 | 0 |
-| Template | 9 | 0 | 3 | 5 | 1 |
+| Template | 9 | 0 | 4 | 4 | 1 |
 | Filesystem | 7 | 0 | 0 | 7 | 0 |
 | Volumes | 4 | 0 | 2 | 2 | 0 |
 | Commands 与 Process | 5 | 0 | 1 | 4 | 0 |
@@ -105,7 +106,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | MCP Gateway | 1 | 0 | 0 | 1 | 0 |
 | 平台与部署 | 4 | 0 | 3 | 1 | 0 |
 | Agent 框架集成 | 1 | 0 | 0 | 0 | 1 |
-| **合计** | **78** | **0** | **18** | **58** | **2** |
+| **合计** | **78** | **0** | **19** | **57** | **2** |
 
 ## 2. 逐项对照
 
@@ -125,7 +126,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | 6 | `Sandbox.list()`（`state`/filter + paginator） | 无 | ❌ | — |
 | 7 | Lifecycle events API（事件流） | `apis/async/sandbox-events.asyncapi.json` + `sandbox-event-catalog.json` 契约 | 🟡 | 仅契约，无 runtime exporter/worker |
 | 8 | Lifecycle webhooks | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 8 行（18 项） |
-| 9 | Auto-resume on request | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 9 节；无 `REQ-*`〔§3.4/3〕 |
+| 9 | Auto-resume on request | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 9 节；无 `REQ-*`〔§3.4/2〕 |
 | 10 | SSH access（WebSocket 代理） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 10 行（6 项） |
 | 11 | Secured access / 访问令牌门控 | 无 | ❌ | 本仓有 `SandboxFencingToken`，对象是控制权竞争而非访问面，形态不同 |
 
@@ -149,23 +150,23 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | 20 | `createSnapshot()`（含内存与文件系统；原沙箱短暂暂停后继续，ID 不变） | 无产品级能力 | ❌ | 仅有 Workspace Checkpoint 与 Firecracker Snapshot 的 Gate 0 候选（`REQ-2026-0021`、`REQ-2026-0008`） |
 | 21 | `Sandbox.create(snapshotId)`（从快照派生沙箱） | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 5 节 |
 | 22 | `listSnapshots()` / `deleteSnapshot()` | 无 | ❌ | — |
-| 23 | `fork`（一次调用在原地快照并派生 N 个沙箱） | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 6 节；无 `REQ-*`、无 `ADR`、一致性语义未定〔§3.4/2〕 |
+| 23 | `fork`（一次调用在原地快照并派生 N 个沙箱） | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 6 节；无 `REQ-*`、无 `ADR`、一致性语义未定〔§3.4/1〕 |
 | 24 | Snapshot 与原沙箱并行运行、一个快照派生多个 | 无 | ❌ | — |
 
 ### 2.4 Template
 
-Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构建镜像 + start command 常驻 + 构建缓存 + 层复用。本仓 2026-09-29 起有 draft 权威承载（`REQ-2026-0029` + 机器契约），实现类仍全部未授权。
+Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构建镜像 + start command 常驻 + 构建缓存 + 层复用。本仓 2026-09-29 起有权威承载（`REQ-2026-0029` + 机器契约），2026-10-04 起 `ready` 且权威模型切片落地；Builder/Registry/缓存后端仍全部未授权。
 
 | # | E2B 能力 | 本仓对应 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
-| 25 | 声明式 Template 定义（`Template().fromBaseImage()` / `fromTemplate()` / `copy()` / `setEnvs()` / `setStartCmd()`） | 仅候选权威（`REQ-2026-0029` draft + 机器契约，实现未授权） | 🟡 | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 4 节；`REQ-2026-0029`（2026-09-29 登记，draft）承载权威模型与字段形状，无实现、无组件 |
+| 25 | 声明式 Template 定义（`Template().fromBaseImage()` / `fromTemplate()` / `copy()` / `setEnvs()` / `setStartCmd()`） | 权威模型已落地（`REQ-2026-0029` `ready` + REVIEW-20261004 + `crates/sdkwork-intelligence-sandbox-template-authority`） | 🟡 | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 4 节；发布不可变的定义/版本记录与 fail-closed 校验已带测试落地，Builder/构建面仍无 |
 | 26 | `e2b template init` / `build` / `deploy` | 无 CLI | ❌ | `crates/sdkwork-sandbox-cli/src/main.rs:3` = `fn main() {}`。基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 26 行（38 项，其中 15 个字段：Templates REST 建 / 查 / 改 / 删 + 构建流水线与构建产物） |
 | 27 | Start / Ready command（沙箱创建时长驻进程**已在运行**，首命令零等待） | 无 | ❌ | — |
-| 28 | 构建缓存与层级复用（`fromTemplate()` 复用已缓存基础层） | 仅权威语义候选 | 🟡 | PRD 第 4 节要求 Hot/Warm/Cold + 淘汰策略；`REQ-2026-0029` 固定缓存语义边界（Hot/Warm/Cold、显式淘汰、精确 digest 层复用），实现与存储后端未授权 |
-| 29 | Template tags / versioning / names | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 29 行（35 项，其中 10 个字段：tags 端点 + `GET /templates/aliases/{alias} [getTemplatesAlias]`，alias 即版本化命名机制） |
+| 28 | 构建缓存与层级复用（`fromTemplate()` 复用已缓存基础层） | 缓存语义权威已落地（`cache.rs`） | 🟡 | PRD 第 4 节要求 Hot/Warm/Cold + 淘汰策略；`REQ-2026-0029` 固定缓存语义边界（Hot/Warm/Cold、显式淘汰、精确 digest 层复用），实现与存储后端未授权 |
+| 29 | Template tags / versioning / names | 权威模型已承载版本化命名记录（`SandboxTemplateVersion` tags/aliases） | 🟡 | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 29 行（35 项，其中 10 个字段：tags 端点 + `GET /templates/aliases/{alias} [getTemplatesAlias]`，alias 即版本化命名机制）；`REQ-2026-0029` 权威模型切片落地记录类型，Registry 解析面仍无 |
 | 30 | Base image / 私有 registry 接入 | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 30 行（30 项） |
 | 31 | 构建限额（1 h / 8 vCPU / 8 GiB / 10 GiB / 20 并发） | 无 | ❌ | — |
-| 32 | 以 Dockerfile 或构建脚本作为**构建输入** | 无（产品要求已写） | 🟡 | [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 4 节已写"构建输入允许使用 Dockerfile 或构建脚本"；无 `REQ-*`〔§3.4/1〕 |
+| 32 | 以 Dockerfile 或构建脚本作为**构建输入** | 权威模型已承载（`SandboxTemplateBuildInput`，构建输入边界 fail-closed） | 🟡 | [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 4 节已写"构建输入允许使用 Dockerfile 或构建脚本"；`REQ-2026-0029` 承载并落地记录类型与校验，构建流水线仍无 |
 | 33 | 以 Docker 作为运行时依赖或隔离边界 | 明确不做 | ⛔ | `PRD.md` 非目标原话："不把 Docker 作为运行时依赖或隔离边界；Docker 只允许作为 Template 的构建输入格式" |
 
 ### 2.5 Filesystem
@@ -221,7 +222,7 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 | 55 | allow / deny 列表（IP / CIDR / 域名 / 通配） | `specs/sandbox-firecracker-network-isolation.contract.json`（draft） | 🟡 | 仅契约 |
 | 56 | per-host rules / header 注入（`network.rules`，public beta） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 56 行（33 项） |
 | 57 | 运行中 `updateNetwork`（替换式，不合并） | 无 | ❌ | — |
-| 58 | 端口暴露（public URL / `getHost`） | 无 | ❌ | 产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 8 节；无 `REQ-*`〔§3.4/4〕 |
+| 58 | 端口暴露（public URL / `getHost`） | 无 | ❌ | 产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 8 节；无 `REQ-*`〔§3.4/2〕 |
 | 59 | 限制公开访问（`allowPublicTraffic` / `maskRequestHost` / `httpsPorts`） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 59 行（12 项） |
 | 60 | 自定义域名 | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 60 行（6 项） |
 | 61 | 出网代理隧道 / BYOP SOCKS5 | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 61 行（31 项） |
@@ -261,7 +262,7 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 
 | # | E2B 能力 | 本仓对应 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
-| 73 | MCP Gateway（200+ servers / custom templates / custom servers） | 仅 Transport 级 | ❌ | [PRD-capabilities.md](../../product/prd/PRD-capabilities.md) 第 5 节只有传输级描述；无独立 `REQ-*`〔§3.4/5〕 |
+| 73 | MCP Gateway（200+ servers / custom templates / custom servers） | 仅 Transport 级 | ❌ | [PRD-capabilities.md](../../product/prd/PRD-capabilities.md) 第 5 节只有传输级描述；无独立 `REQ-*`〔§3.4/4〕 |
 
 ### 2.16 平台与部署
 
@@ -338,8 +339,10 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 | App API 路由清单：dual-token 门禁、锁定前缀、operationId、权限码联邦目录（2026-10-04 console-face 切片） | `crates/sdkwork-routes-sandbox-app-api/src/http_route_manifest.rs` | `crates/sdkwork-routes-sandbox-app-api/src/http_route_manifest.rs` | `every_declared_route_is_dual_token_gated_with_its_permission`、`every_route_is_mounted_under_the_locked_app_prefix`、`operation_ids_are_globally_unique_and_do_not_repeat_the_tag`、`permission_codes_match_the_federated_catalog` |
 | App API 请求体：分页默认与过滤、越界拒绝、能力词汇、int64-as-string、expiry 三态（2026-10-04 console-face 切片） | `crates/sdkwork-routes-sandbox-app-api/src/payloads.rs` | `crates/sdkwork-routes-sandbox-app-api/src/payloads.rs` | `list_query_defaults_pagination_and_absent_filters`、`list_query_rejects_out_of_range_paging_instead_of_clamping`、`list_query_rejects_an_unknown_state`、`list_query_rejects_forbidden_pagination_and_scope_aliases`、`list_query_accepts_its_declared_parameters`、`update_body_distinguishes_absent_null_and_timestamp_expiry`、`create_body_rejects_unknown_capability_vocabulary_and_duplicates`、`instance_view_serializes_the_version_as_an_int64_string` |
 | 实例 offset 分页：owner/state 收窄、越界拒绝、精确总数窗口（2026-10-04 console-face 切片） | `crates/sdkwork-intelligence-sandbox-service/src/instance_service.rs` | `crates/sdkwork-intelligence-sandbox-service/src/instance_service.rs` | `offset_listing_narrows_to_one_owner_and_one_state`、`offset_listing_rejects_out_of_range_paging_instead_of_clamping`、`offset_listing_windows_the_scope_with_exact_totals` |
+| Template 权威契约界常量（2026-10-04 权威模型切片） | `crates/sdkwork-intelligence-sandbox-template-authority/src/bounds.rs` | `crates/sdkwork-intelligence-sandbox-template-authority/src/bounds.rs` | `bounds_are_positive_and_finite` |
+| Template 权威模型：发布不可变记录、fail-closed 校验、构建输入边界、缓存三层语义与制品分层（2026-10-04 权威模型切片） | `crates/sdkwork-intelligence-sandbox-template-authority/src/definition.rs` | `crates/sdkwork-intelligence-sandbox-template-authority/src/tests.rs` | `a_published_definition_is_complete_and_read_only`、`definition_validation_is_fail_closed_field_by_field`、`a_version_binds_tags_aliases_and_one_artifact_tuple`、`build_inputs_stay_build_inputs_and_reject_locators_and_key_material`、`cache_semantics_are_the_three_layer_authority`、`the_artifact_boundary_and_forbidden_surfaces_hold` |
 
-表内共 **230 个用例**（51 行），与工作区静态清点一致；其中 `sandbox_postgres_repository_enforces_durable_lifecycle_contract` 与 `sandbox_postgres_repository_persists_lifecycle_operation_deltas` 带 `#[ignore]`，是不进默认运行的两个用例（它们声明需要 `SDKWORK_DATABASE_TEST_POSTGRES_URL` 与一个已初始化的 PostgreSQL）。因此 `cargo test --workspace` 的读数是 **228 passed / 0 failed / 2 ignored**，230 = 228 + 2，两侧对得上。2026-09-29 增量：`sdkwork-sandbox-provider-firecracker`（`REQ-2026-0008` Gate 0 边界切片）的 33 个用例入表，随后并发加固补 2 个（fencing 写竞态、per-binding in-flight 并发 start）。2026-10-04 增量：`sdkwork-intelligence-sandbox-pool-control`（`REQ-2026-0019` 控制面切片）的 29 个用例入表；同树并发的 app-api console-face 切片的 21 个用例入表（assembly manifest 双面清单 5 + principal 解析 1、app-api 路由/载荷 12、offset 分页 3）。
+表内共 **237 个用例**（53 行），与工作区静态清点一致；其中 `sandbox_postgres_repository_enforces_durable_lifecycle_contract` 与 `sandbox_postgres_repository_persists_lifecycle_operation_deltas` 带 `#[ignore]`，是不进默认运行的两个用例（它们声明需要 `SDKWORK_DATABASE_TEST_POSTGRES_URL` 与一个已初始化的 PostgreSQL）。因此 `cargo test --workspace` 的读数是 **235 passed / 0 failed / 2 ignored**，237 = 235 + 2，两侧对得上。2026-10-04 第二笔：`sdkwork-intelligence-sandbox-template-authority`（`REQ-2026-0029` 权威模型切片）的 7 个用例入表。2026-09-29 增量：`sdkwork-sandbox-provider-firecracker`（`REQ-2026-0008` Gate 0 边界切片）的 33 个用例入表，随后并发加固补 2 个（fencing 写竞态、per-binding in-flight 并发 start）。2026-10-04 增量：`sdkwork-intelligence-sandbox-pool-control`（`REQ-2026-0019` 控制面切片）的 29 个用例入表；同树并发的 app-api console-face 切片的 21 个用例入表（assembly manifest 双面清单 5 + principal 解析 1、app-api 路由/载荷 12、offset 分页 3）。
 
 计数（2026-10-04 实测；此前的 73/74、97/98、123/124、138/139 与 178/180 各组读数见 `specs/sandbox-e2b-capability-baseline.json` 的 `rustWorkspace.note`）：
 
@@ -347,13 +350,13 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 cargo test --workspace
 ```
 
-`228 passed / 2 ignored`（另 0 failed；2 ignored 均是声明需要外部 PostgreSQL 的测试）。契约测试：
+`235 passed / 2 ignored`（另 0 failed；2 ignored 均是声明需要外部 PostgreSQL 的测试）。契约测试：
 
 ```bash
 node --test tests/contract/*.test.mjs
 ```
 
-`687 pass / 0 fail`（其中 E2B 矩阵门禁 172 个、E2B 基准门禁 30 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
+`688 pass / 0 fail`（其中 E2B 矩阵门禁 172 个、E2B 基准门禁 30 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
 
 ### 3.2 覆盖空档
 
@@ -378,7 +381,7 @@ node --test tests/contract/*.test.mjs
 
 **本表此前有一行是假的，这正是新增门禁的由来。** 原第 5 行写作「"快速创建/快速部署"的性能断言全为零测试」，性质一栏写着"既无参考硬件也无 Benchmark 套件，且该目标没有任何需求承载"——**这句有一半不成立**：`REQ-2026-0019` 承载的正是这个目标，`tools/bench-sandbox-lifecycle.mjs` 与两平台原始样本也都在树里（样本落在 gitignore 的 `target/` 下，是证据不是缓存）。一张"缺什么"的清单如果不可被目录列举推翻，它就会越写越旧。所以本节改成带性质的表，并由门禁按性质**反向核验**：`缺产物` 点名的路径必须**不存在**、`缺门禁` 点名的路径必须**存在**、`治理阻塞` 必须点名一份**记录在案且尚未 `ready`** 的需求——三者问的都是"这句话能不能被证伪"，不是措辞问题。
 
-**实现用例随授权切片增长**——2026-09-24 起授权状态开始翻转：机器契约里 `specs/sandbox-local-provider-host-boundary.contract.json`（对应 packet 已于 2026-09-24 签署）与 `specs/sandbox-runtime-pool.contract.json`（`REQ-2026-0019` 控制面切片，2026-10-04 随码与测试落地翻转）已授权实现，其余 24 份 `*.contract.json` 中 21 份显式声明 `implementationAuthorized: false`，第 24 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约：`apis/commands/sandbox-command-contract.json` 已于 2026-09-24 随 `REQ-2026-0007` 进入 `ready` 授权实现，`apis/async/sandbox-observability-catalog.json` 仍为 `false`。已授权切片的实现用例（Host Boundary、Local executor、Firecracker Gate 0、Runtime Pool 控制面）逐个入 §3.1 覆盖表；未授权能力（runtime VMM、PostgreSQL claim 权威、Snapshot 复用、API/SDK/deployment 面）仍不得写实现用例。
+**实现用例随授权切片增长**——2026-09-24 起授权状态开始翻转：机器契约里 `specs/sandbox-local-provider-host-boundary.contract.json`（对应 packet 已于 2026-09-24 签署）、`specs/sandbox-runtime-pool.contract.json`（`REQ-2026-0019` 控制面切片）与 `specs/sandbox-template-authority.contract.json`（`REQ-2026-0029` 权威模型切片）已授权实现，其余 24 份 `*.contract.json` 中 20 份显式声明 `implementationAuthorized: false`，第 24 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约：`apis/commands/sandbox-command-contract.json` 已于 2026-09-24 随 `REQ-2026-0007` 进入 `ready` 授权实现，`apis/async/sandbox-observability-catalog.json` 仍为 `false`。已授权切片的实现用例（Host Boundary、Local executor、Firecracker Gate 0、Runtime Pool 控制面、Template 权威模型）逐个入 §3.1 覆盖表；未授权能力（runtime VMM、PostgreSQL claim 权威、Snapshot 复用、API/SDK/deployment 面）仍不得写实现用例。
 
 ### 3.3 本轮新增的门禁与用例（含变异结果）
 
@@ -453,12 +456,11 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 | # | 主题 | 关键词 | 说明 |
 | --- | --- | --- | --- |
-| 1 | 以 Dockerfile 或构建脚本作为构建输入 | `dockerfile` | 矩阵第 32 行；PRD 该节已写"构建输入允许使用 Dockerfile 或构建脚本" |
-| 2 | Snapshot / Fork（含 `Sandbox.create(snapshotId)`） | `snapshot` `fork` | 矩阵第 23 行与 §4 P1；Fork 一致性语义未定 |
-| 3 | Auto-resume / Auto-pause（Idle 收敛） | `resume` `pause` `autopause` `auto-pause` | 矩阵第 9 行；产品要求见 PRD 该文件第 9 节 |
-| 4 | 端口暴露（public URL / `getHost`） | `port` `public` `gethost` | 矩阵第 58 行；产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 8 节 |
-| 5 | MCP 执行面与 Skills | `mcp` `skill` | §4 P2；本仓只有传输级描述 |
-| 6 | Filesystem 执行面（Workspace 内文件读写 / 上传下载 / 目录操作） | `filesystem` | §4 P0；产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 2-3 节，无 `REQ-*` 承载（Local Boundary 契约只约束路径边界，不授权 Filesystem 能力面） |
+| 1 | Snapshot / Fork（含 `Sandbox.create(snapshotId)`） | `snapshot` `fork` | 矩阵第 23 行与 §4 P1；Fork 一致性语义未定 |
+| 2 | Auto-resume / Auto-pause（Idle 收敛） | `resume` `pause` `autopause` `auto-pause` | 矩阵第 9 行；产品要求见 PRD 该文件第 9 节 |
+| 3 | 端口暴露（public URL / `getHost`） | `port` `public` `gethost` | 矩阵第 58 行；产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 8 节 |
+| 4 | MCP 执行面与 Skills | `mcp` `skill` | §4 P2；本仓只有传输级描述 |
+| 5 | Filesystem 执行面（Workspace 内文件读写 / 上传下载 / 目录操作） | `filesystem` | §4 P0；产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 2-3 节，无 `REQ-*` 承载（Local Boundary 契约只约束路径边界，不授权 Filesystem 能力面） |
 
 这张表由 `tools/check-sandbox-e2b-parity-matrix.mjs` 的**第 8 条规则族**核验，判据三条：
 
@@ -470,7 +472,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 ### 3.5 跨文档零需求断言对账
 
-第 3.4 节登记的是**本文档**的断言。「某能力无需求承载」这个句型不是本文档独有的：逐字扫 `docs/**`（时点证据目录除外），句型一共出现在 6 个文档的 29 行上，而第 3.4 节的两向记账只覆盖本文档那 12 行。其余 5 个文档的 18 行由本节记账——其中一行已经被证伪，并在下表第二张里留了账。
+第 3.4 节登记的是**本文档**的断言。「某能力无需求承载」这个句型不是本文档独有的：逐字扫 `docs/**`（时点证据目录除外），句型一共出现在 6 个文档的 28 行上，而第 3.4 节的两向记账只覆盖本文档那 11 行。其余 5 个文档的 18 行由本节记账——其中一行已经被证伪，并在下表第二张里留了账。
 
 **句型清单本身也是实测对象。** 2026-09-23 的归属判定轮发现：`无独立 ` + backtick + `REQ-*` + backtick + `（如 PRD.md 第 8 节 MCP 行、PRD-capabilities.md 第 11 节 Auto Pause 行、PRD-sandbox-surfaces.md 第 1 节 Port Exposure 行）是**同类断言**，却因决定词与 `REQ-*` 之间隔了一个形容词而被旧句型静默漏数——与 `#[tokio::test(...)]` 带参数被丢、operationId 含点被丢是同一类抽取口径缺陷。本轮把 `无独立` 并进句型并重算：跨文档断言从 15 行变为 **19 行**、新增第 5 个文档（其后 `REQ-2026-0028` 登记并按更正账第 2 行移出 SDK 家族断言、`REQ-2026-0029` 登记并按更正账第 3 行移出 Template 断言，现值 **17 行**）；本文档自己的两行（矩阵第 17、73 行）按第 3.4 节规则补了 `〔§3.4/N〕` 引用。任何覆盖率结论必须先对抽取规则做正反例自检再报数——这条纪律第三次同向验证。
 
@@ -530,8 +532,8 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 | --- | --- | --- |
 | 运行入口不全（HTTP 候选面已物化；RPC、CLI、Service Host wiring 仍缺） | 设计级 | 2026-09-24 起为**部分解除**：internal-api 候选面（5 条 `sandboxInstances.*` ingress-token 路由，`ROUTE_CRATE_COUNT: 1`、assembly 与 standalone gateway 已承载）落了，实例注册表 CRUD 可走 HTTP。仍缺：RPC 面、CLI（`fn main() {}`）、Service Host wiring（service-host 5 行）——需要 `REQ-2026-0023`（internal control plane）与 `REQ-2026-0009`（service host）进入 `ready` |
 | Provider 执行切片不全（真实命令执行已物化；descendant containment 未落地） | 设计级 | 2026-09-24 起为**部分解除**：`REQ-2026-0003`/`0007`/`0008` 三个 packet 经人审进入 `ready`，`specs/sandbox-local-provider-host-boundary.contract.json` 授权实现；真实 tokio 进程切片（有界输出、硬超时 kill、fenced cancel、provider-owned 可执行解析）已落。Windows suspended kill-on-close Job Object containment 已落地（2026-09-27，评审候选 process-wrap 9.1 + 三代树整树击杀探针；`start` shell 脱离逃逸已实测并登记为 `detached-and-breakaway-attempt-denial` 证据义务）。仍缺：Linux delegated cgroup v2 舷道、`requiredRealEvidence` 的 7+6+3 条真实平台证据记录，Terminal capability 因此保持不声明 |
-| 无 Template 实现（定义/构建/缓存/tags/start command） | **设计级** | E2B 快速创建与快速部署的**全部**依赖它。载体已登记：`REQ-2026-0029`（draft）+ `specs/sandbox-template-authority.contract.json`（实现未授权）；与 Firecracker 制品元组的分层已定（Template 引用 REQ-2026-0012 Tuple，不拥有 Evidence），实现切片待人审 |
-| Command 执行面部分物化；Terminal / Filesystem 执行面仍缺 | 设计级 | `REQ-2026-0007` 已 `ready` 且授权实现，executor/admission/runner 切片已落，且交付顺序的 Common Conformance 步骤已落地：SPI 承载 20 场景共享套件（四态报告：Enforced / PartiallyEnforced / Pending / Failed），Local executor 端到端通过可执行子集，14 个场景的剩余部分分别钉在平台监督切片（descendant cleanup）、durable registry 切片（terminal race / 完成后重放）与 composition 切片（cleanup quarantine / policy snapshot）上（见上）；`REQ-2026-0024`（Interactive Terminal）仍 `draft` 禁止物化；Filesystem 无 `REQ-*`〔§3.4/6〕 |
+| Template 只有权威模型，无 Builder/Registry/缓存后端 | **设计级** | E2B 快速创建与快速部署的**全部**依赖它。权威模型切片已于 2026-10-04 落地（`crates/sdkwork-intelligence-sandbox-template-authority`；`REQ-2026-0029` `ready` + REVIEW-20261004 + `specs/sandbox-template-authority.contract.json` 对权威模型翻转授权）；与 Firecracker 制品元组的分层已定（Template 引用 REQ-2026-0012 Tuple，不拥有 Evidence）。构建流水线/注册服务/缓存存储必须等各自的后续切片——在 Builder 切片落地前不得宣称 E2B Template 对齐 |
+| Command 执行面部分物化；Terminal / Filesystem 执行面仍缺 | 设计级 | `REQ-2026-0007` 已 `ready` 且授权实现，executor/admission/runner 切片已落，且交付顺序的 Common Conformance 步骤已落地：SPI 承载 20 场景共享套件（四态报告：Enforced / PartiallyEnforced / Pending / Failed），Local executor 端到端通过可执行子集，14 个场景的剩余部分分别钉在平台监督切片（descendant cleanup）、durable registry 切片（terminal race / 完成后重放）与 composition 切片（cleanup quarantine / policy snapshot）上（见上）；`REQ-2026-0024`（Interactive Terminal）仍 `draft` 禁止物化；Filesystem 无 `REQ-*`〔§3.4/5〕 |
 
 ### P1 — 阻塞"创建得快"
 
@@ -588,9 +590,9 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 本仓不是"有些功能没做完"，而是**治理门禁未打开**。四条硬门禁互相依赖：
 
-1. 30 份 `REQ-*` 中 6 份 `ready`（5 `accepted` / 19 `draft`）→ 其余逐份人工评审进 `ready`（2026-09-29 起 `REQ-2026-0028`、`REQ-2026-0019` 已进入 `ready`；`REQ-2026-0029` Template 权威同日以 `draft` 登记；`REQ-2026-0030` 随后进入 `ready`）。
-2. 29 份 `ADR` 中 23 份 `proposed`（6 份 `accepted`）→ 其余需 `accepted`（`ADR-20260924`、`ADR-20260730`、`ADR-20261004` 已 `accepted`）。
-3. 机器契约除已授权的 Local Host Boundary 与 Runtime Pool 控制面（2026-10-04 切片落地）外全部未授权（24 份 `*.contract.json` 中 21 份 `implementationAuthorized: false`，另 `specs/sandbox-commercial-readiness.contract.json` 独立声明 `runtimeImplementationAuthorizationGranted: false`）→ 需人工评审签字后翻转。
+1. 30 份 `REQ-*` 中 7 份 `ready`（5 `accepted` / 18 `draft`）→ 其余逐份人工评审进 `ready`（2026-09-29 起 `REQ-2026-0028`、`REQ-2026-0019` 进入 `ready`，`REQ-2026-0030` 随后进入；`REQ-2026-0029` Template 权威于 2026-10-04 随 REVIEW-20261004 进入 `ready`）。
+2. 30 份 `ADR` 中 23 份 `proposed`（7 份 `accepted`）→ 其余需 `accepted`（`ADR-20260924`、`ADR-20260730`、`ADR-20261004` console face 与 `ADR-20261004` Template 权威已 `accepted`）。
+3. 机器契约除已授权的 Local Host Boundary、Runtime Pool 控制面与 Template 权威模型（2026-10-04 切片落地）外全部未授权（24 份 `*.contract.json` 中 20 份 `implementationAuthorized: false`，另 `specs/sandbox-commercial-readiness.contract.json` 独立声明 `runtimeImplementationAuthorizationGranted: false`）→ 需人工评审签字后翻转。
 4. 8 份契约声明的 127 个证据 id 中 125 个无产出者 → 需真实 runner 与人工评审闭合。
 
 当前签字积压（机器读数）：28 份评审记录中 21 份为 `pending-human-review`，其中 **13 份被机器契约点名门控**（`REVIEW-20260730` Runtime Pool 已于 2026-09-29 随单一所有者结构化决策接受）。完整清单与 5 步签字程序见 [human-review-signoff-backlog.md](../../engineering/human-review-signoff-backlog.md)。

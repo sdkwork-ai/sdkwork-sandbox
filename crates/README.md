@@ -11,6 +11,7 @@ Phase 0 components:
 - `sdkwork-sandbox-provider-spi`: L3 provider port boundary.
 - `sdkwork-intelligence-sandbox-service`: L2 sandbox use-case boundary.
 - `sdkwork-intelligence-sandbox-pool-control`: L2 runtime-pool control-plane boundary (`REQ-2026-0019` control-plane slice: slot/claim state machine, fenced idempotent claims, bounded registries).
+- `sdkwork-intelligence-sandbox-template-authority`: L2 template-authority model boundary (`REQ-2026-0029` authority-model slice: immutable published definitions/versions, build-input boundary, cache-semantics authority).
 - `sdkwork-sandbox-provider-local`: L4 local-provider adapter boundary.
 - `sdkwork-sandbox-provider-firecracker`: L4 firecracker-provider adapter boundary (`REQ-2026-0008` Gate 0 slice: exact-tuple artifact manifest, fail-closed preflight, durable fencing, broker/guest seams).
 - `sdkwork-sandbox-service-host`: L5 composition host boundary.
