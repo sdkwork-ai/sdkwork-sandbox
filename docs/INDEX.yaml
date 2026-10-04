@@ -205,6 +205,11 @@ entries:
     layer: product
     audience: [product, architecture, engineering, review]
     status: draft
+  - id: REQ-2026-0030
+    path: docs/product/requirements/REQ-2026-0030-sandbox-app-api-console-face.md
+    layer: product
+    audience: [product, architecture, engineering, sdk, api, security, review]
+    status: ready
   - id: REQ-2026-0028
     path: docs/product/requirements/REQ-2026-0028-sandbox-e2b-compatible-api-sdk-family.md
     layer: work
@@ -347,6 +352,11 @@ entries:
     status: proposed
   - id: ADR-20260924-E2B-API-SDK-AUTHORITY
     path: docs/architecture/decisions/ADR-20260924-sandbox-e2b-api-sdk-authority.md
+    layer: work
+    audience: [product, architecture, engineering, sdk, api, security, review]
+    status: accepted
+  - id: ADR-20261004-SANDBOX-APP-API-CONSOLE-FACE
+    path: docs/architecture/decisions/ADR-20261004-sandbox-app-api-console-face.md
     layer: work
     audience: [product, architecture, engineering, sdk, api, security, review]
     status: accepted

@@ -19,15 +19,20 @@ function readStatus(relativePath) {
 
 const contract = readJson("specs/sandbox-runtime-pool.contract.json");
 
-test("Runtime Pool requirement is ready while the contract stays implementation-gated", () => {
+test("Runtime Pool contract authorizes the landed control-plane slice only", () => {
   assert.equal(contract.kind, "sdkwork.sandbox.runtime-pool-contract");
-  // 2026-09-29: REVIEW-20260730 accepted (single-owner, REVIEW-20260929 ALIGN-01 slice 2);
-  // the contract itself stays draft/unauthorized until the control-plane slice lands.
+  // 2026-10-04: the authorized control-plane slice landed
+  // (crates/sdkwork-intelligence-sandbox-pool-control) with its state machine,
+  // claim, fencing and bounded-registry code and tests, so the contract's
+  // implementation gate is open for that slice only. Runtime against a real
+  // VMM, the PostgreSQL claim authority, Snapshot reuse, API/SDK and
+  // deployment surfaces stay gated, and the contract itself remains draft.
   assert.equal(contract.status, "draft");
-  assert.equal(contract.implementationAuthorized, false);
+  assert.equal(contract.implementationAuthorized, true);
   assert.equal(contract["x-sdkwork-no-runtime-implementation"], true);
   assert.equal(contract["x-sdkwork-no-database-implementation"], true);
   assert.equal(contract["x-sdkwork-no-snapshot-implementation"], true);
+  assert.equal(contract["x-sdkwork-no-api-sdk-deployment"], true);
   assert.equal(
     readStatus(
       "docs/product/requirements/REQ-2026-0019-sandbox-runtime-pool-and-fast-allocation.md",
@@ -46,6 +51,56 @@ test("Runtime Pool requirement is ready while the contract stays implementation-
     ),
     "accepted",
   );
+});
+
+test("The landed pool control-plane crate implements the pinned states, operations and bounds", () => {
+  const crateRoot = path.join(repoRoot, "crates/sdkwork-intelligence-sandbox-pool-control");
+  const source = (relative) => readFileSync(path.join(crateRoot, "src", relative), "utf8");
+  const stateSource = source("state.rs");
+  for (const stateName of contract.slot.states) {
+    assert.ok(
+      stateSource.includes(`"${stateName}"`),
+      `slot state ${stateName} must exist in the crate state machine`,
+    );
+  }
+  for (const stateName of contract.claim.states) {
+    assert.ok(
+      stateSource.includes(`"${stateName}"`),
+      `claim state ${stateName} must exist in the crate state machine`,
+    );
+  }
+  const portSource = source("port.rs");
+  for (const operation of contract.operations) {
+    assert.ok(
+      portSource.includes(`fn ${operation}(`),
+      `contract operation ${operation} must be a control-plane port method`,
+    );
+  }
+  const boundsSource = source("bounds.rs");
+  const boundConstants = {
+    sandbox_claim_ttlSecondsMax: "SANDBOX_POOL_CLAIM_TTL_SECONDS_MAX",
+    sandbox_reconciliationBatchSizeMax: "SANDBOX_POOL_RECONCILIATION_BATCH_SIZE_MAX",
+    sandbox_candidateSlotCountMax: "SANDBOX_POOL_CANDIDATE_SLOT_COUNT_MAX",
+    sandbox_claimAttemptCountMax: "SANDBOX_POOL_CLAIM_ATTEMPT_COUNT_MAX",
+    sandbox_retryAfterSecondsMax: "SANDBOX_POOL_RETRY_AFTER_SECONDS_MAX",
+    sandbox_cleanupDeadlineSecondsMax: "SANDBOX_POOL_CLEANUP_DEADLINE_SECONDS_MAX",
+    sandbox_refillOperationsPerNodeMax: "SANDBOX_POOL_REFILL_OPERATIONS_PER_NODE_MAX",
+    sandbox_perProfileTargetMax: "SANDBOX_POOL_PER_PROFILE_TARGET_MAX",
+  };
+  for (const [boundKey, constantName] of Object.entries(boundConstants)) {
+    const boundValue = contract.bounds[boundKey];
+    assert.ok(
+      boundsSource.includes(`${constantName}: `) && boundsSource.includes(`= ${boundValue};`),
+      `bound ${boundKey}=${boundValue} must be restated by ${constantName}`,
+    );
+  }
+  const errorSource = source("error.rs");
+  for (const errorCode of contract.errors.sandbox_errorCodes) {
+    assert.ok(
+      errorSource.includes(`"${errorCode}"`),
+      `contract error code ${errorCode} must exist in the typed error enum`,
+    );
+  }
 });
 
 test("Pool classes keep Prepared first and Warm behind a separate KVM evidence gate", () => {

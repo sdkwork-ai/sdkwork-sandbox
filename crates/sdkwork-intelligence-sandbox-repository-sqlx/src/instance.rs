@@ -434,13 +434,11 @@ impl SandboxInstanceRepository for SqlxSandboxInstanceRepository {
             .iter()
             .map(Self::read_sandbox_instance)
             .collect::<SandboxInstanceRepositoryResult<Vec<SandboxInstance>>>()?;
-        let count_sql = format!(
-            "SELECT COUNT(*)::BIGINT FROM sandbox_instance \
+        let count_sql = "SELECT COUNT(*)::BIGINT FROM sandbox_instance \
              WHERE tenant_id = $1 \
                AND ($2::TEXT IS NULL OR sandbox_instance_owner_id = $2) \
-               AND ($3::TEXT IS NULL OR sandbox_instance_state = $3)"
-        );
-        let total_items = sqlx::query_scalar::<_, i64>(audited_sql(&count_sql))
+               AND ($3::TEXT IS NULL OR sandbox_instance_state = $3)";
+        let total_items = sqlx::query_scalar::<_, i64>(audited_sql(count_sql))
             .bind(tenant_id.as_str())
             .bind(owner_filter)
             .bind(state_filter)

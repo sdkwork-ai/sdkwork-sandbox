@@ -32,7 +32,7 @@
     "../apis/async/sandbox-event-catalog.json",
     "../apis/async/sandbox-observability-catalog.json"
   ],
-  "implementationAuthorized": false,
+  "implementationAuthorized": true,
   "ownership": {
     "sandbox_pool_owner": "Sandbox runtime pool service",
     "sandbox_admission_owner": "SandboxAdmissionPolicyPort",

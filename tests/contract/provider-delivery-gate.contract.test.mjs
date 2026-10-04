@@ -189,7 +189,11 @@ test("Gate 0 keeps deferred Provider crates out and confines process spawning to
   // stays unclaimed.
   assert.doesNotMatch(collectRustSources("crates").join("\n"), /\bSandboxLocalOsProcessRunner\b/u);
 
-  const processSpawnPattern = /\b(?:std::process|tokio::process|Command::new)\b/u;
+  // 2026-10-04: the detector matches process-CREATION surfaces only. A control-plane
+  // binary terminating itself (`std::process::exit`) is not spawning; `tokio::process`,
+  // `std::process::Command` and `Command::new` are.
+  const processSpawnPattern =
+    /\b(?:tokio::process|std::process::Command|Command::new)\b/u;
   const controlPlaneCrates = [
     "crates/sdkwork-intelligence-sandbox-service",
     "crates/sdkwork-intelligence-sandbox-repository-memory",

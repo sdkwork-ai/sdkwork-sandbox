@@ -66,7 +66,13 @@ test("Sandbox Service Host gate dependencies resolve and remain closed at Gate 0
   // 2026-09-24: the local host boundary contract flipped to authorized with its packet signed, so
   // it is the one gate dependency no longer closed; every other dependency must remain closed.
   // The command contract joined the authorized set when REQ-2026-0007 reached ready (2026-09-24).
-  const authorized_dependencies = new Set(["sandbox_local_host_boundary", "sandbox_command_contract"]);
+  // The runtime pool contract joined it when the REQ-2026-0019 control-plane slice landed
+  // (2026-10-04); its runtime/database/API gates stay closed inside the pool contract itself.
+  const authorized_dependencies = new Set([
+    "sandbox_local_host_boundary",
+    "sandbox_command_contract",
+    "sandbox_runtime_pool",
+  ]);
   for (const sandbox_dependency of contract.gateDependencies.contracts) {
     assert.match(sandbox_dependency.sandbox_dependency_id, /^sandbox_/u);
     assert.equal(sandbox_dependency_ids.has(sandbox_dependency.sandbox_dependency_id), false);
