@@ -12,9 +12,9 @@ use sdkwork_sandbox_provider_spi::{SandboxInstanceId, SandboxInstanceOwnerId, Te
 
 use crate::instance::{
     CreateSandboxInstanceCommand, SandboxInstance, SandboxInstanceError, SandboxInstanceListCursor,
-    SandboxInstanceListPage, SandboxInstanceRepository, SandboxInstanceRepositoryError,
-    SandboxInstanceRepositoryResult, SandboxInstanceResult, SandboxInstanceState,
-    UpdateSandboxInstanceCommand,
+    SandboxInstanceListPage, SandboxInstanceOffsetPage, SandboxInstanceRepository,
+    SandboxInstanceRepositoryError, SandboxInstanceRepositoryResult, SandboxInstanceResult,
+    SandboxInstanceState, UpdateSandboxInstanceCommand, MAX_SANDBOX_INSTANCE_PAGE_NUMBER,
 };
 
 pub const DEFAULT_SANDBOX_INSTANCE_PAGE_SIZE: u32 = 20;
@@ -93,6 +93,47 @@ impl<R: SandboxInstanceRepository> SandboxInstanceService<R> {
             sandbox_instance_owner_id,
             sandbox_instance_state,
             cursor,
+            page_size,
+        ))
+        .await
+        .map_err(SandboxInstanceError::Repository)
+    }
+
+    /// Lists one exact-total offset window (`PAGINATION_SPEC.md` section 3
+    /// offset mode: numbered, low-volume listings that owe the caller an exact
+    /// `totalItems`).
+    ///
+    /// `page` is 1-based. Out-of-range values are rejected — never clamped
+    /// (`API_SPEC.md` section 14.1).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SandboxInstanceError::Validation`] for a page number outside
+    /// `1..=[`MAX_SANDBOX_INSTANCE_PAGE_NUMBER`](crate::MAX_SANDBOX_INSTANCE_PAGE_NUMBER)`
+    /// or a page size outside `1..=200`, and the repository error otherwise.
+    pub async fn list_offset(
+        &self,
+        tenant_id: &TenantId,
+        sandbox_instance_owner_id: Option<&SandboxInstanceOwnerId>,
+        sandbox_instance_state: Option<SandboxInstanceState>,
+        page: u32,
+        page_size: u32,
+    ) -> SandboxInstanceResult<SandboxInstanceOffsetPage> {
+        let page_size = normalize_page_size(page_size)?;
+        if page == 0 || page > MAX_SANDBOX_INSTANCE_PAGE_NUMBER {
+            return Err(SandboxInstanceError::Validation {
+                field: "page",
+                detail: "must be between 1 and 10000",
+            });
+        }
+        // Bounded by the two checks above, so the offset arithmetic cannot
+        // overflow on any input that reaches here.
+        let offset = u64::from(page - 1) * u64::from(page_size);
+        bounded_repository(self.repository.list_sandbox_instances_offset(
+            tenant_id,
+            sandbox_instance_owner_id,
+            sandbox_instance_state,
+            offset,
             page_size,
         ))
         .await
@@ -357,6 +398,52 @@ mod tests {
             Ok(SandboxInstanceListPage { items, next_cursor })
         }
 
+        async fn list_sandbox_instances_offset(
+            &self,
+            tenant_id: &TenantId,
+            sandbox_instance_owner_id: Option<&SandboxInstanceOwnerId>,
+            sandbox_instance_state: Option<SandboxInstanceState>,
+            offset: u64,
+            page_size: u32,
+        ) -> SandboxInstanceRepositoryResult<SandboxInstanceOffsetPage> {
+            if page_size == 0 {
+                return Err(SandboxInstanceRepositoryError::InvalidPageRequest);
+            }
+            let rows = self.rows.lock().expect("instance store lock");
+            // Same sort key and filters as the keyset listing; the window is a
+            // plain skip/take over the ordered scope.
+            let mut filtered: Vec<SandboxInstance> = rows
+                .values()
+                .filter(|row| row.tenant_id() == tenant_id)
+                .filter(|row| {
+                    sandbox_instance_owner_id
+                        .is_none_or(|owner| row.sandbox_instance_owner_id() == owner)
+                })
+                .filter(|row| {
+                    sandbox_instance_state.is_none_or(|state| row.sandbox_instance_state() == state)
+                })
+                .cloned()
+                .collect();
+            filtered.sort_by(|left, right| {
+                let left_key = (
+                    left.created_at().unwrap_or_default(),
+                    left.sandbox_instance_id().as_str(),
+                );
+                let right_key = (
+                    right.created_at().unwrap_or_default(),
+                    right.sandbox_instance_id().as_str(),
+                );
+                right_key.cmp(&left_key)
+            });
+            let total_items = filtered.len() as u64;
+            let items: Vec<SandboxInstance> = filtered
+                .into_iter()
+                .skip(offset as usize)
+                .take(page_size as usize)
+                .collect();
+            Ok(SandboxInstanceOffsetPage { items, total_items })
+        }
+
         async fn get_sandbox_instance(
             &self,
             tenant_id: &TenantId,
@@ -486,6 +573,101 @@ mod tests {
             .unwrap_or_else(|error| panic!("list: {error}"));
         assert!(page.next_cursor.is_none(), "one row must end enumeration");
         assert_eq!(1, page.items.len());
+    }
+
+    #[tokio::test]
+    async fn offset_listing_windows_the_scope_with_exact_totals() {
+        let service = service();
+        for name in ["primary", "secondary", "tertiary"] {
+            service
+                .create(create_command(name))
+                .await
+                .unwrap_or_else(|error| panic!("create {name}: {error}"));
+        }
+        let first = service
+            .list_offset(&tenant(), Some(&owner()), None, 1, 2)
+            .await
+            .unwrap_or_else(|error| panic!("offset page 1: {error}"));
+        assert_eq!(2, first.items.len());
+        assert_eq!(3, first.total_items, "total covers the whole scope");
+        let second = service
+            .list_offset(&tenant(), Some(&owner()), None, 2, 2)
+            .await
+            .unwrap_or_else(|error| panic!("offset page 2: {error}"));
+        assert_eq!(1, second.items.len());
+        assert_eq!(3, second.total_items);
+        let past_end = service
+            .list_offset(&tenant(), Some(&owner()), None, 3, 2)
+            .await
+            .unwrap_or_else(|error| panic!("offset past end: {error}"));
+        assert!(
+            past_end.items.is_empty(),
+            "past-end page is empty, not an error"
+        );
+        assert_eq!(3, past_end.total_items);
+    }
+
+    #[tokio::test]
+    async fn offset_listing_narrows_to_one_owner_and_one_state() {
+        let service = service();
+        service
+            .create(create_command("mine"))
+            .await
+            .unwrap_or_else(|error| panic!("create: {error}"));
+        let mut other_owner = create_command("theirs");
+        other_owner.sandbox_instance_owner_id =
+            SandboxInstanceOwnerId::parse("user-instance-other")
+                .unwrap_or_else(|error| panic!("other owner: {error}"));
+        service
+            .create(other_owner)
+            .await
+            .unwrap_or_else(|error| panic!("create other: {error}"));
+
+        let mine = service
+            .list_offset(&tenant(), Some(&owner()), None, 1, 20)
+            .await
+            .unwrap_or_else(|error| panic!("owner-scoped offset: {error}"));
+        assert_eq!(1, mine.items.len());
+        assert_eq!(1, mine.total_items, "another owner's row is invisible");
+
+        let active = service
+            .list_offset(
+                &tenant(),
+                Some(&owner()),
+                Some(SandboxInstanceState::Active),
+                1,
+                20,
+            )
+            .await
+            .unwrap_or_else(|error| panic!("state-filtered offset: {error}"));
+        assert_eq!(0, active.total_items, "requested rows do not match active");
+    }
+
+    #[tokio::test]
+    async fn offset_listing_rejects_out_of_range_paging_instead_of_clamping() {
+        let service = service();
+        for (field, page, page_size) in [
+            ("page", 0, 20),
+            ("page", 10_001, 20),
+            ("page_size", 1, 0),
+            ("page_size", 1, 201),
+        ] {
+            assert!(
+                matches!(
+                    service
+                        .list_offset(&tenant(), Some(&owner()), None, page, page_size)
+                        .await,
+                    Err(SandboxInstanceError::Validation { field: name, .. }) if name == field,
+                ),
+                "page {page} / page_size {page_size} must be rejected as {field}"
+            );
+        }
+        let boundary = service
+            .list_offset(&tenant(), Some(&owner()), None, 10_000, 200)
+            .await
+            .unwrap_or_else(|error| panic!("boundary page: {error}"));
+        assert!(boundary.items.is_empty());
+        assert_eq!(0, boundary.total_items);
     }
 
     #[tokio::test]

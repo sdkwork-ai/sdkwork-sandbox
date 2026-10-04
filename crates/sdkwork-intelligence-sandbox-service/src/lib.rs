@@ -16,10 +16,11 @@ pub use error::{SandboxLifecycleError, SandboxLifecycleResult};
 pub use instance::{
     CreateSandboxInstanceCommand, SandboxInstance, SandboxInstanceError,
     SandboxInstanceExpiryUpdate, SandboxInstanceListCursor, SandboxInstanceListPage,
-    SandboxInstanceProfile, SandboxInstanceRepository, SandboxInstanceRepositoryError,
-    SandboxInstanceRepositoryResult, SandboxInstanceResourceBounds, SandboxInstanceResult,
-    SandboxInstanceState, UpdateSandboxInstanceCommand, MAX_SANDBOX_INSTANCE_BASE_IMAGE_LENGTH,
-    MAX_SANDBOX_INSTANCE_NAME_LENGTH, MAX_SANDBOX_INSTANCE_REQUIRED_CAPABILITIES,
+    SandboxInstanceOffsetPage, SandboxInstanceProfile, SandboxInstanceRepository,
+    SandboxInstanceRepositoryError, SandboxInstanceRepositoryResult, SandboxInstanceResourceBounds,
+    SandboxInstanceResult, SandboxInstanceState, UpdateSandboxInstanceCommand,
+    MAX_SANDBOX_INSTANCE_BASE_IMAGE_LENGTH, MAX_SANDBOX_INSTANCE_NAME_LENGTH,
+    MAX_SANDBOX_INSTANCE_PAGE_NUMBER, MAX_SANDBOX_INSTANCE_REQUIRED_CAPABILITIES,
     MAX_SANDBOX_INSTANCE_VERSION,
 };
 pub use instance_service::{

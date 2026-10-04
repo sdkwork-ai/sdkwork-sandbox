@@ -1,6 +1,9 @@
 //! Generated route inventory. Do not edit by hand; run pnpm api:assembly:materialize.
 
-pub const ROUTE_CRATE_COUNT: usize = 1;
+pub const ROUTE_CRATE_COUNT: usize = 2;
 
 #[allow(dead_code)]
-pub const ROUTE_CRATE_PACKAGES: &[&str] = &["sdkwork-routes-sandbox-internal-api"];
+pub const ROUTE_CRATE_PACKAGES: &[&str] = &[
+    "sdkwork-routes-sandbox-app-api",
+    "sdkwork-routes-sandbox-internal-api",
+];

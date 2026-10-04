@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.component.spec",
+  "component": {
+    "name": "sdkwork-routes-sandbox-app-api",
+    "displayName": "SDKWork Sandbox APP API Routes",
+    "version": "0.1.0",
+    "type": "rust-route-crate",
+    "root": "crates/sdkwork-routes-sandbox-app-api",
+    "domain": "intelligence",
+    "capability": "sandbox",
+    "surface": "app-api",
+    "languages": [
+      "rust"
+    ],
+    "generated": false,
+    "manifests": [
+      "Cargo.toml"
+    ]
+  },
+  "canonicalSpecs": [
+    {
+      "file": "CODE_STYLE_SPEC.md",
+      "path": "../../../sdkwork-specs/CODE_STYLE_SPEC.md",
+      "purpose": "Authored source structure and generated code boundaries."
+    },
+    {
+      "file": "NAMING_SPEC.md",
+      "path": "../../../sdkwork-specs/NAMING_SPEC.md",
+      "purpose": "Canonical SDKWork naming rules."
+    },
+    {
+      "file": "API_SPEC.md",
+      "path": "../../../sdkwork-specs/API_SPEC.md",
+      "purpose": "OpenAPI authority and route manifest rules."
+    },
+    {
+      "file": "WEB_FRAMEWORK_SPEC.md",
+      "path": "../../../sdkwork-specs/WEB_FRAMEWORK_SPEC.md",
+      "purpose": "Mandatory Web Framework integration for HTTP surfaces."
+    },
+    {
+      "file": "WEB_BACKEND_SPEC.md",
+      "path": "../../../sdkwork-specs/WEB_BACKEND_SPEC.md",
+      "purpose": "HTTP backend route boundary rules."
+    },
+    {
+      "file": "PAGINATION_SPEC.md",
+      "path": "../../../sdkwork-specs/PAGINATION_SPEC.md",
+      "purpose": "Offset list contract for the console listing."
+    },
+    {
+      "file": "SDK_WORKSPACE_GENERATION_SPEC.md",
+      "path": "../../../sdkwork-specs/SDK_WORKSPACE_GENERATION_SPEC.md",
+      "purpose": "Route manifest and SDK generation ownership."
+    },
+    {
+      "file": "RUST_CODE_SPEC.md",
+      "path": "../../../sdkwork-specs/RUST_CODE_SPEC.md",
+      "purpose": "Rust crate rules."
+    },
+    {
+      "file": "TEST_SPEC.md",
+      "path": "../../../sdkwork-specs/TEST_SPEC.md",
+      "purpose": "Route contract and composition verification."
+    }
+  ],
+  "contracts": {
+    "layerRole": "backend-route",
+    "publicExports": [
+      "."
+    ],
+    "providedPorts": [],
+    "requiredPorts": [],
+    "runtimeEntrypoints": [
+      "app_route_manifest",
+      "assembly_business_router"
+    ],
+    "routeManifest": "src/http_route_manifest.rs#app_route_manifest",
+    "sdkClients": [],
+    "sdkDependencies": [],
+    "dependencyApiExports": [],
+    "dependencyApiSurfaces": [],
+    "events": [],
+    "configKeys": []
+  },
+  "verification": {
+    "commands": [
+      "cargo test -p sdkwork-routes-sandbox-app-api",
+      "node ../sdkwork-specs/tools/check-api-operation-patterns.mjs --workspace .",
+      "node ../sdkwork-specs/tools/check-api-response-envelope.mjs --workspace .",
+      "node ../sdkwork-specs/tools/check-pagination.mjs --workspace ."
+    ]
+  }
+}

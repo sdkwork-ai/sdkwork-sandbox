@@ -1,0 +1,155 @@
+//! Response envelope and problem mapping for the Sandbox app-api surface.
+//!
+//! Every success and every failure leaves through this module so the envelope,
+//! the trace header and the error taxonomy stay in one place
+//! (`API_SPEC.md` sections 14, 16 and 17).
+
+use axum::{
+    http::{HeaderName, HeaderValue, StatusCode},
+    response::{IntoResponse, Response},
+    Json,
+};
+use sdkwork_utils_rust::{
+    offset_list_page_data, OffsetListPageParams, SdkWorkApiResponse, SdkWorkPageData,
+    SdkWorkResourceData,
+};
+use sdkwork_web_core::{
+    problem_response, WebFrameworkError, WebFrameworkErrorKind, WebRequestContext,
+};
+
+use serde::Serialize;
+
+use crate::errors::SandboxAppApiError;
+
+/// Result alias for handlers.
+pub type ApiResult<T> = Result<T, SandboxAppApiError>;
+
+/// Wraps one resource in the standard envelope payload.
+#[must_use]
+pub fn item_data<T>(item: T) -> SdkWorkResourceData<T> {
+    SdkWorkResourceData { item }
+}
+
+/// Wraps one exact-total offset page in the standard envelope payload
+/// (`PAGINATION_SPEC.md` section 3 offset mode: `mode: "offset"` with the
+/// page number, the effective page size, and the exact `totalItems` /
+/// `totalPages` the console table renders).
+#[must_use]
+pub fn offset_page_data<T>(
+    items: Vec<T>,
+    total_items: u64,
+    params: OffsetListPageParams,
+) -> SdkWorkPageData<T> {
+    offset_list_page_data(
+        items,
+        i64::try_from(total_items).unwrap_or(i64::MAX),
+        params,
+    )
+}
+
+fn success_response<T: Serialize>(
+    ctx: &WebRequestContext,
+    data: T,
+) -> Result<Response, SandboxAppApiError> {
+    let trace_id = ctx.resolved_trace_id();
+    let envelope = SdkWorkApiResponse::success(data, trace_id.clone());
+    let mut response = (StatusCode::OK, Json(envelope)).into_response();
+    if let Ok(value) = HeaderValue::from_str(&trace_id) {
+        response
+            .headers_mut()
+            .insert(HeaderName::from_static("x-sdkwork-trace-id"), value);
+    }
+    Ok(response)
+}
+
+/// Renders one creation result as `201` with the standard envelope
+/// (`API_SPEC.md` section 15.4: create returns `201` and the body `MUST`
+/// still use `SdkWorkApiResponse` with `code: 0`).
+#[must_use]
+pub fn finish_api_created<T: Serialize>(ctx: &WebRequestContext, result: ApiResult<T>) -> Response {
+    match result {
+        Ok(data) => {
+            let trace_id = ctx.resolved_trace_id();
+            let envelope = SdkWorkApiResponse::success(data, trace_id.clone());
+            let mut response = (StatusCode::CREATED, Json(envelope)).into_response();
+            if let Ok(value) = HeaderValue::from_str(&trace_id) {
+                response
+                    .headers_mut()
+                    .insert(HeaderName::from_static("x-sdkwork-trace-id"), value);
+            }
+            response
+        }
+        Err(problem) => problem.into_response_for(ctx),
+    }
+}
+
+/// Renders one delete result as `204` with no JSON body and the trace header
+/// (`API_SPEC.md` section 15.4: delete is header-only `traceId`).
+#[must_use]
+pub fn finish_api_no_content(ctx: &WebRequestContext, result: ApiResult<()>) -> Response {
+    match result {
+        Ok(()) => {
+            let trace_id = ctx.resolved_trace_id();
+            let mut response = StatusCode::NO_CONTENT.into_response();
+            if let Ok(value) = HeaderValue::from_str(&trace_id) {
+                response
+                    .headers_mut()
+                    .insert(HeaderName::from_static("x-sdkwork-trace-id"), value);
+            }
+            response
+        }
+        Err(problem) => problem.into_response_for(ctx),
+    }
+}
+
+/// Renders one handler result as an HTTP response.
+#[must_use]
+pub fn finish_api_json<T: Serialize>(ctx: &WebRequestContext, result: ApiResult<T>) -> Response {
+    match result {
+        Ok(data) => {
+            success_response(ctx, data).unwrap_or_else(|problem| problem.into_response_for(ctx))
+        }
+        Err(problem) => problem.into_response_for(ctx),
+    }
+}
+
+/// Extension trait so handlers can render a typed result without importing the
+/// framework error types.
+pub trait SandboxAppApiProblemResponse {
+    fn into_response_for(self, ctx: &WebRequestContext) -> Response;
+}
+
+impl SandboxAppApiProblemResponse for SandboxAppApiError {
+    fn into_response_for(self, ctx: &WebRequestContext) -> Response {
+        let kind = match self.status() {
+            StatusCode::BAD_REQUEST => WebFrameworkErrorKind::BadRequest,
+            StatusCode::NOT_FOUND => WebFrameworkErrorKind::NotFound,
+            StatusCode::CONFLICT => WebFrameworkErrorKind::Conflict,
+            StatusCode::FORBIDDEN => WebFrameworkErrorKind::Forbidden,
+            StatusCode::SERVICE_UNAVAILABLE => WebFrameworkErrorKind::DependencyUnavailable,
+            _ => WebFrameworkErrorKind::InternalServerError,
+        };
+        let error = WebFrameworkError {
+            kind,
+            message: self.message().to_owned(),
+            retry_after_seconds: None,
+            auth_profile: None,
+            failed_stage: None,
+            reason: None,
+        };
+        let response = problem_response(&error, ctx.problem_correlation());
+        // A server fault that reaches a client must also reach the operator:
+        // render the problem and log it with the same trace id
+        // (OBSERVABILITY_SPEC section 2). Client faults stay unlogged — they
+        // are the caller's signal, not the server's.
+        if response.status().is_server_error() {
+            tracing::error!(
+                status = %response.status(),
+                trace_id = %ctx.resolved_trace_id(),
+                error = self.message(),
+                "sandbox app-api request failed with a server fault"
+            );
+        }
+        response
+    }
+}

@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.iam.module",
+  "moduleId": "sandbox",
+  "catalogVersion": "1.0.0",
+  "domain": "sandbox",
+  "owner": "sdkwork-sandbox",
+  "displayName": "SDKWork Sandbox Module",
+  "permissions": {
+    "catalog": [
+      {
+        "code": "sandbox.instances.read",
+        "name": "Read sandbox instances owned by the authenticated user",
+        "resource": "instances",
+        "action": "read",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "sandbox.instances.create",
+        "name": "Provision sandbox instances owned by the authenticated user",
+        "resource": "instances",
+        "action": "create",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "sandbox.instances.update",
+        "name": "Update sandbox instances owned by the authenticated user",
+        "resource": "instances",
+        "action": "update",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "sandbox.instances.delete",
+        "name": "Delete sandbox instances owned by the authenticated user",
+        "resource": "instances",
+        "action": "delete",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      }
+    ],
+    "openapiAuthorities": [
+      "sdkwork-sandbox-app-api"
+    ]
+  },
+  "roles": {
+    "domainStandardRoles": [
+      {
+        "code": "sandbox_instances_user",
+        "name": "Sandbox Instances User",
+        "surface": "application",
+        "scope": "tenant",
+        "standard": true,
+        "assignable": true,
+        "bindingPrincipalKind": "user",
+        "permissionPatterns": [
+          "sandbox.instances.read",
+          "sandbox.instances.create",
+          "sandbox.instances.update",
+          "sandbox.instances.delete"
+        ]
+      }
+    ],
+    "roleGrantExtensions": [
+      {
+        "roleCode": "app_user",
+        "patterns": [
+          "sandbox.instances.read",
+          "sandbox.instances.create",
+          "sandbox.instances.update",
+          "sandbox.instances.delete"
+        ]
+      },
+      {
+        "roleCode": "org_admin",
+        "patterns": [
+          "sandbox.*"
+        ]
+      },
+      {
+        "roleCode": "org_operations",
+        "patterns": [
+          "sandbox.instances.read"
+        ]
+      }
+    ],
+    "roleExclusions": []
+  },
+  "directory": {
+    "organizationTemplates": [],
+    "departmentTemplates": [],
+    "positionTemplates": [],
+    "membershipTemplates": []
+  },
+  "policyConditions": {
+    "supportedAttributes": []
+  },
+  "oauthScopeMappings": [],
+  "dependencies": {
+    "requiresModules": [
+      "iam-kernel"
+    ]
+  }
+}

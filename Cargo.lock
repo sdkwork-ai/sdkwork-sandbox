@@ -2025,9 +2025,11 @@ dependencies = [
  "sdkwork-database-sqlx",
  "sdkwork-intelligence-sandbox-repository-sqlx",
  "sdkwork-intelligence-sandbox-service",
+ "sdkwork-routes-sandbox-app-api",
  "sdkwork-routes-sandbox-internal-api",
  "sdkwork-sandbox-database-host",
  "sdkwork-web-bootstrap",
+ "sdkwork-web-contract",
  "sdkwork-web-core",
  "sqlx",
  "thiserror",
@@ -2267,6 +2269,21 @@ dependencies = [
  "sdkwork-sandbox-provider-spi",
  "sdkwork-utils-rust",
  "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "sdkwork-routes-sandbox-app-api"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "sdkwork-intelligence-sandbox-service",
+ "sdkwork-sandbox-provider-spi",
+ "sdkwork-utils-rust",
+ "sdkwork-web-core",
+ "serde",
+ "serde_json",
  "tokio",
  "tracing",
 ]

@@ -22,6 +22,12 @@ pub const MAX_SANDBOX_INSTANCE_NAME_LENGTH: usize = 128;
 pub const MAX_SANDBOX_INSTANCE_BASE_IMAGE_LENGTH: usize = 256;
 pub const MAX_SANDBOX_INSTANCE_REQUIRED_CAPABILITIES: usize = 32;
 
+/// Upper bound of the offset listing's page number (`PAGINATION_SPEC.md`
+/// section 3: offset mode targets low-volume stable lists; deep pages degrade
+/// to O(offset) scans, so the range is bounded and rejected — never clamped —
+/// outside `1..=10_000`).
+pub const MAX_SANDBOX_INSTANCE_PAGE_NUMBER: u32 = 10_000;
+
 pub const MIN_SANDBOX_INSTANCE_VCPU_COUNT: u32 = 1;
 pub const MAX_SANDBOX_INSTANCE_VCPU_COUNT: u32 = 64;
 pub const MIN_SANDBOX_INSTANCE_MEMORY_MB: u32 = 256;
@@ -810,6 +816,15 @@ pub struct SandboxInstanceListPage {
     pub next_cursor: Option<SandboxInstanceListCursor>,
 }
 
+/// One bounded offset window plus the exact total of the filtered scope
+/// (`PAGINATION_SPEC.md` section 3 offset mode: numbered, low-volume listings
+/// that owe the caller an exact `totalItems`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SandboxInstanceOffsetPage {
+    pub items: Vec<SandboxInstance>,
+    pub total_items: u64,
+}
+
 /// Persistence port owned by this module. The PostgreSQL adapter implements it;
 /// the in-memory adapter exists so the service can be tested without a database.
 #[async_trait]
@@ -838,6 +853,21 @@ pub trait SandboxInstanceRepository: Send + Sync {
         cursor: Option<&SandboxInstanceListCursor>,
         page_size: u32,
     ) -> SandboxInstanceRepositoryResult<SandboxInstanceListPage>;
+
+    /// Lists one owner's instances, or the whole tenant when `owner` is `None`,
+    /// optionally narrowed to one state, as one exact-total offset window
+    /// (`PAGINATION_SPEC.md` section 3 offset mode: numbered, low-volume
+    /// listings that owe the caller an exact `totalItems`). The offset is
+    /// pre-validated by the service; the adapter still rejects a value it
+    /// cannot bind.
+    async fn list_sandbox_instances_offset(
+        &self,
+        tenant_id: &TenantId,
+        sandbox_instance_owner_id: Option<&SandboxInstanceOwnerId>,
+        sandbox_instance_state: Option<SandboxInstanceState>,
+        offset: u64,
+        page_size: u32,
+    ) -> SandboxInstanceRepositoryResult<SandboxInstanceOffsetPage>;
 
     async fn get_sandbox_instance(
         &self,

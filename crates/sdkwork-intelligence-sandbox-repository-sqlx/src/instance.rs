@@ -13,9 +13,9 @@
 use async_trait::async_trait;
 use sdkwork_database_sqlx::DatabasePool;
 use sdkwork_intelligence_sandbox_service::{
-    SandboxInstance, SandboxInstanceListCursor, SandboxInstanceListPage, SandboxInstanceProfile,
-    SandboxInstanceRepository, SandboxInstanceRepositoryError, SandboxInstanceRepositoryResult,
-    SandboxInstanceState,
+    SandboxInstance, SandboxInstanceListCursor, SandboxInstanceListPage, SandboxInstanceOffsetPage,
+    SandboxInstanceProfile, SandboxInstanceRepository, SandboxInstanceRepositoryError,
+    SandboxInstanceRepositoryResult, SandboxInstanceState,
 };
 use sdkwork_sandbox_provider_spi::{
     SandboxInstanceId, SandboxInstanceOwnerId, SandboxWorkspaceId, TenantId,
@@ -389,6 +389,68 @@ impl SandboxInstanceRepository for SqlxSandboxInstanceRepository {
             .map(Self::read_sandbox_instance)
             .collect::<SandboxInstanceRepositoryResult<Vec<SandboxInstance>>>()?;
         Ok(SandboxInstanceListPage { items, next_cursor })
+    }
+
+    async fn list_sandbox_instances_offset(
+        &self,
+        tenant_id: &TenantId,
+        sandbox_instance_owner_id: Option<&SandboxInstanceOwnerId>,
+        sandbox_instance_state: Option<SandboxInstanceState>,
+        offset: u64,
+        page_size: u32,
+    ) -> SandboxInstanceRepositoryResult<SandboxInstanceOffsetPage> {
+        if page_size == 0 || page_size > 200 {
+            return Err(SandboxInstanceRepositoryError::InvalidPageRequest);
+        }
+        let Ok(bound_offset) = i64::try_from(offset) else {
+            return Err(SandboxInstanceRepositoryError::InvalidPageRequest);
+        };
+        let owner_filter = sandbox_instance_owner_id.map(SandboxInstanceOwnerId::as_str);
+        let state_filter = sandbox_instance_state.map(SandboxInstanceState::as_str);
+        // Numbered console listing (`PAGINATION_SPEC.md` section 3 offset
+        // mode): one indexed `LIMIT/OFFSET` window plus one filtered `COUNT`
+        // for the exact `totalItems` the page header owes the caller. The two
+        // statements are same-request reads; a row committed between them can
+        // shift the total by one until the next refresh, which numbered
+        // pagination already surfaces as its normal next-page behavior.
+        let sql = format!(
+            "SELECT {SANDBOX_INSTANCE_COLUMNS} FROM sandbox_instance \
+             WHERE tenant_id = $1 \
+               AND ($2::TEXT IS NULL OR sandbox_instance_owner_id = $2) \
+               AND ($3::TEXT IS NULL OR sandbox_instance_state = $3) \
+             ORDER BY created_at DESC, sandbox_instance_id DESC \
+             LIMIT $4 OFFSET $5"
+        );
+        let rows = sqlx::query(audited_sql(&sql))
+            .bind(tenant_id.as_str())
+            .bind(owner_filter)
+            .bind(state_filter)
+            .bind(i64::from(page_size))
+            .bind(bound_offset)
+            .fetch_all(self.sandbox_postgres_pool()?)
+            .await
+            .map_err(Self::map_sandbox_sqlx_error)?;
+        let items = rows
+            .iter()
+            .map(Self::read_sandbox_instance)
+            .collect::<SandboxInstanceRepositoryResult<Vec<SandboxInstance>>>()?;
+        let count_sql = format!(
+            "SELECT COUNT(*)::BIGINT FROM sandbox_instance \
+             WHERE tenant_id = $1 \
+               AND ($2::TEXT IS NULL OR sandbox_instance_owner_id = $2) \
+               AND ($3::TEXT IS NULL OR sandbox_instance_state = $3)"
+        );
+        let total_items = sqlx::query_scalar::<_, i64>(audited_sql(&count_sql))
+            .bind(tenant_id.as_str())
+            .bind(owner_filter)
+            .bind(state_filter)
+            .fetch_one(self.sandbox_postgres_pool()?)
+            .await
+            .map_err(Self::map_sandbox_sqlx_error)?;
+        let Ok(total_items) = u64::try_from(total_items) else {
+            return Err(SandboxInstanceRepositoryError::InvalidStoredData);
+        };
+        Ok(SandboxInstanceOffsetPage { items, total_items })
     }
 
     async fn get_sandbox_instance(
