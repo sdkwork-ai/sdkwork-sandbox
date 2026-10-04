@@ -181,6 +181,7 @@ Sandbox 必须支持 Workspace 内的技能声明目录，使技能可被读取�
 - `int64` 标识在 TypeScript SDK 中必须保持字符串，禁止转为 `number`。
 - SDK 不得暴露 Provider 私有身份、宿主路径或内部 Node 拓扑。
 - 第一套 HTTP 控制面若获批必须是 `internal-api`，不得使用 `backend-api` 或自定义 `/api/*` 前缀；因此第一阶段 SDK 是内部 SDK 家族，公开商业 SDK 需独立评审。
+- 控制台消费面：面向 Web Server 控制台的 `app-api` 面已按 `REQ-2026-0030` 与 `ADR-20261004` 授权落地（IAM 双 token，权威契约 [`apis/app-api/sandbox/sandbox-app-api-authority.openapi.json`](../../../apis/app-api/sandbox/sandbox-app-api-authority.openapi.json)）。它只服务已登录主体自有的 sandbox instance registry，与 internal-api 控制面的 ingress-token 凭证模型、租户全域清单语义和权威文档相互独立；两面在组合边界是同一 owner contribution。
 
 ## 13. 可观测性能力面
 
