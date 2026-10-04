@@ -208,9 +208,8 @@ test("the repository's own traceability chain resolves and the gate is not vacuo
     assessment.decisionReferencesChecked >= 100,
     `the gate must not be vacuous; saw ${assessment.decisionReferencesChecked} decision references`,
   );
-  // 2026-10-04: REQ-2026-0030 (App API console face) registered;
-  // ADR-20261004 (console face and Template authority) accepted with their slices.
-  assert.equal(assessment.requirementsOnRecord, 30);
+  // 2026-10-05: REQ-2026-0031 (Snapshot/Fork authority) registered as draft.
+  assert.equal(assessment.requirementsOnRecord, 31);
   assert.equal(assessment.decisionsOnRecord, 30);
   assert.equal(assessment.capabilityRowsUnattributed, 0);
 });

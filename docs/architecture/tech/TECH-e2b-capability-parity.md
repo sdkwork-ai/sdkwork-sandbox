@@ -52,8 +52,8 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 
 具体到三个数字：
 
-- E2B 的能力集合共 **78 项**（本分片逐行展开），本仓 ✅ **0**、🟡 **19**、❌ **57**、⛔ **2**。
-- 30 份 `REQ-*` 中 **7 份 `ready`**（5 `accepted` / 18 `draft`）——2026-09-29 起 `REQ-2026-0028` E2B API/SDK 权威随所有者结构化决策进入 `ready`，同日 `REQ-2026-0029`（Template 权威）以 `draft` 登记承载 Template 能力类、`REQ-2026-0019`（Runtime Pool）随 `REVIEW-20260730` 接受进入 `ready`，`REQ-2026-0030`（App API console face）与 `REQ-2026-0029`（Template 权威，2026-10-04 随 REVIEW-20261004）相继进入 `ready`；30 份 `ADR` 中 23 份 `proposed`（7 份 `accepted`）——`ADR-20260924`、`ADR-20260730`、`ADR-20261004`（console face 与 Template 权威两份）相继接受；机器契约授权状态：24 份 `*.contract.json` 中 20 份显式声明 `implementationAuthorized: false`、**3 份已授权实现**——`specs/sandbox-local-provider-host-boundary.contract.json`（其人审 packet 已于 2026-09-24 由仓库所有者全部评审角色签署）、`specs/sandbox-runtime-pool.contract.json` 与 `specs/sandbox-template-authority.contract.json`（`REQ-2026-0029` 的权威模型切片——三个记录类型、fail-closed 校验、缓存语义词汇——已于 2026-10-04 带码与测试落地；Builder/Registry/缓存后端/CLI/API-SDK/部署面仍被契约 `forbidden` 块锁住）（`REQ-2026-0019` 的控制面实现切片——provider-neutral 池状态机、fenced 幂等 claim、有界注册表——已于 2026-10-04 带码与测试落地为 `crates/sdkwork-intelligence-sandbox-pool-control`；真实 VMM runtime、PostgreSQL claim 权威、Snapshot 复用与 API/SDK/deployment 面仍被该契约的 `x-sdkwork-no-*` 门锁住），第 24 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约：`apis/commands/sandbox-command-contract.json` 已于 2026-09-24 随 `REQ-2026-0007` 进入 `ready` 授权实现，`apis/async/sandbox-observability-catalog.json` 仍为 `false`。
+- E2B 的能力集合共 **78 项**（本分片逐行展开），本仓 ✅ **0**、🟡 **24**、❌ **52**、⛔ **2**。
+- 31 份 `REQ-*` 中 **7 份 `ready`**（5 `accepted` / 19 `draft`）——2026-09-29 起 `REQ-2026-0028` E2B API/SDK 权威随所有者结构化决策进入 `ready`，同日 `REQ-2026-0029`（Template 权威）以 `draft` 登记承载 Template 能力类、`REQ-2026-0019`（Runtime Pool）随 `REVIEW-20260730` 接受进入 `ready`，`REQ-2026-0030`（App API console face）与 `REQ-2026-0029`（Template 权威，2026-10-04 随 REVIEW-20261004）相继进入 `ready`，`REQ-2026-0031`（Snapshot/Fork 权威）于 2026-10-05 以 draft 登记承载 Snapshot 能力类；30 份 `ADR` 中 23 份 `proposed`（7 份 `accepted`）——`ADR-20260924`、`ADR-20260730`、`ADR-20261004`（console face 与 Template 权威两份）相继接受；机器契约授权状态：25 份 `*.contract.json` 中 21 份显式声明 `implementationAuthorized: false`（含 2026-10-05 新增的 `specs/sandbox-snapshot-fork.contract.json`）、**3 份已授权实现**——`specs/sandbox-local-provider-host-boundary.contract.json`（其人审 packet 已于 2026-09-24 由仓库所有者全部评审角色签署）、`specs/sandbox-runtime-pool.contract.json` 与 `specs/sandbox-template-authority.contract.json`（`REQ-2026-0029` 的权威模型切片——三个记录类型、fail-closed 校验、缓存语义词汇——已于 2026-10-04 带码与测试落地；Builder/Registry/缓存后端/CLI/API-SDK/部署面仍被契约 `forbidden` 块锁住）（`REQ-2026-0019` 的控制面实现切片——provider-neutral 池状态机、fenced 幂等 claim、有界注册表——已于 2026-10-04 带码与测试落地为 `crates/sdkwork-intelligence-sandbox-pool-control`；真实 VMM runtime、PostgreSQL claim 权威、Snapshot 复用与 API/SDK/deployment 面仍被该契约的 `x-sdkwork-no-*` 门锁住），第 25 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约：`apis/commands/sandbox-command-contract.json` 已于 2026-09-24 随 `REQ-2026-0007` 进入 `ready` 授权实现，`apis/async/sandbox-observability-catalog.json` 仍为 `false`。
 - 8 份契约声明的 **127 个证据 id** 中，只有 **2 个**有 host-precondition 半产出，**125 个**仍被真实 runner 或人工评审完全阻塞。
 
 因此本仓对用户画像的承诺（`PRD.md` 第 2 节"AI Agent 应用开发者：用少量代码获得一个可执行代码、可读写文件、可访问网络、可持久化的独立运行环境"）**当前为零兑现**。
@@ -74,7 +74,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | Sandbox Database Host | `crates/sdkwork-sandbox-database-host` | 1 模块 | `bootstrap_sandbox_database`（`lib.rs:93`）编排 init / migrate / 漂移分析，error 级漂移即失败；模块 id `sandbox`（`lib.rs:26`） |
 | Command Executor | `crates/sdkwork-sandbox-provider-spi` | 7 模块 | 端口（`SandboxCommandExecutor`、规范指纹）之上已有 Local 实现（兄弟 crate `sdkwork-sandbox-provider-local` 的 `SandboxLocalCommandExecutor` admission + 有界 live 注册表 + fenced cancel，以及 `SandboxLocalTokioProcessRunner` 真实进程切片：有界流式输出、硬超时 kill+reap、kill-on-drop、provider-owned 可执行解析、空环境）；2026-09-27 起 SPI 另承载 REQ-2026-0007 的 20 场景共享 Conformance 套件（`command_conformance.rs`），Local executor 已端到端通过其可执行子集）；Windows 舷道 descendant containment 已落地（评审候选 process-wrap 9.1：挂起创建→kill-on-close Job Object 赋值→赋值后恢复，`TerminateJobObject` 树杀，三代树探针证明），已记录 `start` shell 脱离逃逸为 `detached-and-breakaway-attempt-denial` 证据义务）；Terminal capability 仍未声明（Linux cgroup v2 舷道与真实平台证据矩阵未闭环） |
 | Template 权威模型 | `crates/sdkwork-intelligence-sandbox-template-authority` | 10 模块 | `REQ-2026-0029` 权威模型切片（2026-10-04 落地）：发布不可变的定义/版本记录、构建输入边界（`SandboxTemplateBuildInput`）、缓存三层语义（`cache.rs`）、制品分层与 forbidden 面（`authority.rs`）；Builder/Registry/缓存后端/CLI/API-SDK/部署仍 forbidden |
-| Snapshot / Fork | — | 不存在 | `crates/` 下无 `snapshot` / `fork` 同名 crate，无对应实现，也无产品级 `REQ-*`〔§3.4/1〕 |
+| Snapshot / Fork | — | 不存在 | `crates/` 下无 `snapshot` / `fork` 同名 crate，无对应实现；权威承载已登记为 `REQ-2026-0031`（draft，2026-10-05）+ `specs/sandbox-snapshot-fork.contract.json`（实现未授权） |
 | Runtime Pool 控制面 | `crates/sdkwork-intelligence-sandbox-pool-control` | 11 模块 | `REQ-2026-0019` 控制面切片（2026-10-04 落地）：`SandboxPoolSlot` / `SandboxPoolClaim` 状态机、fenced 幂等 claim、有界注册表实现 8 个契约操作（`SandboxRuntimePoolPort`，`port.rs`）；真实 VMM runtime、PostgreSQL claim 权威、Snapshot 复用与 API/SDK/deployment 仍未授权（`specs/sandbox-runtime-pool.contract.json` 的 `x-sdkwork-no-*` 门） |
 | SDK | `sdks/` | 目录 + README | **零生成产物**，`apis/` 无权威 OpenAPI |
 
@@ -91,7 +91,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | --- | --- | --- | --- | --- | --- |
 | Sandbox 生命周期 | 11 | 0 | 3 | 8 | 0 |
 | 持久化（Pause / Resume） | 8 | 0 | 1 | 7 | 0 |
-| Snapshot 与 Fork | 5 | 0 | 0 | 5 | 0 |
+| Snapshot 与 Fork | 5 | 0 | 5 | 0 | 0 |
 | Template | 9 | 0 | 4 | 4 | 1 |
 | Filesystem | 7 | 0 | 0 | 7 | 0 |
 | Volumes | 4 | 0 | 2 | 2 | 0 |
@@ -106,7 +106,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | MCP Gateway | 1 | 0 | 0 | 1 | 0 |
 | 平台与部署 | 4 | 0 | 3 | 1 | 0 |
 | Agent 框架集成 | 1 | 0 | 0 | 0 | 1 |
-| **合计** | **78** | **0** | **19** | **57** | **2** |
+| **合计** | **78** | **0** | **24** | **52** | **2** |
 
 ## 2. 逐项对照
 
@@ -126,7 +126,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | 6 | `Sandbox.list()`（`state`/filter + paginator） | 无 | ❌ | — |
 | 7 | Lifecycle events API（事件流） | `apis/async/sandbox-events.asyncapi.json` + `sandbox-event-catalog.json` 契约 | 🟡 | 仅契约，无 runtime exporter/worker |
 | 8 | Lifecycle webhooks | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 8 行（18 项） |
-| 9 | Auto-resume on request | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 9 节；无 `REQ-*`〔§3.4/2〕 |
+| 9 | Auto-resume on request | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 9 节；无 `REQ-*`〔§3.4/1〕 |
 | 10 | SSH access（WebSocket 代理） | 无 | ❌ | 基准已取证 `specs/sandbox-e2b-capability-baseline.json` 第 10 行（6 项） |
 | 11 | Secured access / 访问令牌门控 | 无 | ❌ | 本仓有 `SandboxFencingToken`，对象是控制权竞争而非访问面，形态不同 |
 
@@ -139,7 +139,7 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 | 14 | `connect()` 恢复（热恢复） | 无 | ❌ | — |
 | 15 | Reboot-on-resume（`resume-without-memory`） | 无 | ❌ | — |
 | 16 | Paused 无限期保留、无 TTL、无自动删除 | 无 | ❌ | **形态相反**：`REQ-2026-0020` 定义的是**有界**热状态投影与终态保留窗口，不是无限期保留 |
-| 17 | Auto-pause on timeout（`onTimeout: 'pause'`） | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 9 节；无独立 `REQ-*`〔§3.4/3〕 |
+| 17 | Auto-pause on timeout（`onTimeout: 'pause'`） | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 9 节；无独立 `REQ-*`〔§3.4/1〕 |
 | 18 | Pause 被拒语义（HTTP 503 `ServiceBusyError`，沙箱保持运行可重试） | `SandboxLifecycleError::LeaseUnavailable` / `LeaseLost` | 🟡 | 形态不同：本仓的拒绝对象是**生命周期控制权竞争**，不是快照拥塞；E2B 那套快照背压语义本仓无对应 |
 | 19 | 暂停/恢复性能承诺（约 4 s/GiB RAM；恢复约 1 s） | 无 | ❌ | [TECH-performance-and-capacity.md](TECH-performance-and-capacity.md) 有恢复时延目标，但无参考硬件与测量 |
 
@@ -147,11 +147,11 @@ E2B 让 Agent 执行的两条核心路径，本仓**一条都不可用**：
 
 | # | E2B 能力 | 本仓对应 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
-| 20 | `createSnapshot()`（含内存与文件系统；原沙箱短暂暂停后继续，ID 不变） | 无产品级能力 | ❌ | 仅有 Workspace Checkpoint 与 Firecracker Snapshot 的 Gate 0 候选（`REQ-2026-0021`、`REQ-2026-0008`） |
-| 21 | `Sandbox.create(snapshotId)`（从快照派生沙箱） | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 5 节 |
-| 22 | `listSnapshots()` / `deleteSnapshot()` | 无 | ❌ | — |
-| 23 | `fork`（一次调用在原地快照并派生 N 个沙箱） | 无 | ❌ | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 6 节；无 `REQ-*`、无 `ADR`、一致性语义未定〔§3.4/1〕 |
-| 24 | Snapshot 与原沙箱并行运行、一个快照派生多个 | 无 | ❌ | — |
+| 20 | `createSnapshot()`（含内存与文件系统；原沙箱短暂暂停后继续，ID 不变） | 权威承载已登记（`REQ-2026-0031` draft + `specs/sandbox-snapshot-fork.contract.json`，实现未授权） | 🟡 | 快照记录、生命周期封闭操作集与 KVM 证据门已钉入机器契约；仅有 Workspace Checkpoint 与 Firecracker Snapshot 的 Gate 0 候选（`REQ-2026-0021`、`REQ-2026-0008`） |
+| 21 | `Sandbox.create(snapshotId)`（从快照派生沙箱） | 权威承载已登记（`REQ-2026-0031` draft，派生语义边界已钉） | 🟡 | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 5 节；来源不可变、派生体全新身份与独立租户授权已入契约，实现未授权 |
+| 22 | `listSnapshots()` / `deleteSnapshot()` | 生命周期封闭操作集已钉（创建/枚举/删除，删除不确定即隔离） | 🟡 | `REQ-2026-0031` + `specs/sandbox-snapshot-fork.contract.json` 的 `lifecycleOperations`；实现未授权 |
+| 23 | `fork`（一次调用在原地快照并派生 N 个沙箱） | Fork 派生语义边界已钉（`REQ-2026-0031` draft：来源不可变、N 派生、并行运行） | 🟡 | 产品要求见 [PRD-runtime-execution-model.md](../../product/prd/PRD-runtime-execution-model.md) 第 6 节；`ADR` 与实现仍无，一致性语义的机器边界已入契约 |
+| 24 | Snapshot 与原沙箱并行运行、一个快照派生多个 | 并行运行与 N 派生规则已钉（`derivedSandboxRunsInParallelWithSource`） | 🟡 | `REQ-2026-0031` + `specs/sandbox-snapshot-fork.contract.json`；实现未授权 |
 
 ### 2.4 Template
 
@@ -262,7 +262,7 @@ Template 是 E2B"快速创建 + 快速部署"的**唯一基础设施**：预构�
 
 | # | E2B 能力 | 本仓对应 | 状态 | 证据 |
 | --- | --- | --- | --- | --- |
-| 73 | MCP Gateway（200+ servers / custom templates / custom servers） | 仅 Transport 级 | ❌ | [PRD-capabilities.md](../../product/prd/PRD-capabilities.md) 第 5 节只有传输级描述；无独立 `REQ-*`〔§3.4/4〕 |
+| 73 | MCP Gateway（200+ servers / custom templates / custom servers） | 仅 Transport 级 | ❌ | [PRD-capabilities.md](../../product/prd/PRD-capabilities.md) 第 5 节只有传输级描述；无独立 `REQ-*`〔§3.4/3〕 |
 
 ### 2.16 平台与部署
 
@@ -356,7 +356,7 @@ cargo test --workspace
 node --test tests/contract/*.test.mjs
 ```
 
-`688 pass / 0 fail`（其中 E2B 矩阵门禁 172 个、E2B 基准门禁 30 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
+`696 pass / 0 fail`（其中 E2B 矩阵门禁 172 个、E2B 基准门禁 30 个）。这两个数字都不是手写的：契约数由 `tools/check-sandbox-e2b-field-parity.mjs` 打开 `tests/contract/*.test.mjs` 逐文件重算（含逐文件明细，所以"总数对了但某个文件的数错了"同样会红），Rust 读数无法静态推导，因此与产生它的命令一起落盘在 `specs/sandbox-e2b-capability-baseline.json` 的 `testInventory.rustWorkspace` 里再比对。本节此前一直写着 406 与 63，而两个真值分别是上一段的两个数——覆盖章是整份审计里唯一会执行的部分，它对不上号就是在对自己说谎。
 
 ### 3.2 覆盖空档
 
@@ -381,7 +381,7 @@ node --test tests/contract/*.test.mjs
 
 **本表此前有一行是假的，这正是新增门禁的由来。** 原第 5 行写作「"快速创建/快速部署"的性能断言全为零测试」，性质一栏写着"既无参考硬件也无 Benchmark 套件，且该目标没有任何需求承载"——**这句有一半不成立**：`REQ-2026-0019` 承载的正是这个目标，`tools/bench-sandbox-lifecycle.mjs` 与两平台原始样本也都在树里（样本落在 gitignore 的 `target/` 下，是证据不是缓存）。一张"缺什么"的清单如果不可被目录列举推翻，它就会越写越旧。所以本节改成带性质的表，并由门禁按性质**反向核验**：`缺产物` 点名的路径必须**不存在**、`缺门禁` 点名的路径必须**存在**、`治理阻塞` 必须点名一份**记录在案且尚未 `ready`** 的需求——三者问的都是"这句话能不能被证伪"，不是措辞问题。
 
-**实现用例随授权切片增长**——2026-09-24 起授权状态开始翻转：机器契约里 `specs/sandbox-local-provider-host-boundary.contract.json`（对应 packet 已于 2026-09-24 签署）、`specs/sandbox-runtime-pool.contract.json`（`REQ-2026-0019` 控制面切片）与 `specs/sandbox-template-authority.contract.json`（`REQ-2026-0029` 权威模型切片）已授权实现，其余 24 份 `*.contract.json` 中 20 份显式声明 `implementationAuthorized: false`，第 24 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约：`apis/commands/sandbox-command-contract.json` 已于 2026-09-24 随 `REQ-2026-0007` 进入 `ready` 授权实现，`apis/async/sandbox-observability-catalog.json` 仍为 `false`。已授权切片的实现用例（Host Boundary、Local executor、Firecracker Gate 0、Runtime Pool 控制面、Template 权威模型）逐个入 §3.1 覆盖表；未授权能力（runtime VMM、PostgreSQL claim 权威、Snapshot 复用、API/SDK/deployment 面）仍不得写实现用例。
+**实现用例随授权切片增长**——2026-09-24 起授权状态开始翻转：机器契约里 `specs/sandbox-local-provider-host-boundary.contract.json`（对应 packet 已于 2026-09-24 签署）、`specs/sandbox-runtime-pool.contract.json`（`REQ-2026-0019` 控制面切片）与 `specs/sandbox-template-authority.contract.json`（`REQ-2026-0029` 权威模型切片）已授权实现，其余 25 份 `*.contract.json` 中 21 份显式声明 `implementationAuthorized: false`，第 25 份 `specs/sandbox-commercial-readiness.contract.json` 是发布决定记录而非能力契约，它没有该字段、但独立声明 `runtimeImplementationAuthorizationGranted: false` 且 `releaseDecision.status: "no-go"`（缺字段在 `check-sandbox-human-review-signoff.mjs` 里按未授权处理，该处用 `value.implementationAuthorized === true` 判定）；另有两份不以 `.contract.json` 命名的机器契约：`apis/commands/sandbox-command-contract.json` 已于 2026-09-24 随 `REQ-2026-0007` 进入 `ready` 授权实现，`apis/async/sandbox-observability-catalog.json` 仍为 `false`。已授权切片的实现用例（Host Boundary、Local executor、Firecracker Gate 0、Runtime Pool 控制面、Template 权威模型）逐个入 §3.1 覆盖表；未授权能力（runtime VMM、PostgreSQL claim 权威、Snapshot 复用、API/SDK/deployment 面）仍不得写实现用例。
 
 ### 3.3 本轮新增的门禁与用例（含变异结果）
 
@@ -456,11 +456,10 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 | # | 主题 | 关键词 | 说明 |
 | --- | --- | --- | --- |
-| 1 | Snapshot / Fork（含 `Sandbox.create(snapshotId)`） | `snapshot` `fork` | 矩阵第 23 行与 §4 P1；Fork 一致性语义未定 |
-| 2 | Auto-resume / Auto-pause（Idle 收敛） | `resume` `pause` `autopause` `auto-pause` | 矩阵第 9 行；产品要求见 PRD 该文件第 9 节 |
-| 3 | 端口暴露（public URL / `getHost`） | `port` `public` `gethost` | 矩阵第 58 行；产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 8 节 |
-| 4 | MCP 执行面与 Skills | `mcp` `skill` | §4 P2；本仓只有传输级描述 |
-| 5 | Filesystem 执行面（Workspace 内文件读写 / 上传下载 / 目录操作） | `filesystem` | §4 P0；产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 2-3 节，无 `REQ-*` 承载（Local Boundary 契约只约束路径边界，不授权 Filesystem 能力面） |
+| 1 | Auto-resume / Auto-pause（Idle 收敛） | `resume` `pause` `autopause` `auto-pause` | 矩阵第 9 行；产品要求见 PRD 该文件第 9 节 |
+| 2 | 端口暴露（public URL / `getHost`） | `port` `public` `gethost` | 矩阵第 58 行；产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 8 节 |
+| 3 | MCP 执行面与 Skills | `mcp` `skill` | §4 P2；本仓只有传输级描述 |
+| 4 | Filesystem 执行面（Workspace 内文件读写 / 上传下载 / 目录操作） | `filesystem` | §4 P0；产品要求见 [PRD-sandbox-surfaces.md](../../product/prd/PRD-sandbox-surfaces.md) 第 2-3 节，无 `REQ-*` 承载（Local Boundary 契约只约束路径边界，不授权 Filesystem 能力面） |
 
 这张表由 `tools/check-sandbox-e2b-parity-matrix.mjs` 的**第 8 条规则族**核验，判据三条：
 
@@ -472,15 +471,15 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 ### 3.5 跨文档零需求断言对账
 
-第 3.4 节登记的是**本文档**的断言。「某能力无需求承载」这个句型不是本文档独有的：逐字扫 `docs/**`（时点证据目录除外），句型一共出现在 6 个文档的 28 行上，而第 3.4 节的两向记账只覆盖本文档那 11 行。其余 5 个文档的 18 行由本节记账——其中一行已经被证伪，并在下表第二张里留了账。
+第 3.4 节登记的是**本文档**的断言。「某能力无需求承载」这个句型不是本文档独有的：逐字扫 `docs/**`（时点证据目录除外），句型一共出现在 6 个文档的 25 行上，而第 3.4 节的两向记账只覆盖本文档那 9 行。其余 5 个文档的 17 行由本节记账——其中两行已经被证伪，并在下表第二张里留了账。
 
-**句型清单本身也是实测对象。** 2026-09-23 的归属判定轮发现：`无独立 ` + backtick + `REQ-*` + backtick + `（如 PRD.md 第 8 节 MCP 行、PRD-capabilities.md 第 11 节 Auto Pause 行、PRD-sandbox-surfaces.md 第 1 节 Port Exposure 行）是**同类断言**，却因决定词与 `REQ-*` 之间隔了一个形容词而被旧句型静默漏数——与 `#[tokio::test(...)]` 带参数被丢、operationId 含点被丢是同一类抽取口径缺陷。本轮把 `无独立` 并进句型并重算：跨文档断言从 15 行变为 **19 行**、新增第 5 个文档（其后 `REQ-2026-0028` 登记并按更正账第 2 行移出 SDK 家族断言、`REQ-2026-0029` 登记并按更正账第 3 行移出 Template 断言，现值 **17 行**）；本文档自己的两行（矩阵第 17、73 行）按第 3.4 节规则补了 `〔§3.4/N〕` 引用。任何覆盖率结论必须先对抽取规则做正反例自检再报数——这条纪律第三次同向验证。
+**句型清单本身也是实测对象。** 2026-09-23 的归属判定轮发现：`无独立 ` + backtick + `REQ-*` + backtick + `（如 PRD.md 第 8 节 MCP 行、PRD-capabilities.md 第 11 节 Auto Pause 行、PRD-sandbox-surfaces.md 第 1 节 Port Exposure 行）是**同类断言**，却因决定词与 `REQ-*` 之间隔了一个形容词而被旧句型静默漏数——与 `#[tokio::test(...)]` 带参数被丢、operationId 含点被丢是同一类抽取口径缺陷。本轮把 `无独立` 并进句型并重算：跨文档断言从 15 行变为 **19 行**、新增第 5 个文档（其后 `REQ-2026-0028` 登记并按更正账第 2 行移出 SDK 家族断言、`REQ-2026-0029` 登记并按更正账第 3 行移出 Template 断言、`REQ-2026-0031` 登记并按更正账第 4 行移出 Fork 断言，现值 **16 行**）；本文档自己的两行（矩阵第 17、73 行）按第 3.4 节规则补了 `〔§3.4/N〕` 引用。任何覆盖率结论必须先对抽取规则做正反例自检再报数——这条纪律第三次同向验证。
 
 下表按文档逐段计数。`断言数` 是**重算值**：门禁在该段落（同级或更浅的下一节标题之前）重新数句型出现次数，再与声明值比对——加一句、删一句、或把整节搬走，都会转红。本文档自己的断言由第 3.4 节负责，故不在本表内。
 
 | # | 文档 | 段落 | 断言数 |
 | --- | --- | --- | --- |
-| 1 | `docs/product/prd/PRD.md` | `尚未拆分的能力` | 10 |
+| 1 | `docs/product/prd/PRD.md` | `尚未拆分的能力` | 9 |
 | 2 | `docs/product/prd/PRD-capabilities.md` | `11. 能力对齐矩阵 (Capability Alignment Matrix)` | 4 |
 | 3 | `docs/architecture/tech/TECH_ARCHITECTURE.md` | `2. 技术选型 (Technology Choices)` | 1 |
 | 4 | `docs/architecture/views/gate-zero-current-state.md` | `验证门禁` | 1 |
@@ -492,23 +491,22 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 | --- | --- | --- | --- | --- | --- |
 | 1 | `docs/product/prd/PRD.md` | （§8 引言口径句，不指具体能力） | — | 口径句，不指能力 | — |
 | 2 | `docs/product/prd/PRD.md` | 运行模式分层（Mode 0 / Mode 1） | `mode` | 确认无承载 | `REQ-2026-0002`、`REQ-2026-0008` |
-| 3 | `docs/product/prd/PRD.md` | Fork | `fork` | 确认无承载 | `REQ-2026-0002`、`REQ-2026-0021` |
-| 4 | `docs/product/prd/PRD.md` | 按需内存与写时复制根文件系统 | `memory` | 确认无承载 | `REQ-2026-0008`、`REQ-2026-0013` |
-| 5 | `docs/product/prd/PRD.md` | 端口暴露 | `port` | 确认无承载 | `REQ-2026-0014`、`REQ-2026-0023` |
-| 6 | `docs/product/prd/PRD.md` | 网络 `shared` 模式 | `shared` | 确认无承载 | `REQ-2026-0014` |
-| 7 | `docs/product/prd/PRD.md` | Sandbox 内 Agent 运行时 | `agent` | 确认无承载 | `REQ-2026-0024` |
-| 8 | `docs/product/prd/PRD.md` | MCP 执行面 | `mcp` | 确认无承载 | `REQ-2026-0023`、`REQ-2026-0024` |
-| 9 | `docs/product/prd/PRD.md` | Skills | `skill` | 确认无承载 | `REQ-2026-0023` |
-| 10 | `docs/product/prd/PRD.md` | Node Drain 与迁移 | `migration` | 确认无承载 | `REQ-2026-0017` |
-| 11 | `docs/product/prd/PRD-capabilities.md` | （§11 引言口径句） | — | 口径句，不指能力 | — |
-| 12 | `docs/product/prd/PRD-capabilities.md` | Egress Policy 行的 `shared` 模式 | `shared` | 确认无承载 | `REQ-2026-0014` |
-| 13 | `docs/product/prd/PRD-capabilities.md` | Auto Pause | `pause` | 确认无承载 | `REQ-2026-0019`、`REQ-2026-0020` |
-| 14 | `docs/product/prd/PRD-capabilities.md` | MCP | `mcp` | 确认无承载 | `REQ-2026-0023`、`REQ-2026-0024` |
-| 15 | `docs/architecture/tech/TECH_ARCHITECTURE.md` | 边缘路由与端口暴露 | `port` | 确认无承载 | `REQ-2026-0023` |
-| 16 | `docs/architecture/views/gate-zero-current-state.md` | Benchmark 套件与容量基线 | `benchmark` | 已证伪，见更正账 | `REQ-2026-0019` |
-| 17 | `docs/product/prd/PRD-sandbox-surfaces.md` | Port Exposure | `port` | 确认无承载 | `REQ-2026-0023` |
+| 3 | `docs/product/prd/PRD.md` | 按需内存与写时复制根文件系统 | `memory` | 确认无承载 | `REQ-2026-0008`、`REQ-2026-0013` |
+| 4 | `docs/product/prd/PRD.md` | 端口暴露 | `port` | 确认无承载 | `REQ-2026-0014`、`REQ-2026-0023` |
+| 5 | `docs/product/prd/PRD.md` | 网络 `shared` 模式 | `shared` | 确认无承载 | `REQ-2026-0014` |
+| 6 | `docs/product/prd/PRD.md` | Sandbox 内 Agent 运行时 | `agent` | 确认无承载 | `REQ-2026-0024` |
+| 7 | `docs/product/prd/PRD.md` | MCP 执行面 | `mcp` | 确认无承载 | `REQ-2026-0023`、`REQ-2026-0024` |
+| 8 | `docs/product/prd/PRD.md` | Skills | `skill` | 确认无承载 | `REQ-2026-0023` |
+| 9 | `docs/product/prd/PRD.md` | Node Drain 与迁移 | `migration` | 确认无承载 | `REQ-2026-0017` |
+| 10 | `docs/product/prd/PRD-capabilities.md` | （§11 引言口径句） | — | 口径句，不指能力 | — |
+| 11 | `docs/product/prd/PRD-capabilities.md` | Egress Policy 行的 `shared` 模式 | `shared` | 确认无承载 | `REQ-2026-0014` |
+| 12 | `docs/product/prd/PRD-capabilities.md` | Auto Pause | `pause` | 确认无承载 | `REQ-2026-0019`、`REQ-2026-0020` |
+| 13 | `docs/product/prd/PRD-capabilities.md` | MCP | `mcp` | 确认无承载 | `REQ-2026-0023`、`REQ-2026-0024` |
+| 14 | `docs/architecture/tech/TECH_ARCHITECTURE.md` | 边缘路由与端口暴露 | `port` | 确认无承载 | `REQ-2026-0023` |
+| 15 | `docs/architecture/views/gate-zero-current-state.md` | Benchmark 套件与容量基线 | `benchmark` | 已证伪，见更正账 | `REQ-2026-0019` |
+| 16 | `docs/product/prd/PRD-sandbox-surfaces.md` | Port Exposure | `port` | 确认无承载 | `REQ-2026-0023` |
 
-第 17 行说明：gate-zero 视图那句关于「`REQ-*` 计数为零」的历史措辞是对已修正断言的**转述**（它讲的就是那条规则为何存在），断言本体已在更正账第 1 行留探针；按「已证伪断言全仓皆假」的口径，这里判到同一条更正上。第 13 行的 Auto Pause 是本轮句型拓宽后新入账的断言：`REQ-2026-0019`（池化）与 `REQ-2026-0020`（热状态保留）都不含 pause 语义，PRD-runtime-execution-model 第 9 节的产品要求仍无需求承载。
+第 16 行说明：gate-zero 视图那句关于「`REQ-*` 计数为零」的历史措辞是对已修正断言的**转述**（它讲的就是那条规则为何存在），断言本体已在更正账第 1 行留探针；按「已证伪断言全仓皆假」的口径，这里判到同一条更正上。第 12 行的 Auto Pause 是本轮句型拓宽后新入账的断言：`REQ-2026-0019`（池化）与 `REQ-2026-0020`（热状态保留）都不含 pause 语义，PRD-runtime-execution-model 第 9 节的产品要求仍无需求承载。
 
 被证伪的断言必须在这里留账，且**原文必须已经消失**：`缺失探针` 是一个不得再出现在该文档里的字面串。它是这条「已修正」声明的**反证物**——与第 1.2 节要求「不存在」必须点名不存在什么，是同一条规则；承载需求必须能在需求目录里解析到记录。
 
@@ -517,6 +515,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 | 1 | `docs/product/prd/PRD.md` | Benchmark 套件与容量基线 | `REQ-2026-0019` | `无参考硬件定义` |
 | 2 | `docs/product/prd/PRD.md` | SDK 家族与 API 权威 | `REQ-2026-0028` | `REQ-*；无`、`apis/ 权威契约` |
 | 3 | `docs/product/prd/PRD.md` | Template 与构建链 | `REQ-2026-0029` | `的分层关系未定` |
+| 4 | `docs/product/prd/PRD.md` | Fork | `REQ-2026-0031` | `；一致性语义未定` |
 
 第 1 行的来龙去脉：`PRD.md` 第 8 节曾把「Benchmark 套件与容量基线」列为无需求承载，并断言「无参考硬件定义」。该断言已被推翻——`REQ-2026-0019` 的 Goals 与 Performance 行要求「在公开参考环境和固定工作负载中证明 Pool Claim 到 Sandbox Running Ready 的 p50/p95/p99」并记录固定硬件，`tools/bench-sandbox-lifecycle.mjs` 与 [TECH-performance-baseline.md](TECH-performance-baseline.md)（两平台实测）也都在树里。该行已改写为「已有承载 + 仍缺什么」，探针保证旧措辞不会悄悄回来。
 
@@ -533,14 +532,14 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 | 运行入口不全（HTTP 候选面已物化；RPC、CLI、Service Host wiring 仍缺） | 设计级 | 2026-09-24 起为**部分解除**：internal-api 候选面（5 条 `sandboxInstances.*` ingress-token 路由，`ROUTE_CRATE_COUNT: 1`、assembly 与 standalone gateway 已承载）落了，实例注册表 CRUD 可走 HTTP。仍缺：RPC 面、CLI（`fn main() {}`）、Service Host wiring（service-host 5 行）——需要 `REQ-2026-0023`（internal control plane）与 `REQ-2026-0009`（service host）进入 `ready` |
 | Provider 执行切片不全（真实命令执行已物化；descendant containment 未落地） | 设计级 | 2026-09-24 起为**部分解除**：`REQ-2026-0003`/`0007`/`0008` 三个 packet 经人审进入 `ready`，`specs/sandbox-local-provider-host-boundary.contract.json` 授权实现；真实 tokio 进程切片（有界输出、硬超时 kill、fenced cancel、provider-owned 可执行解析）已落。Windows suspended kill-on-close Job Object containment 已落地（2026-09-27，评审候选 process-wrap 9.1 + 三代树整树击杀探针；`start` shell 脱离逃逸已实测并登记为 `detached-and-breakaway-attempt-denial` 证据义务）。仍缺：Linux delegated cgroup v2 舷道、`requiredRealEvidence` 的 7+6+3 条真实平台证据记录，Terminal capability 因此保持不声明 |
 | Template 只有权威模型，无 Builder/Registry/缓存后端 | **设计级** | E2B 快速创建与快速部署的**全部**依赖它。权威模型切片已于 2026-10-04 落地（`crates/sdkwork-intelligence-sandbox-template-authority`；`REQ-2026-0029` `ready` + REVIEW-20261004 + `specs/sandbox-template-authority.contract.json` 对权威模型翻转授权）；与 Firecracker 制品元组的分层已定（Template 引用 REQ-2026-0012 Tuple，不拥有 Evidence）。构建流水线/注册服务/缓存存储必须等各自的后续切片——在 Builder 切片落地前不得宣称 E2B Template 对齐 |
-| Command 执行面部分物化；Terminal / Filesystem 执行面仍缺 | 设计级 | `REQ-2026-0007` 已 `ready` 且授权实现，executor/admission/runner 切片已落，且交付顺序的 Common Conformance 步骤已落地：SPI 承载 20 场景共享套件（四态报告：Enforced / PartiallyEnforced / Pending / Failed），Local executor 端到端通过可执行子集，14 个场景的剩余部分分别钉在平台监督切片（descendant cleanup）、durable registry 切片（terminal race / 完成后重放）与 composition 切片（cleanup quarantine / policy snapshot）上（见上）；`REQ-2026-0024`（Interactive Terminal）仍 `draft` 禁止物化；Filesystem 无 `REQ-*`〔§3.4/5〕 |
+| Command 执行面部分物化；Terminal / Filesystem 执行面仍缺 | 设计级 | `REQ-2026-0007` 已 `ready` 且授权实现，executor/admission/runner 切片已落，且交付顺序的 Common Conformance 步骤已落地：SPI 承载 20 场景共享套件（四态报告：Enforced / PartiallyEnforced / Pending / Failed），Local executor 端到端通过可执行子集，14 个场景的剩余部分分别钉在平台监督切片（descendant cleanup）、durable registry 切片（terminal race / 完成后重放）与 composition 切片（cleanup quarantine / policy snapshot）上（见上）；`REQ-2026-0024`（Interactive Terminal）仍 `draft` 禁止物化；Filesystem 无 `REQ-*`〔§3.4/4〕 |
 
 ### P1 — 阻塞"创建得快"
 
 | 缺口 | 性质 | 说明 |
 | --- | --- | --- |
 | Runtime Pool 运行时面仍缺：`PreparedSlot` 需真实 KVM 证据、claim 权威需 PostgreSQL（`REQ-2026-0018`）、Warm 锁独立 KVM snapshot 证据门 | 设计级 | 控制面切片已于 2026-10-04 落地（`crates/sdkwork-intelligence-sandbox-pool-control`：slot/claim 状态机、fenced 幂等 claim、有界注册表；`specs/sandbox-runtime-pool.contract.json` 对控制面翻转为已授权）。运行时面未授权前每次分配仍是冷启动，"快"尚未兑现 |
-| 无 Snapshot / Fork（含 `Sandbox.create(snapshotId)`） | 设计级 | 产品要求已写，`REQ-*` 为零〔§3.4/2〕；Fork 一致性语义未定 |
+| Snapshot / Fork 权威模型已登记，实现仍缺（含 `Sandbox.create(snapshotId)`） | 设计级 | 载体已登记：`REQ-2026-0031`（draft，2026-10-05）+ `specs/sandbox-snapshot-fork.contract.json`（实现未授权）；派生一致性语义的机器边界已入契约，真实 KVM 恢复证据仍缺 |
 | 无 Pause / Resume（含 fs-only 与 reboot-on-resume） | 设计级 | Provider trait 无 `pause`/`resume`；实现状态枚举无 `Paused` |
 | 无 Auto Pause / Auto Resume（Idle 收敛） | 纯增量 | 依赖可观测事实组合，而非单一定时器 |
 | 无构建缓存与层复用（`fromTemplate` 等价物） | 设计级 | 需要 Template + 三级存储分层 + 对等缓存协调 |
@@ -553,7 +552,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 | 无 Secret 注入与 Workload Identity | 设计级 | `REQ-2026-0025` 仅契约；值通道与 process projection 未批准 |
 | 无 Metrics / OTel / 事件 runtime | 纯增量 | 契约已有，缺 exporter/worker/migration |
 | 无 SDK 家族（Rust / TS / Python 同语义） | 设计级 | `apis/` 无权威 OpenAPI；需先有 internal-api 契约 |
-| 无 MCP 执行面与 Skills | 设计级 | 仅传输级描述，无 `REQ-*`〔§3.4/5〕 |
+| 无 MCP 执行面与 Skills | 设计级 | 仅传输级描述，无 `REQ-*`〔§3.4/3〕 |
 
 ### P3 — 平台与集成
 
@@ -590,7 +589,7 @@ node tools/check-sandbox-e2b-parity-matrix.mjs
 
 本仓不是"有些功能没做完"，而是**治理门禁未打开**。四条硬门禁互相依赖：
 
-1. 30 份 `REQ-*` 中 7 份 `ready`（5 `accepted` / 18 `draft`）→ 其余逐份人工评审进 `ready`（2026-09-29 起 `REQ-2026-0028`、`REQ-2026-0019` 进入 `ready`，`REQ-2026-0030` 随后进入；`REQ-2026-0029` Template 权威于 2026-10-04 随 REVIEW-20261004 进入 `ready`）。
+1. 31 份 `REQ-*` 中 7 份 `ready`（5 `accepted` / 19 `draft`）→ 其余逐份人工评审进 `ready`（2026-09-29 起 `REQ-2026-0028`、`REQ-2026-0019` 进入 `ready`，`REQ-2026-0030` 随后进入，`REQ-2026-0029` Template 权威于 2026-10-04 随 REVIEW-20261004 进入；`REQ-2026-0031` Snapshot/Fork 权威于 2026-10-05 以 draft 登记）。
 2. 30 份 `ADR` 中 23 份 `proposed`（7 份 `accepted`）→ 其余需 `accepted`（`ADR-20260924`、`ADR-20260730`、`ADR-20261004` console face 与 `ADR-20261004` Template 权威已 `accepted`）。
 3. 机器契约除已授权的 Local Host Boundary、Runtime Pool 控制面与 Template 权威模型（2026-10-04 切片落地）外全部未授权（24 份 `*.contract.json` 中 20 份 `implementationAuthorized: false`，另 `specs/sandbox-commercial-readiness.contract.json` 独立声明 `runtimeImplementationAuthorizationGranted: false`）→ 需人工评审签字后翻转。
 4. 8 份契约声明的 127 个证据 id 中 125 个无产出者 → 需真实 runner 与人工评审闭合。

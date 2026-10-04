@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.sandbox.snapshot-fork-contract",
+  "status": "draft",
+  "requirementId": "REQ-2026-0031",
+  "relatedRequirementIds": [
+    "REQ-2026-0008",
+    "REQ-2026-0012",
+    "REQ-2026-0019",
+    "REQ-2026-0021"
+  ],
+  "implementationAuthorized": false,
+  "snapshot": {
+    "type": "SandboxSnapshot",
+    "requiredFields": [
+      "sandbox_snapshot_id",
+      "sandbox_source_session_ref",
+      "sandbox_memory_included",
+      "sandbox_filesystem_fingerprint",
+      "sandbox_artifact_tuple_ref",
+      "sandbox_snapshot_state",
+      "sandbox_created_at"
+    ],
+    "states": ["creating", "available", "restoring", "deleted", "quarantined"],
+    "immutableAfterCreation": true,
+    "unknownStateRejected": true,
+    "allSandboxOwnedFieldsRequirePrefix": "sandbox_",
+    "sourceSessionRefIsOpaque": true,
+    "providerPrivateMetadataAllowed": false
+  },
+  "lifecycleOperations": [
+    "sandbox_create_snapshot",
+    "sandbox_list_snapshots",
+    "sandbox_delete_snapshot"
+  ],
+  "fixedOperationsOnly": true,
+  "deletion": {
+    "deterministicFailureRequired": true,
+    "uncertainDeletionQuarantines": true,
+    "silentDisappearanceAllowed": false
+  },
+  "fork": {
+    "type": "SandboxForkDerivation",
+    "sourceSnapshotImmutable": true,
+    "derivationsPerSnapshotUnboundedAuthorized": false,
+    "derivedSandboxGetsFreshGuestIdentity": true,
+    "derivedSandboxRequiresIndependentTenantGrants": true,
+    "derivedSandboxRunsInParallelWithSource": true,
+    "sourceTenantStateReuseAllowed": false,
+    "callerSelectedNodeOrProviderAllowed": false
+  },
+  "evidenceGates": {
+    "realKvmRestoreEvidenceRequired": true,
+    "crossTenantResidueEvidenceRequired": true,
+    "derivedIdentityRotationEvidenceRequired": true,
+    "warmSlotReuseRequiresPoolEvidenceGate": true,
+    "snapshotEngineOrStorageBackendAuthorized": false
+  },
+  "artifactBoundary": {
+    "artifactAuthority": "REQ-2026-0012",
+    "snapshotReferencesArtifactTuple": true,
+    "snapshotOwnsEvidenceOrSignature": false,
+    "secondSupplyChainAuthorityAllowed": false
+  },
+  "layering": {
+    "workspaceCheckpointAuthority": "REQ-2026-0021",
+    "snapshotIsRuntimeFullStateNotWorkspaceCheckpoint": true,
+    "warmMicroVmSlotGate": "REQ-2026-0019",
+    "registrationDoesNotEnableWarmSlot": true,
+    "autoPauseAutoResumeOutOfScope": true
+  },
+  "forbidden": {
+    "snapshotEngineRuntime": true,
+    "snapshotStorageBackend": true,
+    "restorePipeline": true,
+    "cliSurface": true,
+    "publicApiOrSdkSurface": true,
+    "deploymentProfile": true
+  },
+  "x-sdkwork-status": "draft",
+  "x-sdkwork-require-human-review": true,
+  "x-sdkwork-no-runtime-implementation": true,
+  "x-sdkwork-no-storage-backend": true,
+  "x-sdkwork-no-api-sdk-deployment": true
+}

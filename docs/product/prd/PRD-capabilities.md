@@ -171,7 +171,7 @@ Terminal Stream、Operational Log、Audit Event 与 Metric 是不同数据类别
 | 4 | Resume | 同上 |
 | 5 | Restart | **无**；见 [PRD-capabilities.md](PRD-capabilities.md) 第 3 节状态机的 `Stopped -> Starting` 路径（候选） |
 | 6 | Fork | **无**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 6 节 |
-| 7 | Snapshot | **无产品级能力**；仅有 Workspace Checkpoint 与 Firecracker Snapshot 的 Gate 0（`REQ-2026-0021`、`0008`） |
+| 7 | Snapshot | 权威承载已登记：`REQ-2026-0031`（draft，2026-10-05）+ `specs/sandbox-snapshot-fork.contract.json`（draft，实现未授权）；实现仍无（Checkpoint 与 Firecracker Snapshot 的 Gate 0 候选见 `REQ-2026-0021`、`0008`） |
 | 8 | Template | `REQ-2026-0029`（draft，权威模型+缓存语义已承载，实现未授权）；产品要求见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 4 节 |
 | 9 | Workspace | `REQ-2026-0004`（Agents 权威 + Attachment 边界，候选） |
 | 10 | Filesystem API | `REQ-2026-0007`（`draft`，部分覆盖）；见 [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 3 节 |

@@ -295,8 +295,8 @@ SDKWork 共享类型 `TenantId`、`OperationId`、`RuntimeCapability` 与 `Isola
 | --- | --- | --- |
 | 运行模式分层（Mode 0 / Mode 1） | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 2 节 | 无 `REQ-*`；Mode 0 还需新的 `IsolationAssurance` 值决策 |
 | Template 与构建链 | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 4 节；`REQ-2026-0029`（draft，2026-09-29）已承载权威模型与缓存语义 | 实现未授权；与 Firecracker 制品元组的分层已定（引用 REQ-2026-0012 Tuple） |
-| Snapshot 产品能力（创建/恢复/删除） | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 5 节 | 仅有 Checkpoint 与 Firecracker Snapshot 的 Gate 0，无产品级能力 |
-| Fork | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 6 节 | 无 `REQ-*`；一致性语义未定 |
+| Snapshot 产品能力（创建/恢复/删除） | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 5 节 | 已有承载：`REQ-2026-0031`（draft，2026-10-05）登记快照权威记录、生命周期语义与 KVM 证据门；实现未授权 |
+| Fork | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 6 节 | 已有承载：`REQ-2026-0031`（draft，2026-10-05）登记 Fork 派生语义边界（来源不可变、N 派生、派生体全新身份）；实现未授权 |
 | 按需内存与写时复制根文件系统 | [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 7 节 | 无 `REQ-*`；无真实 KVM 证据 |
 | 端口暴露 | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 8 节 | 无 `REQ-*`；公开端点命名与边缘入口归属未定 |
 | 网络 `shared` 模式 | [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 6 节 | 无 `REQ-*`；无安全评审 |
