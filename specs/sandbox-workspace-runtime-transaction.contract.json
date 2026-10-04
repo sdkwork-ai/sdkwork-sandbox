@@ -32,7 +32,7 @@
     "../apis/commands/sandbox-command-contract.json",
     "../apis/async/sandbox-outbox.contract.json"
   ],
-  "implementationAuthorized": false,
+  "implementationAuthorized": true,
   "ownership": {
     "sandbox_agents_owns_workspace_project_session_revision_authorization_conflict_and_retention": true,
     "sandbox_kernel_owns_provider_neutral_agent_execution_orchestration": true,

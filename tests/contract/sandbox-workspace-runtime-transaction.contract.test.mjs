@@ -17,15 +17,94 @@ const attachmentContract = readJson(
 );
 const commandContract = readJson("apis/commands/sandbox-command-contract.json");
 
-test("Workspace runtime transaction remains a draft non-runtime Gate 0 authority", () => {
+test("Workspace runtime transaction authorizes the landed control-plane slice only", () => {
   assert.equal(contract.kind, "sdkwork.sandbox.workspace-runtime-transaction-contract");
+  // 2026-10-05: REVIEW-20260730 (transaction architecture/security, ten roles)
+  // accepted via single-owner structured approval; the control-plane slice
+  // landed as crates/sdkwork-intelligence-sandbox-transaction-control, so the
+  // contract's implementation gate is open for that slice only. Runtime
+  // against real providers, the PostgreSQL transaction authority, storage/KMS
+  // adapters, worker and API/SDK/transport stay gated, and the contract itself
+  // remains draft.
   assert.equal(contract.status, "draft");
   assert.equal(contract.requirementId, "REQ-2026-0021");
-  assert.equal(contract.implementationAuthorized, false);
+  assert.equal(contract.implementationAuthorized, true);
   assert.equal(contract["x-sdkwork-require-human-review"], true);
   assert.equal(contract["x-sdkwork-no-runtime-implementation"], true);
   assert.equal(contract["x-sdkwork-no-database-implementation"], true);
   assert.equal(contract["x-sdkwork-no-api-sdk-transport"], true);
+  assert.equal(contract["x-sdkwork-no-provider-storage-kms-or-deployment"], true);
+  const readStatus = (relative) => {
+    const source = readFileSync(path.join(repoRoot, relative), "utf8");
+    const match = source.match(/^(?:status|Status):\s*(\S+)\s*$/mu);
+    assert.ok(match, `${relative} must declare status`);
+    return match[1];
+  };
+  assert.equal(
+    readStatus("docs/product/requirements/REQ-2026-0021-sandbox-workspace-runtime-transaction-and-checkpoint.md"),
+    "ready",
+  );
+  assert.equal(
+    readStatus("docs/architecture/decisions/ADR-20260730-sandbox-workspace-runtime-transaction-and-checkpoint.md"),
+    "accepted",
+  );
+  assert.equal(
+    readStatus(
+      "docs/engineering/reviews/REVIEW-20260730-sandbox-workspace-runtime-transaction-architecture-security.md",
+    ),
+    "accepted",
+  );
+});
+
+test("The landed transaction-control crate implements the pinned states, stages, bounds and error codes", () => {
+  const crateRoot = path.join(repoRoot, "crates/sdkwork-intelligence-sandbox-transaction-control");
+  const source = (relative) => readFileSync(path.join(crateRoot, "src", relative), "utf8");
+  const stateSource = source("state.rs");
+  for (const stateName of contract.transaction.states) {
+    assert.ok(
+      stateSource.includes(`"${stateName}"`),
+      `transaction state ${stateName} must exist in the crate state machine`,
+    );
+  }
+  const stageSource = source("stage.rs");
+  for (const stageName of contract.orchestrationOrder) {
+    assert.ok(
+      stageSource.includes(`"${stageName}"`),
+      `orchestration stage ${stageName} must exist in the crate stage order`,
+    );
+  }
+  const boundsSource = source("bounds.rs");
+  const boundConstants = {
+    sandbox_request_max_bytes: "SANDBOX_REQUEST_MAX_BYTES",
+    sandbox_orchestration_stage_count_max: "SANDBOX_ORCHESTRATION_STAGE_COUNT_MAX",
+    sandbox_concurrent_commands_per_transaction_max: "SANDBOX_CONCURRENT_COMMANDS_PER_TRANSACTION_MAX",
+    sandbox_queue_wait_ms_max: "SANDBOX_QUEUE_WAIT_MS_MAX",
+    sandbox_retry_after_ms_max: "SANDBOX_RETRY_AFTER_MS_MAX",
+    sandbox_reconciliation_batch_size_max: "SANDBOX_RECONCILIATION_BATCH_SIZE_MAX",
+    sandbox_compensation_attempt_count_max: "SANDBOX_COMPENSATION_ATTEMPT_COUNT_MAX",
+    sandbox_reference_max_length: "SANDBOX_REFERENCE_MAX_LENGTH",
+  };
+  for (const [boundKey, constantName] of Object.entries(boundConstants)) {
+    const boundValue = contract.bounds[boundKey];
+    assert.ok(
+      boundsSource.includes(`${constantName}: `) && boundsSource.includes(`= ${boundValue};`),
+      `bound ${boundKey}=${boundValue} must be restated by ${constantName}`,
+    );
+  }
+  const errorSource = source("error.rs");
+  for (const error of contract.errors) {
+    assert.ok(
+      errorSource.includes(`"${error.code}"`),
+      `contract error code ${error.code} must exist in the typed error enum`,
+    );
+  }
+  const checkpointSource = source("checkpoint.rs");
+  for (const field of contract.checkpoint.sandbox_candidateRequiredFields) {
+    assert.ok(
+      checkpointSource.includes(field),
+      `checkpoint candidate field ${field} must exist in the crate`,
+    );
+  }
 });
 
 test("Local and Firecracker lanes share semantics without sharing isolation claims", () => {

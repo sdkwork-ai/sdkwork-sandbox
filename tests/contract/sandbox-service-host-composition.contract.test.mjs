@@ -72,6 +72,7 @@ test("Sandbox Service Host gate dependencies resolve and remain closed at Gate 0
     "sandbox_local_host_boundary",
     "sandbox_command_contract",
     "sandbox_runtime_pool",
+    "sandbox_workspace_runtime_transaction",
   ]);
   for (const sandbox_dependency of contract.gateDependencies.contracts) {
     assert.match(sandbox_dependency.sandbox_dependency_id, /^sandbox_/u);

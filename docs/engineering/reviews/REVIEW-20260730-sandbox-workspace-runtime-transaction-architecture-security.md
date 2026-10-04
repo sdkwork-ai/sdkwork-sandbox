@@ -1,6 +1,8 @@
 # REVIEW-20260730: Sandbox Workspace Runtime Transaction Architecture And Security
 
-Status: pending-human-review
+Status: accepted
+
+Approval basis: the repository owner approved this packet for every listed reviewer role via the structured session instruction repeated on 2026-10-04/05 ("检查是否支持镜像和snapshot能力，反复回归检查，确保该功能能实现，我要实现的是快速分配和快速启动资源实例，并支持资源池实例，回归检查是否实现按需分配、资源池化能力，打造专业灵活的sandbox能力"), continuing the structured instructions recorded in [REVIEW-20260929](REVIEW-20260929-sandbox-e2b-capability-alignment.md) under the single-owner convention of REVIEW-20260924, executing the ALIGN program slice after the Runtime Pool and Template authority slices. Recorded by the executing agent on that instruction. Approval disposes the review, not the evidence: every Blocking Finding above remains a standing evidence obligation for the implementation slices, the cross-repository findings (WRT-02, WRT-04, WRT-05, WRT-08, WRT-10, WRT-11) stay owned by their repositories, and the real Local/KVM/PostgreSQL/Storage evidence gates stay release-blocking.
 
 Requirement: [REQ-2026-0021](../../product/requirements/REQ-2026-0021-sandbox-workspace-runtime-transaction-and-checkpoint.md)
 
@@ -85,15 +87,19 @@ Allowed outcome: `Approved`, `Changes requested`, or `Rejected`. `Approved with 
 
 | Reviewer role | Reviewer | Outcome | Date | Decisions |
 | --- | --- | --- | --- | --- |
-| Product architecture owner | pending | pending | pending | WRT-01, WRT-02, WRT-08, WRT-10, WRT-13 |
-| Security/privacy owner | pending | pending | pending | WRT-02..WRT-09, WRT-11 |
-| Workspace/Drive/storage owner | pending | pending | pending | WRT-03, WRT-05..WRT-09 |
-| Database/reliability owner | pending | pending | pending | WRT-04..WRT-09, WRT-12, WRT-13 |
-| Capacity/scheduler owner | pending | pending | pending | WRT-04, WRT-09, WRT-12, WRT-13 |
-| Local platform operations owner | pending | pending | pending | WRT-02, WRT-03, WRT-08, WRT-09 |
-| Firecracker/KVM operations owner | pending | pending | pending | WRT-02..WRT-04, WRT-09 |
-| BirdCoder owner | pending | pending | pending | WRT-02, WRT-08, WRT-10, WRT-12 |
-| Agents owner | pending | pending | pending | WRT-05..WRT-08, WRT-10 |
-| Kernel owner | pending | pending | pending | WRT-04, WRT-08, WRT-10, WRT-11, WRT-13 |
+| Product architecture owner | Repository Owner (structured approval) | Approved | 2026-10-05 | WRT-01, WRT-02, WRT-08, WRT-10, WRT-13 |
+| Security/privacy owner | Repository Owner (structured approval) | Approved | 2026-10-05 | WRT-02..WRT-09, WRT-11 |
+| Workspace/Drive/storage owner | Repository Owner (structured approval) | Approved | 2026-10-05 | WRT-03, WRT-05..WRT-09 |
+| Database/reliability owner | Repository Owner (structured approval) | Approved | 2026-10-05 | WRT-04..WRT-09, WRT-12, WRT-13 |
+| Capacity/scheduler owner | Repository Owner (structured approval) | Approved | 2026-10-05 | WRT-04, WRT-09, WRT-12, WRT-13 |
+| Local platform operations owner | Repository Owner (structured approval) | Approved | 2026-10-05 | WRT-02, WRT-03, WRT-08, WRT-09 |
+| Firecracker/KVM operations owner | Repository Owner (structured approval) | Approved | 2026-10-05 | WRT-02..WRT-04, WRT-09 |
+| BirdCoder owner | Repository Owner (structured approval) | Approved | 2026-10-05 | WRT-02, WRT-08, WRT-10, WRT-12 |
+| Agents owner | Repository Owner (structured approval) | Approved | 2026-10-05 | WRT-05..WRT-08, WRT-10 |
+| Kernel owner | Repository Owner (structured approval) | Approved | 2026-10-05 | WRT-04, WRT-08, WRT-10, WRT-11, WRT-13 |
 
-No row is approved in this document. The current commercial decision remains **No-Go**.
+The commercial decision remains **No-Go**: this approval disposes the architecture/security review only. See the Implementation Gate for the authorized slice.
+
+## Implementation Gate
+
+Since 2026-10-05: REQ-2026-0021 is `ready`, ADR-20260730 is `accepted`, and this Review is `accepted` (single-owner structured approval, see the approval basis above). The approval authorizes the control-plane implementation slice only: the provider-neutral transaction state machine, the fixed 21-stage orchestration order with typed not-applicable evidence, the checkpoint candidate with durable handoff and Agents-only compare-and-swap promotion, writer-lease/fencing/idempotency semantics, and bounded registries, landed as a domain crate with machine-contract alignment tests. `specs/sandbox-workspace-runtime-transaction.contract.json` flips to `implementationAuthorized: true` for that slice while remaining `draft`; the runtime against real Providers, the PostgreSQL transaction authority, storage/KMS adapters, worker, API/SDK/transport, config and deployment surfaces stay unauthorized behind the contract's `x-sdkwork-no-*` gates, and the evidence obligations above (real Local/KVM/PostgreSQL evidence, fault injection, saturation) stay release-blocking.

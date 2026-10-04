@@ -1,0 +1,21 @@
+[package]
+rust-version.workspace = true
+name = "sdkwork-intelligence-sandbox-transaction-control"
+description = "Provider-neutral SDKWork Workspace runtime transaction control plane: state machine, 21-stage orchestration order, checkpoint CAS, compensation windows, bounded registry."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[dev-dependencies]
+
+[lib]
+name = "sdkwork_intelligence_sandbox_transaction_control"
+path = "src/lib.rs"
+
+[lints]
+workspace = true

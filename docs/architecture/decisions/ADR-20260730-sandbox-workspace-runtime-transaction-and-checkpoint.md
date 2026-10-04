@@ -1,6 +1,8 @@
 # ADR-20260730: Sandbox Workspace Runtime Transaction And Checkpoint
 
-Status: proposed
+Status: accepted
+
+Accepted: 2026-10-05 by the repository owner via the structured session instruction recorded in [REVIEW-20260730](../../engineering/reviews/REVIEW-20260730-sandbox-workspace-runtime-transaction-architecture-security.md) (single-owner convention). The approval authorizes the control-plane implementation slice only; runtime, PostgreSQL authority, storage/KMS, worker and API/SDK/transport stay behind the machine contract's gates.
 
 Requirement: REQ-2026-0021
 

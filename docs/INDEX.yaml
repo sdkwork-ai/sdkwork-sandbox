@@ -169,7 +169,7 @@ entries:
     path: docs/product/requirements/REQ-2026-0021-sandbox-workspace-runtime-transaction-and-checkpoint.md
     layer: work
     audience: [product, architecture, engineering, security, privacy, workspace, storage, performance, database, reliability, operations]
-    status: draft
+    status: ready
   - id: REQ-2026-0022
     path: docs/product/requirements/REQ-2026-0022-sandbox-standalone-data-residency-and-recovery.md
     layer: work
@@ -324,7 +324,7 @@ entries:
     path: docs/architecture/decisions/ADR-20260730-sandbox-workspace-runtime-transaction-and-checkpoint.md
     layer: work
     audience: [product, architecture, engineering, security, privacy, workspace, storage, performance, database, reliability, operations, review]
-    status: proposed
+    status: accepted
   - id: ADR-20260730-STANDALONE-DATA-RESIDENCY
     path: docs/architecture/decisions/ADR-20260730-sandbox-standalone-data-residency-and-recovery.md
     layer: work
@@ -484,7 +484,7 @@ entries:
     path: docs/engineering/reviews/REVIEW-20260730-sandbox-workspace-runtime-transaction-architecture-security.md
     layer: work
     audience: [product, architecture, engineering, security, privacy, workspace, storage, performance, database, reliability, operations, review]
-    status: pending-human-review
+    status: accepted
   - id: REVIEW-20260730-STANDALONE-DATA-RESIDENCY
     path: docs/engineering/reviews/REVIEW-20260730-sandbox-standalone-data-residency-and-recovery.md
     layer: work

@@ -1265,7 +1265,9 @@ test("every requirement in this repository declares a readable status", () => {
   // 2026-10-04: REQ-2026-0030 (Sandbox App API console face) registered and
   // promoted to ready by the concurrent console-face slice; REQ-2026-0029
   // (Template authority) promoted to ready by REVIEW-20261004; REQ-2026-0031
-  // (Snapshot/Fork authority) registered as draft on 2026-10-05.
+  // (Snapshot/Fork authority) registered as draft on 2026-10-05; REQ-2026-0021
+  // (Workspace runtime transaction) promoted to ready by its REVIEW-20260730
+  // acceptance on 2026-10-05.
   assert.equal(names.length, 31);
   const ready = [];
   for (const name of names) {
@@ -1284,6 +1286,7 @@ test("every requirement in this repository declares a readable status", () => {
     "REQ-2026-0007-sandbox-command-execution-contract.md",
     "REQ-2026-0008-firecracker-sandbox-provider.md",
     "REQ-2026-0019-sandbox-runtime-pool-and-fast-allocation.md",
+    "REQ-2026-0021-sandbox-workspace-runtime-transaction-and-checkpoint.md",
     "REQ-2026-0028-sandbox-e2b-compatible-api-sdk-family.md",
     "REQ-2026-0029-sandbox-template-authority.md",
     "REQ-2026-0030-sandbox-app-api-console-face.md",
@@ -1304,17 +1307,16 @@ test("the repository's own coverage table accounts for every test the workspace 
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  // 2026-10-05: unchanged at 237 declared Rust tests; the Snapshot/Fork draft
-  // carrier adds contract-suite tests only, no Rust tests.
-  // 2026-10-04: 237 declared tests (235 runnable + the two external-PostgreSQL
+  // 2026-10-05: the Workspace runtime transaction control-plane slice adds
+  // 13 Rust tests. 2026-10-04: 237 declared tests (235 runnable + the two external-PostgreSQL
   // ignored ones) after the 2026-09-29 state (180) gained the Runtime Pool
   // control-plane slice (29 tests, crates/sdkwork-intelligence-sandbox-pool-control),
   // the app-api console-face slice (21 tests: assembly manifest inventories,
   // app-api route/payload, offset listing) and the Template authority-model
   // slice (7 tests, crates/sdkwork-intelligence-sandbox-template-authority);
   // the coverage table in the audit document accounts for each of them.
-  assert.equal(assessment.workspaceTests, 237);
-  assert.equal(assessment.coveredTests, 237);
+  assert.equal(assessment.workspaceTests, 250);
+  assert.equal(assessment.coveredTests, 250);
 
   const discovered = discoverWorkspaceTests(repoRoot);
   let runnable = 0;
@@ -1325,9 +1327,9 @@ test("the repository's own coverage table accounts for every test the workspace 
       else runnable += 1;
     }
   }
-  // The two readings the audit quotes have to agree with the code: 237 declared, 235 of them
+  // The two readings the audit quotes have to agree with the code: 250 declared, 248 of them
   // runnable because two declare they need an external PostgreSQL.
-  assert.equal(runnable + ignored, 237);
+  assert.equal(runnable + ignored, 250);
   assert.equal(ignored, 2);
 });
 
@@ -1568,11 +1570,12 @@ test("the repository's own shape table resolves and its sizes recompute", () => 
   assert.equal(shape.header.join("|"), SHAPE_COLUMNS.join("|"));
   // 2026-10-04: the Template/Snapshot/Fork/Pool absence row split twice — Pool and
   // then Template each gained a landed-crate row; Snapshot and Fork keep one row.
-  assert.equal(shape.rows.length, 15);
+  // 2026-10-05: the Workspace transaction control-plane crate gained its own row.
+  assert.equal(shape.rows.length, 16);
 
   const assessment = assessE2bParityMatrix({ repoRoot });
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  assert.equal(assessment.shapeRows, 15);
+  assert.equal(assessment.shapeRows, 16);
   // Twelve lines in the real table point the reader at a numbered line (the Local Provider row
   // cites its production modules including the authorized process runner; the Command Executor
   // row cites its port and its fingerprint function; the Database Host row cites its lifecycle
@@ -1734,7 +1737,7 @@ test("a missing shape section is reported rather than thrown", () => {
 
 test("parseShapeEvidence is total on the real document and on one without the section", () => {
   const real = readFileSync(path.join(repoRoot, PARITY_DOC), "utf8");
-  assert.equal(parseShapeEvidence(real).rows.length, 15);
+  assert.equal(parseShapeEvidence(real).rows.length, 16);
   assert.equal(parseShapeEvidence("# nothing to see\n"), null);
 });
 
@@ -2073,24 +2076,27 @@ test("the repository holds exactly the machine contracts, records and evidence c
     "specs/sandbox-local-provider-host-boundary.contract.json",
     "specs/sandbox-runtime-pool.contract.json",
     "specs/sandbox-template-authority.contract.json",
+    "specs/sandbox-workspace-runtime-transaction.contract.json",
     "apis/commands/sandbox-command-contract.json",
   ]);
   const requirements = readRequirementStatuses(repoRoot);
-  // 2026-10-05: REQ-2026-0031 (Snapshot/Fork authority) registered as draft.
+  // 2026-10-05: REQ-2026-0031 (Snapshot/Fork authority) registered as draft;
+  // REQ-2026-0021 (Workspace runtime transaction) promoted to ready.
   assert.equal(requirements.length, 31);
   // The 2026-09-29 structured decision promoted REQ-2026-0028 (E2B API/SDK authority) to ready.
   // 2026-09-29: REQ-2026-0019 (Runtime Pool) promoted to ready with REVIEW-20260730 accepted.
-  assert.equal(requirements.filter((record) => record.status === "ready").length, 7);
+  assert.equal(requirements.filter((record) => record.status === "ready").length, 8);
   assert.equal(requirements.filter((record) => record.status === "accepted").length, 5);
-  assert.equal(requirements.filter((record) => record.status === "draft").length, 19);
+  assert.equal(requirements.filter((record) => record.status === "draft").length, 18);
   const decisions = readDecisionStatuses(repoRoot);
   assert.equal(decisions.length, 30);
   // The 2026-09-29 structured decision accepted ADR-20260924 (E2B API/SDK authority).
   // 2026-09-29: ADR-20260730 (Runtime Pool) accepted with the REVIEW-20260730 packet.
   // 2026-10-04: ADR-20261004 (App API console face) accepted with the console-face slice;
-  // ADR-20261004 (Template authority) accepted with REVIEW-20261004. No snapshot ADR yet.
-  assert.equal(decisions.filter((record) => record.status === "proposed").length, 23);
-  assert.equal(decisions.filter((record) => record.status === "accepted").length, 7);
+  // ADR-20261004 (Template authority) accepted with REVIEW-20261004. No snapshot ADR yet;
+  // ADR-20260730 (Workspace runtime transaction) accepted with its 2026-10-05 slice.
+  assert.equal(decisions.filter((record) => record.status === "proposed").length, 22);
+  assert.equal(decisions.filter((record) => record.status === "accepted").length, 8);
 });
 
 test("the repository's own answer section compares every restated figure", () => {

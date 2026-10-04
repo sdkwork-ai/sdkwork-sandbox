@@ -6,7 +6,7 @@ title: 交付 Local 与 Cloud 一致的 Workspace Runtime Transaction、Checkpoi
 
 owner: SDKWork Runtime Platform
 
-status: draft
+status: ready
 
 source: customer
 
@@ -120,4 +120,4 @@ Future implementation evidence must additionally include real Local runners, rea
 
 ## Implementation Gate
 
-This Requirement remains `draft`. It authorizes only Gate 0 contract, test, review and Canon documentation alignment. It creates no Rust Port/Type/Crate, Host I/O, process, table, migration, worker, storage/KMS adapter, API, SDK, config, manifest, deployment or cross-repository source change.
+`ready` since 2026-10-05: REVIEW-20260730（事务架构与安全，10 角色）由仓库所有者以单一所有者结构化决策接受，ADR-20260730 同日 `accepted`。授权的实现切片仅为控制面：provider-neutral 事务状态机、21 阶段固定编排序（含类型化 N/A 证据）、Checkpoint 候选（耐久 handoff 与 Agents 独占 CAS 晋升）、Writer Lease/Fencing/幂等语义与有界注册表，以领域 crate 形式带机器契约对齐测试落地；`specs/sandbox-workspace-runtime-transaction.contract.json` 对该切片翻转为 `implementationAuthorized: true` 并保持 `draft`。真实 Provider 运行时、PostgreSQL 事务权威、storage/KMS 适配器、worker、API/SDK/transport、config 与部署面仍被契约 `x-sdkwork-no-*` 门锁住；真实 Local/KVM/PostgreSQL 证据、故障注入与饱和测试保持 release-blocking。

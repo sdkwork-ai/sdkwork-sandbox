@@ -37,15 +37,16 @@ test("the live repository human-review sign-off state is coherent", () => {
   assert.equal(assessment.ok, true, assessment.failures.join("\n"));
   assert.equal(assessment.summary.sandbox_named_by_contracts, 14);
   // Since 2026-09-24 four of the fourteen contract-gated packets are signed off (local provider,
-  // command execution, firecracker provider, runtime pool) and their contracts' shared delivery
-  // gate stays closed on the remaining ten; the API/SDK authority packet gates no contract.
-  assert.equal(assessment.summary.sandbox_named_by_contracts_and_pending, 10);
+  // command execution, firecracker provider, runtime pool, workspace runtime
+  // transaction) and their contracts' shared delivery gate stays closed on the
+  // remaining nine; the API/SDK authority packet gates no contract.
+  assert.equal(assessment.summary.sandbox_named_by_contracts_and_pending, 9);
   assert.ok(assessment.summary.sandbox_pending_human_review > 0);
   // The backlog only ever holds pending packets, so the count is the filter itself.
   assert.equal(
     assessment.backlog.filter((item) => item.gatingContracts.length > 0).length,
-    10,
-    "the ten unapproved contract-gated packets must still be pending",
+    9,
+    "the nine unapproved contract-gated packets must still be pending",
   );
 });
 
@@ -381,9 +382,10 @@ test("the exit-readiness package under-reporting a packet's own risk fails", () 
 
 test("the exit-readiness package declaring a stale pending count fails", () => {
   const { exitPackageDocument } = live();
+  // 2026-10-05: the live pending count is 17, so the stale mutation writes 16.
   const stale = exitPackageDocument.replace(
     /当前全部\s*\*{0,2}\d+\*{0,2}\s*个相关\s*Review Packet/u,
-    "当前全部 **17** 个相关 Review Packet",
+    "当前全部 **16** 个相关 Review Packet",
   );
   assert.notEqual(stale, exitPackageDocument, "the count sentence must exist for this test to bite");
 
@@ -391,7 +393,7 @@ test("the exit-readiness package declaring a stale pending count fails", () => {
 
   assert.equal(assessment.ok, false);
   assert.ok(
-    assessment.failures.some((line) => line.includes("declares 17 pending review packet")),
+    assessment.failures.some((line) => line.includes("declares 16 pending review packet")),
     assessment.failures.join("\n"),
   );
 });
