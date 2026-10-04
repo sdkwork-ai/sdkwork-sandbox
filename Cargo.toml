@@ -7,6 +7,7 @@ members = [
     "crates/sdkwork-intelligence-sandbox-pool-control",
     "crates/sdkwork-intelligence-sandbox-template-authority",
     "crates/sdkwork-intelligence-sandbox-transaction-control",
+    "crates/sdkwork-intelligence-sandbox-snapshot-authority",
     "crates/sdkwork-intelligence-sandbox-repository-memory",
     "crates/sdkwork-intelligence-sandbox-repository-sqlx",
     "crates/sdkwork-sandbox-provider-local",
@@ -49,6 +50,7 @@ sdkwork-intelligence-sandbox-service = { path = "crates/sdkwork-intelligence-san
 sdkwork-intelligence-sandbox-pool-control = { path = "crates/sdkwork-intelligence-sandbox-pool-control" }
 sdkwork-intelligence-sandbox-template-authority = { path = "crates/sdkwork-intelligence-sandbox-template-authority" }
 sdkwork-intelligence-sandbox-transaction-control = { path = "crates/sdkwork-intelligence-sandbox-transaction-control" }
+sdkwork-intelligence-sandbox-snapshot-authority = { path = "crates/sdkwork-intelligence-sandbox-snapshot-authority" }
 sdkwork-intelligence-sandbox-repository-sqlx = { path = "crates/sdkwork-intelligence-sandbox-repository-sqlx" }
 sdkwork-routes-sandbox-internal-api = { path = "crates/sdkwork-routes-sandbox-internal-api" }
 sdkwork-routes-sandbox-app-api = { path = "crates/sdkwork-routes-sandbox-app-api" }

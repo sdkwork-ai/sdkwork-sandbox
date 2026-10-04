@@ -19,18 +19,80 @@ function readStatus(relativePath) {
 
 const contract = readJson("specs/sandbox-snapshot-fork.contract.json");
 
-test("Snapshot authority stays a draft carrier with implementation unauthorized", () => {
+test("Snapshot authority is ready and the contract authorizes the authority-model slice", () => {
   assert.equal(contract.kind, "sdkwork.sandbox.snapshot-fork-contract");
-  // 2026-10-05: REQ-2026-0031 registered as the Snapshot/Fork capability
-  // carrier; the naming/review packet is still pending, so nothing may
-  // implement behind it and no WarmMicroVmSlot gate moves.
+  // 2026-10-05: REVIEW-20261005 (SNAP-01..07) accepted via single-owner
+  // structured approval; the authority-model slice landed as
+  // crates/sdkwork-intelligence-sandbox-snapshot-authority, so the contract's
+  // implementation gate is open for that slice only. Engine runtime, storage
+  // backend, restore pipeline, CLI, public API/SDK and deployment stay
+  // forbidden, no WarmMicroVmSlot gate moves, and the contract remains draft.
   assert.equal(contract.status, "draft");
-  assert.equal(contract.implementationAuthorized, false);
+  assert.equal(contract.implementationAuthorized, true);
   assert.equal(contract["x-sdkwork-status"], "draft");
   assert.equal(contract["x-sdkwork-require-human-review"], true);
   assert.equal(
     readStatus("docs/product/requirements/REQ-2026-0031-sandbox-snapshot-and-fork.md"),
-    "draft",
+    "ready",
+  );
+  assert.equal(
+    readStatus("docs/architecture/decisions/ADR-20261005-sandbox-snapshot-fork-authority.md"),
+    "accepted",
+  );
+  assert.equal(
+    readStatus("docs/engineering/reviews/REVIEW-20261005-sandbox-snapshot-fork-authority.md"),
+    "accepted",
+  );
+});
+
+test("The landed snapshot-authority crate implements the pinned states, fields, fork flags and gates", () => {
+  const crateRoot = path.join(repoRoot, "crates/sdkwork-intelligence-sandbox-snapshot-authority");
+  const source = (relative) => readFileSync(path.join(crateRoot, "src", relative), "utf8");
+  const stateSource = source("state.rs");
+  for (const stateName of contract.snapshot.states) {
+    assert.ok(
+      stateSource.includes(`"${stateName}"`),
+      `snapshot state ${stateName} must exist in the crate state machine`,
+    );
+  }
+  const snapshotSource = source("snapshot.rs");
+  for (const field of contract.snapshot.requiredFields) {
+    assert.ok(
+      snapshotSource.includes(field),
+      `snapshot field ${field} must exist in the crate record`,
+    );
+  }
+  const forkSource = source("fork.rs");
+  assert.equal(
+    forkSource.includes("SANDBOX_SNAPSHOT_FORK_SOURCE_SNAPSHOT_IMMUTABLE: bool = true"),
+    contract.fork.sourceSnapshotImmutable === true,
+  );
+  assert.equal(
+    forkSource.includes("SANDBOX_SNAPSHOT_FORK_PARALLEL_RUNNING: bool = true"),
+    contract.fork.derivedSandboxRunsInParallelWithSource === true,
+  );
+  assert.equal(
+    forkSource.includes("SANDBOX_SNAPSHOT_FORK_FRESH_IDENTITY_REQUIRED: bool = true"),
+    contract.fork.derivedSandboxGetsFreshGuestIdentity === true,
+  );
+  const gatesSource = source("gates.rs");
+  for (const gate of [
+    "realKvmRestoreEvidenceRequired",
+    "crossTenantResidueEvidenceRequired",
+    "derivedIdentityRotationEvidenceRequired",
+    "warmSlotReuseRequiresPoolEvidenceGate",
+  ]) {
+    assert.equal(contract.evidenceGates[gate], true, `${gate} must stay blocking`);
+  }
+  assert.equal(
+    gatesSource.includes(`"${contract.artifactBoundary.artifactAuthority}"`),
+    true,
+    `the artifact authority ${contract.artifactBoundary.artifactAuthority} must be named by the crate`,
+  );
+  const forbiddenFlags = Object.values(contract.forbidden);
+  assert.ok(
+    forbiddenFlags.length === 6 && forbiddenFlags.every((flag) => flag === true),
+    "the contract forbidden block must stay closed",
   );
 });
 

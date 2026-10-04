@@ -37,3 +37,4 @@ New ADRs use `ADR-YYYYMMDD-<short-title>.md` in this directory.
 Retired layout: `docs/adr/` must not be used for new ADRs.
 
 See `ARCHITECTURE_DECISION_SPEC.md`.
+- [ADR-20261005: Sandbox Snapshot And Fork Authority](ADR-20261005-sandbox-snapshot-fork-authority.md) - accepted (2026-10-05); immutable snapshot records bound to exact `REQ-2026-0012` artifact tuples, closed create/list/delete lifecycle with deterministic deletion and quarantine on uncertainty, fork derivation semantics (immutable source, bounded N derivations, fresh derived identity, parallel running), distinct from `REQ-2026-0021` checkpoints and `sdkwork-agents` workspace deletion; engine/storage/pipeline/CLI/API surfaces stay forbidden until their own slices.

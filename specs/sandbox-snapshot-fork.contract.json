@@ -9,7 +9,7 @@
     "REQ-2026-0019",
     "REQ-2026-0021"
   ],
-  "implementationAuthorized": false,
+  "implementationAuthorized": true,
   "snapshot": {
     "type": "SandboxSnapshot",
     "requiredFields": [

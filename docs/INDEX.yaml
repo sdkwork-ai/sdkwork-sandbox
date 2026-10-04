@@ -214,7 +214,7 @@ entries:
     path: docs/product/requirements/REQ-2026-0031-sandbox-snapshot-and-fork.md
     layer: product
     audience: [product, architecture, engineering, security, review]
-    status: draft
+    status: ready
   - id: REQ-2026-0028
     path: docs/product/requirements/REQ-2026-0028-sandbox-e2b-compatible-api-sdk-family.md
     layer: work
@@ -369,6 +369,11 @@ entries:
     path: docs/architecture/decisions/ADR-20261004-sandbox-template-authority.md
     layer: work
     audience: [product, architecture, engineering, security, supply-chain, sdk, api, review]
+    status: accepted
+  - id: ADR-20261005-SANDBOX-SNAPSHOT-FORK-AUTHORITY
+    path: docs/architecture/decisions/ADR-20261005-sandbox-snapshot-fork-authority.md
+    layer: work
+    audience: [product, architecture, engineering, security, supply-chain, review]
     status: accepted
   - id: PLAN-2026-0001
     path: docs/engineering/plans/PLAN-2026-0001-local-and-firecracker-provider-delivery.md
@@ -649,6 +654,11 @@ entries:
     path: docs/engineering/reviews/REVIEW-20261004-sandbox-template-authority-naming-and-boundaries.md
     layer: work
     audience: [product, architecture, engineering, security, supply-chain, sdk, api, review]
+    status: accepted
+  - id: REVIEW-20261005-SNAPSHOT-FORK-AUTHORITY
+    path: docs/engineering/reviews/REVIEW-20261005-sandbox-snapshot-fork-authority.md
+    layer: work
+    audience: [product, architecture, engineering, security, supply-chain, review]
     status: accepted
 domains:
   - name: intelligence

@@ -1,0 +1,21 @@
+[package]
+rust-version.workspace = true
+name = "sdkwork-intelligence-sandbox-snapshot-authority"
+description = "Provider-neutral SDKWork Sandbox snapshot/fork authority model: immutable snapshot records, closed lifecycle, fork derivation semantics, evidence gates."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[dev-dependencies]
+
+[lib]
+name = "sdkwork_intelligence_sandbox_snapshot_authority"
+path = "src/lib.rs"
+
+[lints]
+workspace = true

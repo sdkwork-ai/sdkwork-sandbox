@@ -2,7 +2,7 @@
 id: REQ-2026-0031
 title: 交付 Sandbox Snapshot 与 Fork 权威
 owner: SDKWork Runtime Platform
-status: draft
+status: ready
 priority: high
 source: customer
 problem: E2B 的持久化与快速复制建立在 Snapshot/Fork 之上（createSnapshot 含内存与文件系统、从 snapshotId 创建新沙箱、fork 一次派生 N 个并行沙箱）；本仓该能力类此前零需求承载，是"快速启动"路径上 Template（REQ-2026-0029）之后第二个结构性空档：没有快照权威，WarmMicroVmSlot 的清洁不可变快照来源、派生式扩容与故障恢复都没有权威起点。
@@ -55,4 +55,12 @@ Decisions: 后续提交随命名评审包登记。
 
 ## Release Boundary
 
-在人工评审通过并将机器契约翻转为 `implementationAuthorized: true` 之前，不得实现快照引擎、存储后端、恢复流水线、API/SDK/CLI，也不得宣称 E2B Snapshot/Fork 能力对齐。
+在引擎/存储切片单独授权并落地之前，不得实现快照引擎、存储后端、恢复流水线、API/SDK/CLI，也不得宣称 E2B Snapshot/Fork 能力对齐。权威模型切片（记录类型、生命周期校验、Fork 派生语义、证据门文档）已于 2026-10-05 授权并落地。
+
+## Implementation Gate
+
+`ready` since 2026-10-05: REVIEW-20261005（命名、数据所有权、Fork 一致性语义、证据门、forbidden 面）由仓库所有者以单一所有者结构化决策接受，ADR-20261005 同日 `accepted`。授权的实现切片仅为权威模型：`crates/sdkwork-intelligence-sandbox-snapshot-authority` 承载 `SandboxSnapshot` 记录、生命周期校验、Fork 派生语义与机器契约对齐测试；`specs/sandbox-snapshot-fork.contract.json` 对该切片翻转为 `implementationAuthorized: true` 并保持 `draft`。快照引擎、存储后端、恢复流水线、CLI、公共 API/SDK 与部署 profile 仍被契约 `forbidden` 块锁住，直到各自的后续需求切片落地；引擎切片存在之前不得宣称 E2B Snapshot/Fork 能力对齐。
+
+## Implementation Authorization
+
+`ready` since 2026-10-05：批准记录见 REVIEW-20261005 的 approval basis（本会话重复的 snapshot 能力指令 + REVIEW-20260929 结构化指令延续，单一所有者惯例）。权威模型切片已随码与测试落地；Blocking Findings（引擎/存储缺失、CLI/API 未定、真实 KVM 恢复/残留/身份轮换证据缺失、无可绑定的真实制品 Tuple、Warm 槽桥未批）全部保持为后续切片的持续证据义务。

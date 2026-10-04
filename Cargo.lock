@@ -2282,6 +2282,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "sdkwork-intelligence-sandbox-snapshot-authority"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "sdkwork-intelligence-sandbox-template-authority"
 version = "0.1.0"
 dependencies = [
