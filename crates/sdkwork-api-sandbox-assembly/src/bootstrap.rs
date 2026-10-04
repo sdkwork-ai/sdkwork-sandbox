@@ -276,6 +276,74 @@ mod tests {
             .expect("both composed faces must satisfy their surface auth contracts");
     }
 
+    #[test]
+    fn app_api_authority_document_locksteps_with_the_route_manifest() {
+        // `apis/app-api/sandbox/sandbox-app-api-authority.openapi.json` is the
+        // authored contract (`REQ-2026-0030`); the route crate is the served
+        // truth. Hand-authoring one of them means the two can drift silently
+        // — a shipped route no client knows, or a documented operation no
+        // crate serves — so this test pins them together: every manifest
+        // route must appear in the authority with the same operationId and
+        // the dual-token security pair, and the authority must declare
+        // nothing else.
+        let authority: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../apis/app-api/sandbox/sandbox-app-api-authority.openapi.json"
+        ))
+        .expect("the authored app-api authority parses");
+        let manifest = sdkwork_routes_sandbox_app_api::app_route_manifest();
+
+        fn wire_method(method: sdkwork_web_core::HttpMethod) -> &'static str {
+            use sdkwork_web_core::HttpMethod;
+            match method {
+                HttpMethod::Delete => "delete",
+                HttpMethod::Get => "get",
+                HttpMethod::Patch => "patch",
+                HttpMethod::Post => "post",
+                HttpMethod::Put => "put",
+            }
+        }
+
+        let mut declared_operations = 0_usize;
+        for (path, item) in authority["paths"]
+            .as_object()
+            .expect("authority declares a paths object")
+        {
+            for (method, op) in item.as_object().expect("path item object") {
+                // A path item may also carry non-operation members (a shared
+                // `parameters` block, `summary`, ...); only HTTP methods are
+                // operations.
+                if !matches!(method.as_str(), "get" | "post" | "patch" | "put" | "delete") {
+                    continue;
+                }
+                declared_operations += 1;
+                let route = manifest
+                    .routes()
+                    .iter()
+                    .find(|route| route.path == path && wire_method(route.method) == method)
+                    .unwrap_or_else(|| {
+                        panic!("authority declares {method} {path} but the manifest does not")
+                    });
+                assert_eq!(
+                    op["operationId"].as_str().expect("operationId"),
+                    route.operation_id,
+                    "authority and manifest disagree on the operationId for {method} {path}"
+                );
+                let security = op["security"].as_array().expect("operation security");
+                assert!(
+                    security.iter().any(|entry| {
+                        entry.get("AuthToken").is_some() && entry.get("AccessToken").is_some()
+                    }),
+                    "authority operation {method} {path} must require the AuthToken+AccessToken pair"
+                );
+            }
+        }
+        assert_eq!(
+            manifest.routes().len(),
+            declared_operations,
+            "the authority must declare exactly the manifest's app-api operations"
+        );
+    }
+
     fn assert_permission_catalog_matches(manifest: &HttpRouteManifest) {
         let mut expected = manifest
             .routes()
