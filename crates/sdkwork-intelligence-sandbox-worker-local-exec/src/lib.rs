@@ -95,7 +95,7 @@ impl SandboxLaunchStartCommandPort for SandboxLocalStartCommandExecutor {
             sandbox_arguments: scope.sandbox_arguments.clone(),
             sandbox_working_directory: scope.sandbox_working_directory.clone(),
             sandbox_environment: scope.sandbox_environment.clone(),
-            sandbox_command_limits: scope.sandbox_command_limits.clone(),
+            sandbox_command_limits: scope.sandbox_command_limits,
         };
         match self
             .sandbox_runtime
