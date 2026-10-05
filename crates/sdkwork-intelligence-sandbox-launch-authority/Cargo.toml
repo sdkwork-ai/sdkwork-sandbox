@@ -12,6 +12,9 @@ repository.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+sdkwork-intelligence-sandbox-build-authority.workspace = true
+sdkwork-intelligence-sandbox-pool-control.workspace = true
+sdkwork-intelligence-sandbox-template-authority.workspace = true
 
 [lib]
 name = "sdkwork_intelligence_sandbox_launch_authority"

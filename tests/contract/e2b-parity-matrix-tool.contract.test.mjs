@@ -1313,8 +1313,9 @@ test("the repository's own coverage table accounts for every test the workspace 
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  // 2026-10-06: the Fast-Start Launch authority-model slice adds 9 Rust
-  // tests on top of the same-day Template Build authority-model slice
+  // 2026-10-06: the cross-crate fast-allocation-chain composition proof
+  // adds 2 integration tests on top of the Fast-Start Launch authority-model
+  // slice (9 Rust tests), the same-day Template Build authority-model slice
   // (10 Rust tests), the deep-regression hardening of the transaction
   // control plane (2 more: identity non-rebinding, compensation freezes the
   // ledger) and the earlier same-day slices: the Workspace runtime
@@ -1327,8 +1328,8 @@ test("the repository's own coverage table accounts for every test the workspace 
   // app-api route/payload, offset listing) and the Template authority-model
   // slice (7 tests, crates/sdkwork-intelligence-sandbox-template-authority);
   // the coverage table in the audit document accounts for each of them.
-  assert.equal(assessment.workspaceTests, 277);
-  assert.equal(assessment.coveredTests, 277);
+  assert.equal(assessment.workspaceTests, 279);
+  assert.equal(assessment.coveredTests, 279);
 
   const discovered = discoverWorkspaceTests(repoRoot);
   let runnable = 0;
@@ -1339,9 +1340,9 @@ test("the repository's own coverage table accounts for every test the workspace 
       else runnable += 1;
     }
   }
-  // The two readings the audit quotes have to agree with the code: 277 declared, 275 of them
+  // The two readings the audit quotes have to agree with the code: 279 declared, 277 of them
   // runnable because two declare they need an external PostgreSQL.
-  assert.equal(runnable + ignored, 277);
+  assert.equal(runnable + ignored, 279);
   assert.equal(ignored, 2);
 });
 

@@ -2247,6 +2247,9 @@ dependencies = [
 name = "sdkwork-intelligence-sandbox-launch-authority"
 version = "0.1.0"
 dependencies = [
+ "sdkwork-intelligence-sandbox-build-authority",
+ "sdkwork-intelligence-sandbox-pool-control",
+ "sdkwork-intelligence-sandbox-template-authority",
  "thiserror",
 ]
 
