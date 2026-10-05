@@ -2336,6 +2336,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sdkwork-intelligence-sandbox-worker-local-exec"
+version = "0.1.0"
+dependencies = [
+ "sdkwork-intelligence-sandbox-worker-local",
+ "sdkwork-sandbox-provider-local",
+ "sdkwork-sandbox-provider-spi",
+ "tokio",
+]
+
+[[package]]
 name = "sdkwork-routes-sandbox-app-api"
 version = "0.1.0"
 dependencies = [

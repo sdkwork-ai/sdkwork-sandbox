@@ -17,6 +17,7 @@ Phase 0 components:
 - `sdkwork-intelligence-sandbox-build-authority`: L2 template-build authority-model boundary (`REQ-2026-0032` authority-model slice: terminal-immutable build records, closed five-state lifecycle, outcome binding, evidence gates).
 - `sdkwork-intelligence-sandbox-launch-authority`: L2 fast-start launch authority-model boundary (`REQ-2026-0033` authority-model slice: immutable launch plans, closed four-state lifecycle, fenced-claim binding, fresh-identity enforcement).
 - `sdkwork-intelligence-sandbox-worker-authority`: L2 worker launch-execution authority-model boundary (`REQ-2026-0034` authority-model slice: terminal-immutable execution records, closed six-state lifecycle, earned references, lane-scoped evidence gates).
+- `sdkwork-intelligence-sandbox-worker-local-exec`: L4 start-command executor wiring (`REQ-2026-0034` local-lane slice: the worker start-command port implemented over the `REQ-2026-0007` local tokio-process executor through a dedicated runtime bridge).
 - `sdkwork-sandbox-provider-local`: L4 local-provider adapter boundary.
 - `sdkwork-sandbox-provider-firecracker`: L4 firecracker-provider adapter boundary (`REQ-2026-0008` Gate 0 slice: exact-tuple artifact manifest, fail-closed preflight, durable fencing, broker/guest seams).
 - `sdkwork-sandbox-service-host`: L5 composition host boundary.

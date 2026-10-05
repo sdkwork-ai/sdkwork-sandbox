@@ -12,6 +12,7 @@ members = [
     "crates/sdkwork-intelligence-sandbox-launch-authority",
     "crates/sdkwork-intelligence-sandbox-worker-authority",
     "crates/sdkwork-intelligence-sandbox-worker-local",
+    "crates/sdkwork-intelligence-sandbox-worker-local-exec",
     "crates/sdkwork-intelligence-sandbox-repository-memory",
     "crates/sdkwork-intelligence-sandbox-repository-sqlx",
     "crates/sdkwork-sandbox-provider-local",
@@ -59,6 +60,7 @@ sdkwork-intelligence-sandbox-build-authority = { path = "crates/sdkwork-intellig
 sdkwork-intelligence-sandbox-launch-authority = { path = "crates/sdkwork-intelligence-sandbox-launch-authority" }
 sdkwork-intelligence-sandbox-worker-authority = { path = "crates/sdkwork-intelligence-sandbox-worker-authority" }
 sdkwork-intelligence-sandbox-worker-local = { path = "crates/sdkwork-intelligence-sandbox-worker-local" }
+sdkwork-intelligence-sandbox-worker-local-exec = { path = "crates/sdkwork-intelligence-sandbox-worker-local-exec" }
 sdkwork-intelligence-sandbox-repository-sqlx = { path = "crates/sdkwork-intelligence-sandbox-repository-sqlx" }
 sdkwork-routes-sandbox-internal-api = { path = "crates/sdkwork-routes-sandbox-internal-api" }
 sdkwork-routes-sandbox-app-api = { path = "crates/sdkwork-routes-sandbox-app-api" }

@@ -1,0 +1,24 @@
+[package]
+rust-version.workspace = true
+name = "sdkwork-intelligence-sandbox-worker-local-exec"
+description = "Local-lane start-command executor wiring: implements the worker start-command port over the REQ-2026-0007 local tokio-process executor through a dedicated runtime bridge."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+sdkwork-intelligence-sandbox-worker-local.workspace = true
+sdkwork-sandbox-provider-local.workspace = true
+sdkwork-sandbox-provider-spi.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+
+[lib]
+name = "sdkwork_intelligence_sandbox_worker_local_exec"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
