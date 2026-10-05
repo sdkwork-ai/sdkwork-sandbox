@@ -210,9 +210,11 @@ test("the repository's own traceability chain resolves and the gate is not vacuo
   );
   // 2026-10-05: REQ-2026-0031 (Snapshot/Fork authority) registered and then
   // promoted to ready by REVIEW-20261005; REQ-2026-0032 (Template build
-  // authority) registered as draft the same day.
+  // authority) registered as draft the same day and promoted by its own
+  // REVIEW; ADR-20261005 (Template build authority) registered with its
+  // acceptance.
   assert.equal(assessment.requirementsOnRecord, 32);
-  assert.equal(assessment.decisionsOnRecord, 31);
+  assert.equal(assessment.decisionsOnRecord, 32);
   assert.equal(assessment.capabilityRowsUnattributed, 0);
 });
 

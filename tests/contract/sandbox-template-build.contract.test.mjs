@@ -19,20 +19,89 @@ function readStatus(relativePath) {
 
 const contract = readJson("specs/sandbox-template-build.contract.json");
 
-test("Template build is a draft carrier with no implementation authorization", () => {
+test("Template build is ready and the contract authorizes the authority-model slice", () => {
   assert.equal(contract.kind, "sdkwork.sandbox.template-build-contract");
-  // 2026-10-05: the carrier registers the Template build capability class as
-  // draft. No slice is authorized, no crate exists for it, and every runtime
-  // surface stays behind the forbidden block until its own review lands.
+  // 2026-10-05: REVIEW-20261005 (BLD-01..07) accepted via single-owner
+  // structured approval; the authority-model slice landed as
+  // crates/sdkwork-intelligence-sandbox-build-authority, so the contract's
+  // implementation gate is open for that slice only. Builder runtime,
+  // pipeline execution, artifact/cache storage, registry service, CLI,
+  // public API/SDK and deployment stay forbidden, no WarmMicroVmSlot gate
+  // moves, and the contract remains draft.
   assert.equal(contract.status, "draft");
-  assert.equal(contract.implementationAuthorized, false);
+  assert.equal(contract.implementationAuthorized, true);
   assert.equal(contract["x-sdkwork-status"], "draft");
   assert.equal(contract["x-sdkwork-require-human-review"], true);
   assert.equal(
     readStatus("docs/product/requirements/REQ-2026-0032-sandbox-template-build.md"),
-    "draft",
+    "ready",
+  );
+  assert.equal(
+    readStatus("docs/architecture/decisions/ADR-20261005-sandbox-template-build-authority.md"),
+    "accepted",
+  );
+  assert.equal(
+    readStatus("docs/engineering/reviews/REVIEW-20261005-sandbox-template-build-authority.md"),
+    "accepted",
   );
   assert.equal(contract.requirementId, "REQ-2026-0032");
+});
+
+test("The landed build-authority crate implements the pinned states, fields, gates and layering", () => {
+  const crateRoot = path.join(repoRoot, "crates/sdkwork-intelligence-sandbox-build-authority");
+  const source = (relative) => readFileSync(path.join(crateRoot, "src", relative), "utf8");
+  const stateSource = source("state.rs");
+  for (const stateName of contract.build.states) {
+    assert.ok(
+      stateSource.includes(`"${stateName}"`),
+      `build state ${stateName} must exist in the crate state machine`,
+    );
+  }
+  const buildSource = source("build.rs");
+  for (const field of contract.build.requiredFields) {
+    assert.ok(
+      buildSource.includes(field),
+      `build field ${field} must exist in the crate record`,
+    );
+  }
+  assert.equal(
+    buildSource.includes("sandbox_can_transition_to"),
+    contract.build.illegalTransitionRejected === true,
+  );
+  const gatesSource = source("gates.rs");
+  for (const gate of [
+    "realBuilderExecutionEvidenceRequired",
+    "buildArtifactTupleEvidenceRequired",
+  ]) {
+    assert.equal(contract.evidenceGates[gate], true, `${gate} must stay blocking`);
+  }
+  assert.equal(
+    gatesSource.includes(`"${contract.artifactBoundary.artifactAuthority}"`),
+    true,
+    `the artifact authority ${contract.artifactBoundary.artifactAuthority} must be named by the crate`,
+  );
+  assert.equal(
+    gatesSource.includes(`"${contract.layering.templateAuthority}"`),
+    true,
+    `the template authority ${contract.layering.templateAuthority} must be named by the crate`,
+  );
+  assert.equal(
+    gatesSource.includes(`"${contract.layering.warmMicroVmSlotGate}"`),
+    true,
+    `the warm-slot gate ${contract.layering.warmMicroVmSlotGate} must be named by the crate`,
+  );
+  assert.equal(
+    contract.evidenceGates.buildAuthorityModelSliceAuthorized,
+    true,
+    "the landed authority-model slice is the authorized one",
+  );
+  assert.equal(contract.evidenceGates.builderRuntimeOrPipelineAuthorized, false);
+  assert.equal(contract.evidenceGates.registryServiceAuthorized, false);
+  const forbiddenFlags = Object.values(contract.forbidden);
+  assert.ok(
+    forbiddenFlags.length === 7 && forbiddenFlags.every((flag) => flag === true),
+    "the contract forbidden block must stay closed",
+  );
 });
 
 test("The build record shape is sandbox-prefixed with a closed five-state lifecycle", () => {
@@ -76,7 +145,9 @@ test("Real builder execution and artifact evidence stay blocking", () => {
   const gates = contract.evidenceGates;
   assert.equal(gates.realBuilderExecutionEvidenceRequired, true);
   assert.equal(gates.buildArtifactTupleEvidenceRequired, true);
-  assert.equal(gates.buildAuthorityModelSliceAuthorized, false);
+  // The authority-model slice is the authorized one; every runtime surface
+  // behind it stays closed.
+  assert.equal(gates.buildAuthorityModelSliceAuthorized, true);
   assert.equal(gates.builderRuntimeOrPipelineAuthorized, false);
   assert.equal(gates.registryServiceAuthorized, false);
 });

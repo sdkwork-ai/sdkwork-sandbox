@@ -172,7 +172,7 @@ Terminal Stream、Operational Log、Audit Event 与 Metric 是不同数据类别
 | 5 | Restart | **无**；见 [PRD-capabilities.md](PRD-capabilities.md) 第 3 节状态机的 `Stopped -> Starting` 路径（候选） |
 | 6 | Fork | **无**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 6 节 |
 | 7 | Snapshot | 权威承载已登记：`REQ-2026-0031`（`ready`，2026-10-05）+ `specs/sandbox-snapshot-fork.contract.json`（draft，权威模型切片已授权落地）；引擎、存储后端与恢复流水线仍无（Checkpoint 与 Firecracker Snapshot 的 Gate 0 候选见 `REQ-2026-0021`、`0008`） |
-| 8 | Template | `REQ-2026-0029`（`ready`，权威模型+缓存语义切片已授权落地，Builder/Registry/缓存后端未实现）+ `REQ-2026-0032`（draft，Template Build 权威载体已登记）；产品要求见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 4 节 |
+| 8 | Template | `REQ-2026-0029`（`ready`，权威模型+缓存语义切片已授权落地，Builder/Registry/缓存后端未实现）+ `REQ-2026-0032`（`ready`，Template Build 权威模型切片已授权落地，Builder 运行时未实现）；产品要求见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 4 节 |
 | 9 | Workspace | `REQ-2026-0004`（Agents 权威 + Attachment 边界，候选） |
 | 10 | Filesystem API | `REQ-2026-0007`（`ready`，部分覆盖）；见 [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 3 节 |
 | 11 | Shell | `REQ-2026-0007`（`ready`） |

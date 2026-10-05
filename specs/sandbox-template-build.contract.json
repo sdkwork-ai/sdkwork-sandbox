@@ -8,7 +8,7 @@
     "REQ-2026-0019",
     "REQ-2026-0029"
   ],
-  "implementationAuthorized": false,
+  "implementationAuthorized": true,
   "build": {
     "type": "SandboxTemplateBuild",
     "immutableAfterTerminalState": true,
@@ -57,7 +57,7 @@
   "evidenceGates": {
     "realBuilderExecutionEvidenceRequired": true,
     "buildArtifactTupleEvidenceRequired": true,
-    "buildAuthorityModelSliceAuthorized": false,
+    "buildAuthorityModelSliceAuthorized": true,
     "builderRuntimeOrPipelineAuthorized": false,
     "registryServiceAuthorized": false
   },

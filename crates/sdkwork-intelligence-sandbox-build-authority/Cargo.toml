@@ -1,0 +1,21 @@
+[package]
+rust-version.workspace = true
+name = "sdkwork-intelligence-sandbox-build-authority"
+description = "Provider-neutral SDKWork Sandbox template-build authority model: immutable build records, closed lifecycle, artifact-tuple binding, evidence gates."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[dev-dependencies]
+
+[lib]
+name = "sdkwork_intelligence_sandbox_build_authority"
+path = "src/lib.rs"
+
+[lints]
+workspace = true

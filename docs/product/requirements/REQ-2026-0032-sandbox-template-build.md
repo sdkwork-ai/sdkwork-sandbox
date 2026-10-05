@@ -2,7 +2,7 @@
 id: REQ-2026-0032
 title: 交付 Sandbox Template Build 权威
 owner: SDKWork Runtime Platform
-status: draft
+status: ready
 priority: high
 source: customer
 problem: E2B 的快速部署建立在 `Template.build()` 之上（预构建镜像 + 构建缓存 + `fromTemplate()` 层复用 + tags 版本化）；本仓 Template 线（REQ-2026-0029）已承载权威模型（定义/版本/构建输入/缓存语义），但"构建输入 → 可启动制品"的转换没有权威承载：没有构建权威，构建记录、成功产物与 `REQ-2026-0012` 制品 Tuple 的绑定、以及 Pool 快速分配消费的制品来源都没有权威起点——这是"快速分配 + 快速启动"链上 Template 权威（0029）与 Snapshot 权威（0031）之后的第三个结构性空档。
@@ -53,4 +53,12 @@ Decisions: 后续提交随命名评审包登记。
 
 ## Release Boundary
 
-在构建权威模型切片单独评审并授权之前不写实现；在 Builder 运行时切片单独授权并落地之前，不得实现构建执行、构建产物/缓存存储、Registry 服务、API/SDK/CLI，也不得宣称 E2B Template Build 能力对齐。
+在 Builder 运行时切片单独授权并落地之前，不得实现构建执行、构建产物/缓存存储、Registry 服务、API/SDK/CLI，也不得宣称 E2B Template Build 能力对齐。权威模型切片（记录类型、生命周期校验、结果绑定规则、证据门文档）已于 2026-10-05 授权并落地。
+
+## Implementation Gate
+
+`ready` since 2026-10-05: REVIEW-20261005（命名、数据所有权、结果绑定语义、证据门、forbidden 面）由仓库所有者以单一所有者结构化决策接受，ADR-20261005 同日 `accepted`。授权的实现切片仅为权威模型：`crates/sdkwork-intelligence-sandbox-build-authority` 承载 `SandboxTemplateBuild` 记录、生命周期校验、结果绑定规则与机器契约对齐测试；`specs/sandbox-template-build.contract.json` 对该切片翻转为 `implementationAuthorized: true` 并保持 `draft`。Builder 运行时、流水线执行、构建产物/缓存存储、Registry 服务、CLI、公共 API/SDK 与部署 profile 仍被契约 `forbidden` 块锁住，直到各自的后续需求切片落地；Builder 运行时切片存在之前不得宣称 E2B Template Build 能力对齐。
+
+## Implementation Authorization
+
+`ready` since 2026-10-05：批准记录见 REVIEW-20261005 的 approval basis（本会话重复的镜像/snapshot 能力指令 + REVIEW-20260929 结构化指令延续，单一所有者惯例）。权威模型切片已随码与测试落地；Blocking Findings（Builder 运行时/流水线/存储缺失、CLI/API 未定、真实构建执行与制品 Tuple 证据缺失、无可绑定的真实制品 Tuple、Warm 槽桥未批）全部保持为后续切片的持续证据义务。
