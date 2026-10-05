@@ -4302,8 +4302,8 @@
   ],
   "testInventory": {
     "suiteGlob": "tests/contract/*.test.mjs",
-    "files": 45,
-    "tests": 706,
+    "files": 46,
+    "tests": 713,
     "auditSuites": [
       {
         "file": "tests/contract/e2b-parity-matrix-tool.contract.test.mjs",

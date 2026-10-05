@@ -212,8 +212,9 @@ test("the repository's own traceability chain resolves and the gate is not vacuo
   // promoted to ready by REVIEW-20261005; REQ-2026-0032 (Template build
   // authority) registered as draft the same day and promoted by its own
   // REVIEW; ADR-20261005 (Template build authority) registered with its
-  // acceptance.
-  assert.equal(assessment.requirementsOnRecord, 32);
+  // acceptance; REQ-2026-0033 (instance fast-start launch authority)
+  // registered as draft on 2026-10-06.
+  assert.equal(assessment.requirementsOnRecord, 33);
   assert.equal(assessment.decisionsOnRecord, 32);
   assert.equal(assessment.capabilityRowsUnattributed, 0);
 });

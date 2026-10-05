@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.sandbox.instance-fast-start-contract",
+  "status": "draft",
+  "requirementId": "REQ-2026-0033",
+  "relatedRequirementIds": [
+    "REQ-2026-0002",
+    "REQ-2026-0007",
+    "REQ-2026-0019",
+    "REQ-2026-0029",
+    "REQ-2026-0031",
+    "REQ-2026-0032"
+  ],
+  "implementationAuthorized": false,
+  "launchPlan": {
+    "type": "SandboxInstanceLaunchPlan",
+    "immutableAfterCreation": true,
+    "unknownStateRejected": true,
+    "illegalTransitionRejected": true,
+    "allSandboxOwnedFieldsRequirePrefix": "sandbox_",
+    "referencesAreOpaque": true,
+    "providerPrivateMetadataAllowed": false,
+    "requiredFields": [
+      "sandbox_instance_launch_plan_id",
+      "sandbox_template_version_ref",
+      "sandbox_pool_claim_ref",
+      "sandbox_fresh_guest_identity_evidence_ref",
+      "sandbox_instance_launch_plan_state",
+      "sandbox_planned_at",
+      "sandbox_updated_at"
+    ],
+    "states": [
+      "planned",
+      "consumed",
+      "expired",
+      "quarantined"
+    ],
+    "initialState": "planned",
+    "terminalStates": [
+      "consumed",
+      "expired",
+      "quarantined"
+    ]
+  },
+  "lifecycleOperations": [
+    "sandbox_plan_launch",
+    "sandbox_mark_launch_consumed",
+    "sandbox_expire_launch",
+    "sandbox_quarantine_launch"
+  ],
+  "fixedOperationsOnly": true,
+  "bindingSemantics": {
+    "startCommandAuthorityStaysWithTemplateVersion": true,
+    "startCommandCopiedIntoThePlan": false,
+    "planRequiresActiveFencedPoolClaim": true,
+    "expiredOrReleasedClaimMayNeverExecute": true,
+    "freshGuestIdentityRequiredPerLaunch": true,
+    "plannedAloneAuthorizesExecution": false,
+    "bindingUncertaintyQuarantines": true,
+    "silentExecutionAllowed": false
+  },
+  "evidenceGates": {
+    "realFastStartRuntimeEvidenceRequired": true,
+    "firstCommandZeroWaitEvidenceRequired": true,
+    "launchAuthorityModelSliceAuthorized": false,
+    "launchExecutionOrWorkerAuthorized": false
+  },
+  "layering": {
+    "templateAuthority": "REQ-2026-0029",
+    "buildAuthority": "REQ-2026-0032",
+    "poolClaimAuthority": "REQ-2026-0019",
+    "commandExecutionAuthority": "REQ-2026-0007",
+    "snapshotForkAuthority": "REQ-2026-0031",
+    "snapshotDerivedInstancesPlanThroughThisAuthorityToo": true,
+    "warmMicroVmSlotGate": "REQ-2026-0019",
+    "registrationDoesNotEnableWarmSlot": true,
+    "registrationDoesNotExecuteCommands": true
+  },
+  "forbidden": {
+    "launchExecutionRuntime": true,
+    "workerRuntime": true,
+    "cliSurface": true,
+    "publicApiOrSdkSurface": true,
+    "deploymentProfile": true
+  },
+  "x-sdkwork-status": "draft",
+  "x-sdkwork-require-human-review": true,
+  "x-sdkwork-no-runtime-implementation": true,
+  "x-sdkwork-no-storage-backend": true,
+  "x-sdkwork-no-api-sdk-deployment": true
+}

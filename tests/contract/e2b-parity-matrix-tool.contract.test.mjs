@@ -1268,8 +1268,10 @@ test("every requirement in this repository declares a readable status", () => {
   // (Snapshot/Fork authority) registered as draft on 2026-10-05; REQ-2026-0021
   // (Workspace runtime transaction) promoted to ready by its REVIEW-20260730
   // acceptance on 2026-10-05; REQ-2026-0032 (Template build authority)
-  // registered as draft the same day.
-  assert.equal(names.length, 32);
+  // registered as draft the same day and promoted by REVIEW-20261005;
+  // REQ-2026-0033 (instance fast-start launch authority) registered as
+  // draft on 2026-10-06.
+  assert.equal(names.length, 33);
   const ready = [];
   for (const name of names) {
     const record = readRequirementStatus(repoRoot, name.slice(0, 13));
@@ -2067,8 +2069,10 @@ test("the repository holds exactly the machine contracts, records and evidence c
   const named = listNamedContracts(repoRoot);
   // 2026-10-05: specs/sandbox-snapshot-fork.contract.json (REQ-2026-0031)
   // registered, then specs/sandbox-template-build.contract.json
-  // (REQ-2026-0032, draft carrier) the same day.
-  assert.equal(named.length, 26);
+  // (REQ-2026-0032, draft carrier) the same day;
+  // specs/sandbox-instance-fast-start.contract.json (REQ-2026-0033, draft
+  // carrier) registered on 2026-10-06.
+  assert.equal(named.length, 27);
   const api = listApiContracts(repoRoot);
   assert.equal(api.length, 2);
   assert.deepEqual(readEvidenceCounts(repoRoot), {
@@ -2097,13 +2101,14 @@ test("the repository holds exactly the machine contracts, records and evidence c
   // promoted to ready by REVIEW-20261005; REQ-2026-0021 (Workspace runtime
   // transaction) promoted to ready by its REVIEW-20260730 acceptance;
   // REQ-2026-0032 (Template build authority) registered as draft and then
-  // promoted to ready by REVIEW-20261005.
-  assert.equal(requirements.length, 32);
+  // promoted to ready by REVIEW-20261005; REQ-2026-0033 (instance fast-start
+  // launch authority) registered as draft on 2026-10-06.
+  assert.equal(requirements.length, 33);
   // The 2026-09-29 structured decision promoted REQ-2026-0028 (E2B API/SDK authority) to ready.
   // 2026-09-29: REQ-2026-0019 (Runtime Pool) promoted to ready with REVIEW-20260730 accepted.
   assert.equal(requirements.filter((record) => record.status === "ready").length, 10);
   assert.equal(requirements.filter((record) => record.status === "accepted").length, 5);
-  assert.equal(requirements.filter((record) => record.status === "draft").length, 17);
+  assert.equal(requirements.filter((record) => record.status === "draft").length, 18);
   const decisions = readDecisionStatuses(repoRoot);
   // 2026-10-05: ADR-20261005 (Snapshot/Fork authority and Template Build
   // authority) registered with their acceptances.

@@ -144,6 +144,7 @@ flowchart LR
 | REQ-2026-0030 | App API Console Face | ready |
 | REQ-2026-0031 | Snapshot And Fork | ready |
 | REQ-2026-0032 | Template Build | ready |
+| REQ-2026-0033 | Instance Fast-Start Launch | draft |
 
 ## 验证门禁
 
