@@ -11,7 +11,7 @@
     "REQ-2026-0031",
     "REQ-2026-0032"
   ],
-  "implementationAuthorized": false,
+  "implementationAuthorized": true,
   "launchPlan": {
     "type": "SandboxInstanceLaunchPlan",
     "immutableAfterCreation": true,
@@ -62,7 +62,7 @@
   "evidenceGates": {
     "realFastStartRuntimeEvidenceRequired": true,
     "firstCommandZeroWaitEvidenceRequired": true,
-    "launchAuthorityModelSliceAuthorized": false,
+    "launchAuthorityModelSliceAuthorized": true,
     "launchExecutionOrWorkerAuthorized": false
   },
   "layering": {

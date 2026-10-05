@@ -224,7 +224,7 @@ entries:
     path: docs/product/requirements/REQ-2026-0033-sandbox-instance-fast-start-launch.md
     layer: product
     audience: [product, architecture, engineering, security, review]
-    status: draft
+    status: ready
   - id: REQ-2026-0028
     path: docs/product/requirements/REQ-2026-0028-sandbox-e2b-compatible-api-sdk-family.md
     layer: work
@@ -389,6 +389,11 @@ entries:
     path: docs/architecture/decisions/ADR-20261005-sandbox-template-build-authority.md
     layer: work
     audience: [product, architecture, engineering, security, supply-chain, review]
+    status: accepted
+  - id: ADR-20261006-SANDBOX-INSTANCE-FAST-START-AUTHORITY
+    path: docs/architecture/decisions/ADR-20261006-sandbox-instance-fast-start-authority.md
+    layer: work
+    audience: [product, architecture, engineering, security, review]
     status: accepted
   - id: PLAN-2026-0001
     path: docs/engineering/plans/PLAN-2026-0001-local-and-firecracker-provider-delivery.md
@@ -679,6 +684,11 @@ entries:
     path: docs/engineering/reviews/REVIEW-20261005-sandbox-template-build-authority.md
     layer: work
     audience: [product, architecture, engineering, security, supply-chain, review]
+    status: accepted
+  - id: REVIEW-20261006-INSTANCE-FAST-START-AUTHORITY
+    path: docs/engineering/reviews/REVIEW-20261006-sandbox-instance-fast-start-authority.md
+    layer: work
+    audience: [product, architecture, engineering, security, review]
     status: accepted
 domains:
   - name: intelligence

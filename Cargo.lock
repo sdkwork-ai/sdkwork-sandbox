@@ -2244,6 +2244,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "sdkwork-intelligence-sandbox-launch-authority"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "sdkwork-intelligence-sandbox-pool-control"
 version = "0.1.0"
 dependencies = [

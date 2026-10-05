@@ -1,0 +1,21 @@
+[package]
+rust-version.workspace = true
+name = "sdkwork-intelligence-sandbox-launch-authority"
+description = "Provider-neutral SDKWork Sandbox instance fast-start launch authority model: immutable launch plans, closed lifecycle, fenced-claim binding, fresh-identity enforcement."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[dev-dependencies]
+
+[lib]
+name = "sdkwork_intelligence_sandbox_launch_authority"
+path = "src/lib.rs"
+
+[lints]
+workspace = true

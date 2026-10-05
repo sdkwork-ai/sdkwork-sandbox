@@ -15,6 +15,7 @@ Phase 0 components:
 - `sdkwork-intelligence-sandbox-transaction-control`: L2 workspace-transaction control-plane boundary (`REQ-2026-0021` control-plane slice: transaction state machine, 21-stage orchestration order, checkpoint CAS, compensation windows, bounded registry).
 - `sdkwork-intelligence-sandbox-snapshot-authority`: L2 snapshot/fork authority-model boundary (`REQ-2026-0031` authority-model slice: immutable snapshot records, closed lifecycle, fork derivation semantics, evidence gates).
 - `sdkwork-intelligence-sandbox-build-authority`: L2 template-build authority-model boundary (`REQ-2026-0032` authority-model slice: terminal-immutable build records, closed five-state lifecycle, outcome binding, evidence gates).
+- `sdkwork-intelligence-sandbox-launch-authority`: L2 fast-start launch authority-model boundary (`REQ-2026-0033` authority-model slice: immutable launch plans, closed four-state lifecycle, fenced-claim binding, fresh-identity enforcement).
 - `sdkwork-sandbox-provider-local`: L4 local-provider adapter boundary.
 - `sdkwork-sandbox-provider-firecracker`: L4 firecracker-provider adapter boundary (`REQ-2026-0008` Gate 0 slice: exact-tuple artifact manifest, fail-closed preflight, durable fencing, broker/guest seams).
 - `sdkwork-sandbox-service-host`: L5 composition host boundary.

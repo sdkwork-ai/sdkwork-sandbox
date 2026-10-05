@@ -19,21 +19,86 @@ function readStatus(relativePath) {
 
 const contract = readJson("specs/sandbox-instance-fast-start.contract.json");
 
-test("Fast-start launch is a draft carrier with no implementation authorization", () => {
+test("Fast-start launch is ready and the contract authorizes the authority-model slice", () => {
   assert.equal(contract.kind, "sdkwork.sandbox.instance-fast-start-contract");
-  // 2026-10-06: the carrier registers the instance fast-start launch
-  // capability class as draft. No slice is authorized, no crate exists for
-  // it, and every runtime surface stays behind the forbidden block until its
-  // own review lands.
+  // 2026-10-06: REVIEW-20261006 (LNCH-01..07) accepted via single-owner
+  // structured approval; the authority-model slice landed as
+  // crates/sdkwork-intelligence-sandbox-launch-authority, so the contract's
+  // implementation gate is open for that slice only. Launch execution
+  // runtime, worker, CLI, public API/SDK and deployment stay forbidden, no
+  // WarmMicroVmSlot gate moves, and the contract remains draft.
   assert.equal(contract.status, "draft");
-  assert.equal(contract.implementationAuthorized, false);
+  assert.equal(contract.implementationAuthorized, true);
   assert.equal(contract["x-sdkwork-status"], "draft");
   assert.equal(contract["x-sdkwork-require-human-review"], true);
   assert.equal(
     readStatus("docs/product/requirements/REQ-2026-0033-sandbox-instance-fast-start-launch.md"),
-    "draft",
+    "ready",
+  );
+  assert.equal(
+    readStatus("docs/architecture/decisions/ADR-20261006-sandbox-instance-fast-start-authority.md"),
+    "accepted",
+  );
+  assert.equal(
+    readStatus("docs/engineering/reviews/REVIEW-20261006-sandbox-instance-fast-start-authority.md"),
+    "accepted",
   );
   assert.equal(contract.requirementId, "REQ-2026-0033");
+});
+
+test("The landed launch-authority crate implements the pinned states, fields, gates and layering", () => {
+  const crateRoot = path.join(repoRoot, "crates/sdkwork-intelligence-sandbox-launch-authority");
+  const source = (relative) => readFileSync(path.join(crateRoot, "src", relative), "utf8");
+  const stateSource = source("state.rs");
+  for (const stateName of contract.launchPlan.states) {
+    assert.ok(
+      stateSource.includes(`"${stateName}"`),
+      `launch state ${stateName} must exist in the crate state machine`,
+    );
+  }
+  const launchSource = source("launch.rs");
+  for (const field of contract.launchPlan.requiredFields) {
+    assert.ok(
+      launchSource.includes(field),
+      `launch field ${field} must exist in the crate record`,
+    );
+  }
+  assert.equal(
+    launchSource.includes("sandbox_can_transition_to"),
+    contract.launchPlan.illegalTransitionRejected === true,
+  );
+  const gatesSource = source("gates.rs");
+  for (const gate of [
+    "realFastStartRuntimeEvidenceRequired",
+    "firstCommandZeroWaitEvidenceRequired",
+  ]) {
+    assert.equal(contract.evidenceGates[gate], true, `${gate} must stay blocking`);
+  }
+  for (const layering of [
+    ["templateAuthority", contract.layering.templateAuthority],
+    ["buildAuthority", contract.layering.buildAuthority],
+    ["poolClaimAuthority", contract.layering.poolClaimAuthority],
+    ["commandExecutionAuthority", contract.layering.commandExecutionAuthority],
+    ["snapshotForkAuthority", contract.layering.snapshotForkAuthority],
+    ["warmMicroVmSlotGate", contract.layering.warmMicroVmSlotGate],
+  ]) {
+    assert.equal(
+      gatesSource.includes(`"${layering[1]}"`),
+      true,
+      `the ${layering[0]} authority ${layering[1]} must be named by the crate`,
+    );
+  }
+  assert.equal(
+    contract.evidenceGates.launchAuthorityModelSliceAuthorized,
+    true,
+    "the landed authority-model slice is the authorized one",
+  );
+  assert.equal(contract.evidenceGates.launchExecutionOrWorkerAuthorized, false);
+  const forbiddenFlags = Object.values(contract.forbidden);
+  assert.ok(
+    forbiddenFlags.length === 5 && forbiddenFlags.every((flag) => flag === true),
+    "the contract forbidden block must stay closed",
+  );
 });
 
 test("The launch plan shape is sandbox-prefixed with a closed four-state lifecycle", () => {
@@ -79,7 +144,9 @@ test("Real fast-start runtime and first-command-zero-wait evidence stay blocking
   const gates = contract.evidenceGates;
   assert.equal(gates.realFastStartRuntimeEvidenceRequired, true);
   assert.equal(gates.firstCommandZeroWaitEvidenceRequired, true);
-  assert.equal(gates.launchAuthorityModelSliceAuthorized, false);
+  // The authority-model slice is the authorized one; every runtime surface
+  // behind it stays closed.
+  assert.equal(gates.launchAuthorityModelSliceAuthorized, true);
   assert.equal(gates.launchExecutionOrWorkerAuthorized, false);
 });
 
