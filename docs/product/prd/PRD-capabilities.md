@@ -165,18 +165,18 @@ Terminal Stream、Operational Log、Audit Event 与 Metric 是不同数据类别
 
 | # | 能力 | 承载与状态 |
 | --- | --- | --- |
-| 1 | Sandbox Create | `REQ-2026-0002`（候选实现）、`REQ-2026-0019`（池化分配，`draft`） |
+| 1 | Sandbox Create | `REQ-2026-0002`（候选实现）、`REQ-2026-0019`（池化分配，`ready`，控制面切片已落地） |
 | 2 | Sandbox Delete | `REQ-2026-0002`（候选实现） |
-| 3 | Pause | `REQ-2026-0008`/`0021` 门禁（`draft`）；产品行为见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 9 节 |
+| 3 | Pause | `REQ-2026-0008`/`0021` 门禁（`ready`，运行时实现未落地）；产品行为见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 9 节 |
 | 4 | Resume | 同上 |
 | 5 | Restart | **无**；见 [PRD-capabilities.md](PRD-capabilities.md) 第 3 节状态机的 `Stopped -> Starting` 路径（候选） |
 | 6 | Fork | **无**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 6 节 |
-| 7 | Snapshot | 权威承载已登记：`REQ-2026-0031`（draft，2026-10-05）+ `specs/sandbox-snapshot-fork.contract.json`（draft，实现未授权）；实现仍无（Checkpoint 与 Firecracker Snapshot 的 Gate 0 候选见 `REQ-2026-0021`、`0008`） |
-| 8 | Template | `REQ-2026-0029`（draft，权威模型+缓存语义已承载，实现未授权）；产品要求见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 4 节 |
+| 7 | Snapshot | 权威承载已登记：`REQ-2026-0031`（`ready`，2026-10-05）+ `specs/sandbox-snapshot-fork.contract.json`（draft，权威模型切片已授权落地）；引擎、存储后端与恢复流水线仍无（Checkpoint 与 Firecracker Snapshot 的 Gate 0 候选见 `REQ-2026-0021`、`0008`） |
+| 8 | Template | `REQ-2026-0029`（`ready`，权威模型+缓存语义切片已授权落地，Builder/Registry/缓存后端未实现）；产品要求见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 4 节 |
 | 9 | Workspace | `REQ-2026-0004`（Agents 权威 + Attachment 边界，候选） |
-| 10 | Filesystem API | `REQ-2026-0007`（`draft`，部分覆盖）；见 [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 3 节 |
-| 11 | Shell | `REQ-2026-0007`（`draft`） |
-| 12 | Process | `REQ-2026-0007`（`draft`） |
+| 10 | Filesystem API | `REQ-2026-0007`（`ready`，部分覆盖）；见 [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 3 节 |
+| 11 | Shell | `REQ-2026-0007`（`ready`） |
+| 12 | Process | `REQ-2026-0007`（`ready`） |
 | 13 | PTY | `REQ-2026-0024`（`draft`，未批准实现） |
 | 14 | Port Forward | **无**；见 [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 8 节 |
 | 15 | Network Isolation | `REQ-2026-0014`（`draft`，`DenyAll` 门禁） |
@@ -184,7 +184,7 @@ Terminal Stream、Operational Log、Audit Event 与 Metric 是不同数据类别
 | 17 | Resource Quota | `REQ-2026-0015`、`0018`（`draft`） |
 | 18 | Metrics | `REQ-2026-0010`（`draft`） |
 | 19 | Logs | `REQ-2026-0010`（`draft`） |
-| 20 | Runtime Pool | `REQ-2026-0019`（`draft`） |
+| 20 | Runtime Pool | `REQ-2026-0019`（`ready`，控制面切片已落地，真实 VMM 运行时未实现） |
 | 21 | Placement | `REQ-2026-0016`（`draft`） |
 | 22 | Multi Tenant | `REQ-2026-0016`、`0017`、`0018`（`draft`） |
 | 23 | Auto Pause | **无独立 `REQ-*`**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 9 节 |
@@ -192,7 +192,7 @@ Terminal Stream、Operational Log、Audit Event 与 Metric 是不同数据类别
 | 25 | Snapshot Restore | **无产品级能力**；兼容性门禁见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 5 节 |
 | 26 | COW Storage | **无**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 7.2 节 |
 | 27 | Lazy Memory | **无**；见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 7.1 节 |
-| 28 | Template Cache | `REQ-2026-0029`（draft，缓存语义边界已承载，实现未授权）；缓存策略见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 8 节 |
+| 28 | Template Cache | `REQ-2026-0029`（`ready`，缓存语义边界已授权落地，缓存后端未实现）；缓存策略见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 8 节 |
 | 29 | Object Storage | **无**；存储分层要求见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 8 节；权威归属未定 |
 | 30 | Local Cache | 同上 |
 | 31 | Edge Router | **无**；见 [PRD-sandbox-surfaces.md](PRD-sandbox-surfaces.md) 第 8 节 |
