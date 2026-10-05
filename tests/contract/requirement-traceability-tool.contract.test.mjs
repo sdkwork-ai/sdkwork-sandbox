@@ -215,8 +215,9 @@ test("the repository's own traceability chain resolves and the gate is not vacuo
   // acceptance; REQ-2026-0033 (instance fast-start launch authority)
   // registered as draft on 2026-10-06 and promoted by its own REVIEW;
   // ADR-20261006 (Fast-Start Launch authority) registered with its
-  // acceptance.
-  assert.equal(assessment.requirementsOnRecord, 33);
+  // acceptance; REQ-2026-0034 (worker launch execution authority)
+  // registered as draft the same day.
+  assert.equal(assessment.requirementsOnRecord, 34);
   assert.equal(assessment.decisionsOnRecord, 33);
   assert.equal(assessment.capabilityRowsUnattributed, 0);
 });

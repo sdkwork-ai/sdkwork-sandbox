@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.sandbox.worker-contract",
+  "status": "draft",
+  "requirementId": "REQ-2026-0034",
+  "relatedRequirementIds": [
+    "REQ-2026-0007",
+    "REQ-2026-0008",
+    "REQ-2026-0019",
+    "REQ-2026-0033"
+  ],
+  "implementationAuthorized": false,
+  "execution": {
+    "type": "SandboxWorkerExecution",
+    "immutableAfterTerminalState": true,
+    "unknownStateRejected": true,
+    "illegalTransitionRejected": true,
+    "allSandboxOwnedFieldsRequirePrefix": "sandbox_",
+    "referencesAreOpaque": true,
+    "providerPrivateMetadataAllowed": false,
+    "requiredFields": [
+      "sandbox_worker_execution_id",
+      "sandbox_launch_plan_ref",
+      "sandbox_provider_allocation_ref",
+      "sandbox_start_command_execution_ref",
+      "sandbox_worker_execution_state",
+      "sandbox_accepted_at",
+      "sandbox_updated_at"
+    ],
+    "states": [
+      "accepted",
+      "provisioning",
+      "starting",
+      "started",
+      "failed",
+      "quarantined"
+    ],
+    "initialState": "accepted",
+    "terminalStates": [
+      "started",
+      "failed",
+      "quarantined"
+    ]
+  },
+  "lifecycleOperations": [
+    "sandbox_accept_launch",
+    "sandbox_record_provisioning",
+    "sandbox_record_starting",
+    "sandbox_record_started",
+    "sandbox_record_execution_failed",
+    "sandbox_quarantine_execution"
+  ],
+  "fixedOperationsOnly": true,
+  "bindingSemantics": {
+    "oneExecutionPerLaunchPlan": true,
+    "consumedPlanMayNeverBeReaccepted": true,
+    "acceptanceMovesThePlanViaTheLaunchAuthority": true,
+    "workerNeverWritesPlanStateDirectly": true,
+    "startCommandViaCommandExecutorPort": true,
+    "workerReimplementsNoExecutor": true,
+    "providerAllocateStartViaProviderSpi": true,
+    "localLaneOnlyUntilKvmEvidence": true,
+    "outcomeUncertaintyQuarantines": true,
+    "silentSuccessAllowed": false,
+    "silentFailureAllowed": false
+  },
+  "evidenceGates": {
+    "realWorkerExecutionEvidenceRequired": true,
+    "kvmLaneEvidenceRequired": true,
+    "firstCommandZeroWaitEvidenceRequired": true,
+    "workerAuthorityModelSliceAuthorized": false,
+    "localLaneExecutionSliceAuthorized": false,
+    "firecrackerLaneExecutionAuthorized": false
+  },
+  "layering": {
+    "launchPlanAuthority": "REQ-2026-0033",
+    "acceptanceIsTheOnlyPlanHandoff": true,
+    "commandExecutionAuthority": "REQ-2026-0007",
+    "providerSpiBoundary": "REQ-2026-0002",
+    "firecrackerProviderAuthority": "REQ-2026-0008",
+    "warmMicroVmSlotGate": "REQ-2026-0019",
+    "registrationDoesNotEnableWarmSlot": true,
+    "registrationDoesNotTouchTheVmm": true
+  },
+  "forbidden": {
+    "firecrackerVmmRuntime": true,
+    "warmSlotConsumption": true,
+    "cliSurface": true,
+    "publicApiOrSdkSurface": true,
+    "deploymentProfile": true
+  },
+  "x-sdkwork-status": "draft",
+  "x-sdkwork-require-human-review": true,
+  "x-sdkwork-no-runtime-implementation": true,
+  "x-sdkwork-no-storage-backend": true,
+  "x-sdkwork-no-api-sdk-deployment": true
+}

@@ -148,6 +148,7 @@ flowchart LR
 | REQ-2026-0031 | Snapshot And Fork | ready |
 | REQ-2026-0032 | Template Build | ready |
 | REQ-2026-0033 | Instance Fast-Start Launch | ready |
+| REQ-2026-0034 | Worker Launch Execution | draft |
 
 ## 验证门禁
 
