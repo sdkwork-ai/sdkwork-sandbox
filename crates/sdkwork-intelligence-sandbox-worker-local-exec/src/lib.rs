@@ -165,3 +165,52 @@ impl sdkwork_intelligence_sandbox_worker_local::SandboxLaunchStartCommandPort
         }
     }
 }
+
+/// The registry-backed resolver (`RES-03` implementation seam): maps a
+/// plan's template-version reference through the bounded template registry
+/// to its published start command. The command string splits on whitespace
+/// into executable and arguments — no shell semantics.
+pub struct SandboxTemplateRegistryResolver {
+    sandbox_registry: Arc<
+        std::sync::Mutex<
+            sdkwork_intelligence_sandbox_template_authority::BoundedSandboxTemplateRegistry,
+        >,
+    >,
+}
+
+impl SandboxTemplateRegistryResolver {
+    /// Builds the resolver over a shared bounded registry.
+    #[must_use]
+    pub fn sandbox_new(
+        sandbox_registry: Arc<
+            std::sync::Mutex<
+                sdkwork_intelligence_sandbox_template_authority::BoundedSandboxTemplateRegistry,
+            >,
+        >,
+    ) -> Self {
+        Self { sandbox_registry }
+    }
+}
+
+impl SandboxStartCommandResolverPort for SandboxTemplateRegistryResolver {
+    fn sandbox_resolve(
+        &self,
+        sandbox_template_version_ref: &str,
+    ) -> Result<SandboxResolvedStartCommand, SandboxStartCommandResolutionError> {
+        let registry = self
+            .sandbox_registry
+            .lock()
+            .map_err(|_| SandboxStartCommandResolutionError::SandboxStartCommandNotFound)?;
+        let sandbox_command = registry
+            .sandbox_resolve_start_command(sandbox_template_version_ref)
+            .map_err(|_| SandboxStartCommandResolutionError::SandboxStartCommandNotFound)?;
+        let mut parts = sandbox_command.split_whitespace();
+        let sandbox_executable = parts
+            .next()
+            .ok_or(SandboxStartCommandResolutionError::SandboxStartCommandNotFound)?;
+        Ok(SandboxResolvedStartCommand {
+            sandbox_executable: sandbox_executable.to_owned(),
+            sandbox_arguments: parts.map(str::to_owned).collect(),
+        })
+    }
+}

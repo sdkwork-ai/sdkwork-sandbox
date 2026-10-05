@@ -81,10 +81,17 @@ test("The landed template-authority crate implements the pinned records, formats
     authoritySource.includes(`"${contract.artifactBoundary.artifactAuthority}"`),
     `the artifact authority ${contract.artifactBoundary.artifactAuthority} must be named by the crate`,
   );
-  const forbiddenFlags = Object.values(contract.forbidden);
+  // 2026-10-06: REVIEW-20261006-bounded-registry authorized the bounded
+  // in-process registry slice, so templateRegistryService is the one open
+  // flag - bounded and in-process only, storage still locked behind the
+  // x-sdkwork-no-storage-backend gate. Every other surface stays closed.
+  assert.equal(contract.forbidden.templateRegistryService, false);
+  const forbiddenFlags = Object.entries(contract.forbidden).filter(
+    ([name]) => name !== "templateRegistryService",
+  );
   assert.ok(
-    forbiddenFlags.length === 6 && forbiddenFlags.every((flag) => flag === true),
-    "the contract forbidden block must stay closed",
+    forbiddenFlags.length === 5 && forbiddenFlags.every(([, flag]) => flag === true),
+    "the contract forbidden block must stay closed beyond the bounded registry slice",
   );
 });
 
@@ -162,10 +169,10 @@ test("The artifact boundary stays layered on REQ-2026-0012 with a single supply-
   assert.ok(artifactContract, "REQ-2026-0012 machine contract must exist");
 });
 
-test("Builder, registry, pipeline, CLI, public API/SDK and deployment stay out of scope", () => {
+test("Builder, pipeline, CLI, public API/SDK and deployment stay out of scope; registry open for the bounded slice", () => {
   assert.deepEqual(contract.forbidden, {
     templateBuilderRuntime: true,
-    templateRegistryService: true,
+    templateRegistryService: false,
     buildPipelineOrBuildArtifactStorage: true,
     cliSurface: true,
     publicApiOrSdkSurface: true,

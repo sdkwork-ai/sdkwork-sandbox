@@ -25,6 +25,7 @@ mod cache;
 mod definition;
 mod error;
 mod identity;
+mod registry;
 mod version;
 
 pub use authority::{
@@ -53,6 +54,7 @@ pub use identity::{
     SandboxTemplateDefinitionId, SandboxTemplateName, SandboxTemplateOpaqueRef,
     SandboxTemplateVersionId,
 };
+pub use registry::{BoundedSandboxTemplateRegistry, SANDBOX_TEMPLATE_REGISTRY_CAPACITY_MAX};
 pub use version::SandboxTemplateVersion;
 
 #[cfg(test)]

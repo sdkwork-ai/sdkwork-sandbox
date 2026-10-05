@@ -56,7 +56,7 @@
   },
   "forbidden": {
     "templateBuilderRuntime": true,
-    "templateRegistryService": true,
+    "templateRegistryService": false,
     "buildPipelineOrBuildArtifactStorage": true,
     "cliSurface": true,
     "publicApiOrSdkSurface": true,

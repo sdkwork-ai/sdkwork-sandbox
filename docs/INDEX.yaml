@@ -420,6 +420,11 @@ entries:
     layer: work
     audience: [product, architecture, engineering, security, review]
     status: accepted
+  - id: ADR-20261006-SANDBOX-BOUNDED-TEMPLATE-REGISTRY
+    path: docs/architecture/decisions/ADR-20261006-sandbox-bounded-template-registry.md
+    layer: work
+    audience: [product, architecture, engineering, security, review]
+    status: accepted
   - id: PLAN-2026-0001
     path: docs/engineering/plans/PLAN-2026-0001-local-and-firecracker-provider-delivery.md
     layer: work
@@ -732,6 +737,11 @@ entries:
     status: accepted
   - id: REVIEW-20261006-SANDBOX-WORKER-TEMPLATE-RESOLUTION
     path: docs/engineering/reviews/REVIEW-20261006-sandbox-worker-template-resolution.md
+    layer: work
+    audience: [product, architecture, engineering, security, review]
+    status: accepted
+  - id: REVIEW-20261006-SANDBOX-BOUNDED-TEMPLATE-REGISTRY
+    path: docs/engineering/reviews/REVIEW-20261006-sandbox-bounded-template-registry.md
     layer: work
     audience: [product, architecture, engineering, security, review]
     status: accepted

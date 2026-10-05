@@ -4,14 +4,15 @@
 //! allowlist, the tokio runner, the executor, the runtime bridge and the
 //! port — reaching `Started` on a zero exit.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use sdkwork_intelligence_sandbox_template_authority::BoundedSandboxTemplateRegistry;
 use sdkwork_intelligence_sandbox_worker_local::SandboxLaunchStartCommandPort;
 use sdkwork_intelligence_sandbox_worker_local_exec::{
     SandboxLocalStartCommandExecutor, SandboxResolvedStartCommand,
-    SandboxStartCommandResolutionError, SandboxStartCommandScope,
+    SandboxStartCommandResolutionError, SandboxStartCommandScope, SandboxTemplateRegistryResolver,
 };
 use sdkwork_sandbox_provider_local::command_executor::SandboxLocalCommandExecutor;
 use sdkwork_sandbox_provider_local::host_boundary::SandboxLocalHostBoundary;
@@ -155,5 +156,71 @@ fn a_boundary_refusal_lands_uncertain_never_started() {
         wiring.sandbox_start("plan-1", "version-1"),
         sdkwork_intelligence_sandbox_worker_local::SandboxStartCommandOutcome::Uncertain,
         "an executor error without a terminal outcome is uncertainty",
+    );
+}
+
+#[test]
+fn a_registry_published_version_resolves_and_a_real_process_reaches_started() {
+    // Publish the definition and version through the bounded registry.
+    let mut registry = BoundedSandboxTemplateRegistry::sandbox_new();
+    let definition_id =
+        sdkwork_intelligence_sandbox_template_authority::SandboxTemplateDefinitionId::new(
+            "definition-1",
+        )
+        .expect("valid id");
+    registry
+        .sandbox_publish_definition(
+            sdkwork_intelligence_sandbox_template_authority::SandboxTemplateDefinition::sandbox_publish(
+                definition_id.clone(),
+                "1",
+                sdkwork_intelligence_sandbox_template_authority::SandboxTemplateOpaqueRef::new(
+                    "base-env-1",
+                )
+                .expect("valid ref"),
+                Vec::new(),
+                BTreeMap::new(),
+                if cfg!(windows) {
+                    "cmd /C echo fast-start"
+                } else {
+                    "echo fast-start"
+                },
+                900,
+            )
+            .expect("valid definition"),
+        )
+        .expect("definition published");
+    registry
+        .sandbox_publish_version(
+            sdkwork_intelligence_sandbox_template_authority::SandboxTemplateVersion::sandbox_publish(
+                sdkwork_intelligence_sandbox_template_authority::SandboxTemplateVersionId::new(
+                    "version-1",
+                )
+                .expect("valid id"),
+                definition_id,
+                BTreeSet::new(),
+                BTreeSet::new(),
+                sdkwork_intelligence_sandbox_template_authority::SandboxTemplateOpaqueRef::new(
+                    "req-0012-rootfs-sha256-0000000000000000000000000000000000000000000000000000000000000000",
+                )
+                .expect("valid tuple ref"),
+            )
+            .expect("valid version"),
+        )
+        .expect("version published");
+
+    // The registry-backed resolver resolves the published start command and
+    // the real process carries the plan to started.
+    let wiring = SandboxLocalStartCommandExecutor::sandbox_new(
+        sandbox_executor(),
+        Arc::new(SandboxTemplateRegistryResolver::sandbox_new(Arc::new(
+            std::sync::Mutex::new(registry),
+        ))),
+        sandbox_scope(),
+    )
+    .expect("bridge runtime builds");
+    assert_eq!(
+        wiring.sandbox_start("plan-1", "version-1"),
+        sdkwork_intelligence_sandbox_worker_local::SandboxStartCommandOutcome::Started,
+        "a registry-published version must resolve and run as a real process",
     );
 }
