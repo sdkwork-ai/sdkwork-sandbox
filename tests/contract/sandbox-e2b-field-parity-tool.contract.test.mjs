@@ -43,7 +43,7 @@ const REAL_CONTRACT_TESTS = 722;
 // and the Firecracker-provider Gate 0 boundary crate took the workspace to
 // 178 runnable + 2 external-PostgreSQL ignored tests; the 2026-10-04 Runtime Pool
 // control-plane slice (+29) and app-api console-face slice (+21) take it to 228.
-const REAL_RUST_WORKSPACE = { command: "cargo test --workspace", passed: 287, failed: 0, ignored: 2 };
+const REAL_RUST_WORKSPACE = { command: "cargo test --workspace", passed: 290, failed: 0, ignored: 2 };
 const REAL_RULE_FAMILIES = 11;
 /** The product matrix join: PRD section 11 rows vs the baseline rows that map onto them. */
 const REAL_MATRIX_ROWS = 34;
@@ -409,7 +409,7 @@ test("the gate's report names the coverage it verified", () => {
   assert.match(report, /0 row\(s\) rest on the documentation index \(ceiling 0\)/);
   assert.match(report, /71 operation\(s\), 70 judged by a row, 1 recorded unjudged/);
   assert.match(report, /34 product row\(s\), 57 baseline row\(s\) mapped, 21 registered unmapped, 9 product row\(s\) registered without a baseline row/);
-  assert.match(report, /722 contract test\(s\) recomputed from tests\/contract, 287 Rust test\(s\) recorded/);
+  assert.match(report, /722 contract test\(s\) recomputed from tests\/contract, 290 Rust test\(s\) recorded/);
   assert.match(report, /11 rule families declared consistently in 4 surface\(s\)/);
 });
 

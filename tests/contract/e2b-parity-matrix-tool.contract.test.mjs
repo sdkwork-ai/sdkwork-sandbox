@@ -1330,8 +1330,8 @@ test("the repository's own coverage table accounts for every test the workspace 
   // app-api route/payload, offset listing) and the Template authority-model
   // slice (7 tests, crates/sdkwork-intelligence-sandbox-template-authority);
   // the coverage table in the audit document accounts for each of them.
-  assert.equal(assessment.workspaceTests, 289);
-  assert.equal(assessment.coveredTests, 289);
+  assert.equal(assessment.workspaceTests, 292);
+  assert.equal(assessment.coveredTests, 292);
 
   const discovered = discoverWorkspaceTests(repoRoot);
   let runnable = 0;
@@ -1342,9 +1342,9 @@ test("the repository's own coverage table accounts for every test the workspace 
       else runnable += 1;
     }
   }
-  // The two readings the audit quotes have to agree with the code: 289 declared, 287 of them
+  // The two readings the audit quotes have to agree with the code: 292 declared, 290 of them
   // runnable because two declare they need an external PostgreSQL.
-  assert.equal(runnable + ignored, 289);
+  assert.equal(runnable + ignored, 292);
   assert.equal(ignored, 2);
 });
 
@@ -2127,7 +2127,7 @@ test("the repository holds exactly the machine contracts, records and evidence c
   // (Fast-Start Launch authority) registered with its acceptance; the
   // same day ADR-20261006 (Worker launch-execution authority) registered
   // with its acceptance.
-  assert.equal(decisions.length, 34);
+  assert.equal(decisions.length, 35);
   // The 2026-09-29 structured decision accepted ADR-20260924 (E2B API/SDK authority).
   // 2026-09-29: ADR-20260730 (Runtime Pool) accepted with the REVIEW-20260730 packet.
   // 2026-10-04: ADR-20261004 (App API console face) accepted with the console-face slice;
@@ -2135,7 +2135,7 @@ test("the repository holds exactly the machine contracts, records and evidence c
   // ADR-20260730 (Workspace runtime transaction) accepted with its slice;
   // ADR-20261005 (Snapshot/Fork authority) accepted with REVIEW-20261005.
   assert.equal(decisions.filter((record) => record.status === "proposed").length, 22);
-  assert.equal(decisions.filter((record) => record.status === "accepted").length, 12);
+  assert.equal(decisions.filter((record) => record.status === "accepted").length, 13);
 });
 
 test("the repository's own answer section compares every restated figure", () => {

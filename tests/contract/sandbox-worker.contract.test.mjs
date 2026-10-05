@@ -94,7 +94,10 @@ test("The landed worker-authority crate implements the pinned states, fields, ga
     true,
     "the landed authority-model slice is the authorized one",
   );
-  assert.equal(contract.evidenceGates.localLaneExecutionSliceAuthorized, false);
+  // The landed local-lane adapter slice (REVIEW-20261006-local-lane) is
+  // authorized to compose the chain; the executor wiring remains its own
+  // named slice and the Firecracker lane stays locked.
+  assert.equal(contract.evidenceGates.localLaneExecutionSliceAuthorized, true);
   assert.equal(contract.evidenceGates.firecrackerLaneExecutionAuthorized, false);
   const forbiddenFlags = Object.values(contract.forbidden);
   assert.ok(
@@ -162,7 +165,9 @@ test("Real worker, KVM-lane and first-command-zero-wait evidence stay blocking",
   // The authority-model slice is the authorized one; every runtime surface
   // behind it stays closed.
   assert.equal(gates.workerAuthorityModelSliceAuthorized, true);
-  assert.equal(gates.localLaneExecutionSliceAuthorized, false);
+  // The local-lane adapter slice is authorized; the Firecracker lane stays
+  // locked behind its KVM evidence gate.
+  assert.equal(gates.localLaneExecutionSliceAuthorized, true);
   assert.equal(gates.firecrackerLaneExecutionAuthorized, false);
 });
 

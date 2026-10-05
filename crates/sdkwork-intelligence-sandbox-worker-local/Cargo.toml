@@ -1,0 +1,23 @@
+[package]
+rust-version.workspace = true
+name = "sdkwork-intelligence-sandbox-worker-local"
+description = "Local-lane SDKWork Sandbox worker launch-execution adapter: composes the launch-plan, worker-execution and pool authorities with the declared start-command port; no host boundary in this crate."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+sdkwork-intelligence-sandbox-launch-authority.workspace = true
+sdkwork-intelligence-sandbox-worker-authority.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+
+[lib]
+name = "sdkwork_intelligence_sandbox_worker_local"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
