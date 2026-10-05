@@ -86,8 +86,14 @@ pub enum SandboxStartCommandOutcome {
 /// own slice; tests script it.
 pub trait SandboxLaunchStartCommandPort: Send + Sync {
     /// Dispatches the start command for one consumed launch plan and
-    /// reports the outcome.
-    fn sandbox_start(&self, sandbox_launch_plan_ref: &str) -> SandboxStartCommandOutcome;
+    /// reports the outcome. The plan's template-version reference travels
+    /// with the dispatch so the command is resolved from the version the
+    /// plan actually carries (template-resolution slice).
+    fn sandbox_start(
+        &self,
+        sandbox_launch_plan_ref: &str,
+        sandbox_template_version_ref: &str,
+    ) -> SandboxStartCommandOutcome;
 }
 
 /// The local-lane execution adapter.
@@ -193,7 +199,10 @@ impl SandboxLocalLaunchAdapter {
                 )
             })?;
 
-        match self.sandbox_start_commands.sandbox_start(&plan_ref) {
+        match self
+            .sandbox_start_commands
+            .sandbox_start(&plan_ref, plan.sandbox_template_version_ref())
+        {
             SandboxStartCommandOutcome::Started => {
                 execution
                     .sandbox_record_started(sandbox_now)
@@ -254,7 +263,11 @@ mod tests {
 
     struct ScriptedStart(SandboxStartCommandOutcome);
     impl SandboxLaunchStartCommandPort for ScriptedStart {
-        fn sandbox_start(&self, _plan_ref: &str) -> SandboxStartCommandOutcome {
+        fn sandbox_start(
+            &self,
+            _plan_ref: &str,
+            _sandbox_template_version_ref: &str,
+        ) -> SandboxStartCommandOutcome {
             self.0
         }
     }

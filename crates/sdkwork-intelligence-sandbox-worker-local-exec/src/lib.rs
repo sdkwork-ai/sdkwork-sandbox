@@ -1,25 +1,63 @@
 //! Local-lane start-command executor wiring (`REQ-2026-0034`,
-//! `REVIEW-20261006-exec-wiring`): implements the worker start-command port
-//! over the `REQ-2026-0007` local tokio-process executor.
+//! `REVIEW-20261006-exec-wiring` + template-resolution slice): implements
+//! the worker start-command port over the `REQ-2026-0007` local
+//! tokio-process executor.
 //!
-//! The port is synchronous and the executor is async, so the adapter owns a
-//! dedicated multi-thread runtime and bridges through `block_on` (`WRE-02`).
-//! Outcome mapping is honest (`WRE-03`): only a zero exit reaches `started`;
-//! a non-zero exit lands `failed`; an executor error without a terminal
-//! outcome is uncertainty and lands `quarantined`. The command, scope and
-//! limits are injected at construction (`WRE-04`) — template-version
-//! resolution is the named next slice.
+//! The start command is resolved per plan through the declared
+//! [`SandboxStartCommandResolverPort`] from the plan's template-version
+//! reference — the template-resolution slice replacing the round-14
+//! constructor-injected command. Outcome mapping stays honest (`WRE-03`):
+//! only a zero exit reaches `started`; a non-zero exit lands `failed`; an
+//! executor error without a terminal outcome lands `quarantined`; a
+//! resolution failure is deterministic and lands `failed`.
+//!
+//! The command, scope and limits beyond the resolved command remain
+//! construction-injected; the registry-backed resolver implementation is
+//! the named next slice.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use sdkwork_intelligence_sandbox_worker_local::{
-    SandboxLaunchStartCommandPort, SandboxStartCommandOutcome,
-};
 use sdkwork_sandbox_provider_local::command_executor::SandboxLocalCommandExecutor;
 use sdkwork_sandbox_provider_spi::{SandboxCommandExecutionRequest, SandboxCommandExecutor};
 
-/// The construction-injected execution scope and command (`WRE-04`).
+/// The resolved start command for one template version.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SandboxResolvedStartCommand {
+    /// The bare executable name (boundary-allowlist-checked downstream).
+    pub sandbox_executable: String,
+    /// Argument vector for the start command.
+    pub sandbox_arguments: Vec<String>,
+}
+
+/// Why a start-command resolution failed.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
+pub enum SandboxStartCommandResolutionError {
+    /// The version reference resolves to no published start command.
+    #[error("sandbox start command resolution found no command")]
+    SandboxStartCommandNotFound,
+}
+
+/// The declared resolution seam: maps one plan's template-version reference
+/// to its start command. The registry-backed implementation (backed by the
+/// `REQ-2026-0029` authority) is the named next slice; this crate ships the
+/// port only.
+pub trait SandboxStartCommandResolverPort: Send + Sync {
+    /// Resolves the start command for one template-version reference.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SandboxStartCommandResolutionError::
+    /// SandboxStartCommandNotFound`] when the reference carries no resolvable
+    /// command.
+    fn sandbox_resolve(
+        &self,
+        sandbox_template_version_ref: &str,
+    ) -> Result<SandboxResolvedStartCommand, SandboxStartCommandResolutionError>;
+}
+
+/// The construction-injected execution scope and bounds (`WRE-04`, command
+/// moved to the resolver).
 #[derive(Clone, Debug)]
 pub struct SandboxStartCommandScope {
     /// Tenant the execution is scoped to.
@@ -36,10 +74,6 @@ pub struct SandboxStartCommandScope {
     pub sandbox_runtime_binding_id: String,
     /// Fencing token carried on every request.
     pub sandbox_fencing_token: u64,
-    /// The bare executable name (boundary-allowlist-checked).
-    pub sandbox_executable: String,
-    /// Argument vector for the start command.
-    pub sandbox_arguments: Vec<String>,
     /// Logical working directory relative to the workspace root.
     pub sandbox_working_directory: String,
     /// Environment additions for the start command.
@@ -49,16 +83,18 @@ pub struct SandboxStartCommandScope {
 }
 
 /// The local-lane start-command executor: the narrow port's real
-/// implementation over the `REQ-2026-0007` executor.
+/// implementation over the `REQ-2026-0007` executor, resolving the command
+/// per plan.
 pub struct SandboxLocalStartCommandExecutor {
     sandbox_executor: Arc<SandboxLocalCommandExecutor>,
     sandbox_runtime: tokio::runtime::Runtime,
+    sandbox_resolver: Arc<dyn SandboxStartCommandResolverPort>,
     sandbox_scope: SandboxStartCommandScope,
 }
 
 impl SandboxLocalStartCommandExecutor {
-    /// Builds the wiring over a constructed executor and an injected scope,
-    /// owning the dedicated bridge runtime.
+    /// Builds the wiring over a constructed executor, an injected resolver
+    /// and scope, owning the dedicated bridge runtime.
     ///
     /// # Errors
     ///
@@ -66,6 +102,7 @@ impl SandboxLocalStartCommandExecutor {
     /// be created.
     pub fn sandbox_new(
         sandbox_executor: Arc<SandboxLocalCommandExecutor>,
+        sandbox_resolver: Arc<dyn SandboxStartCommandResolverPort>,
         sandbox_scope: SandboxStartCommandScope,
     ) -> std::io::Result<Self> {
         let sandbox_runtime = tokio::runtime::Builder::new_multi_thread()
@@ -74,13 +111,30 @@ impl SandboxLocalStartCommandExecutor {
         Ok(Self {
             sandbox_executor,
             sandbox_runtime,
+            sandbox_resolver,
             sandbox_scope,
         })
     }
 }
 
-impl SandboxLaunchStartCommandPort for SandboxLocalStartCommandExecutor {
-    fn sandbox_start(&self, sandbox_launch_plan_ref: &str) -> SandboxStartCommandOutcome {
+impl sdkwork_intelligence_sandbox_worker_local::SandboxLaunchStartCommandPort
+    for SandboxLocalStartCommandExecutor
+{
+    fn sandbox_start(
+        &self,
+        sandbox_launch_plan_ref: &str,
+        sandbox_template_version_ref: &str,
+    ) -> sdkwork_intelligence_sandbox_worker_local::SandboxStartCommandOutcome {
+        use sdkwork_intelligence_sandbox_worker_local::SandboxStartCommandOutcome;
+
+        let resolved = match self
+            .sandbox_resolver
+            .sandbox_resolve(sandbox_template_version_ref)
+        {
+            Ok(resolved) => resolved,
+            // A missing command is a deterministic configuration failure.
+            Err(_) => return SandboxStartCommandOutcome::Failed,
+        };
         let scope = &self.sandbox_scope;
         let request = SandboxCommandExecutionRequest {
             sandbox_tenant_id: scope.sandbox_tenant_id.clone(),
@@ -91,8 +145,8 @@ impl SandboxLaunchStartCommandPort for SandboxLocalStartCommandExecutor {
             sandbox_runtime_binding_id: scope.sandbox_runtime_binding_id.clone(),
             sandbox_fencing_token: scope.sandbox_fencing_token,
             sandbox_command_operation_id: format!("start-{sandbox_launch_plan_ref}"),
-            sandbox_executable: scope.sandbox_executable.clone(),
-            sandbox_arguments: scope.sandbox_arguments.clone(),
+            sandbox_executable: resolved.sandbox_executable,
+            sandbox_arguments: resolved.sandbox_arguments,
             sandbox_working_directory: scope.sandbox_working_directory.clone(),
             sandbox_environment: scope.sandbox_environment.clone(),
             sandbox_command_limits: scope.sandbox_command_limits,

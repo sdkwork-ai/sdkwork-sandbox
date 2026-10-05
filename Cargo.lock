@@ -2342,6 +2342,7 @@ dependencies = [
  "sdkwork-intelligence-sandbox-worker-local",
  "sdkwork-sandbox-provider-local",
  "sdkwork-sandbox-provider-spi",
+ "thiserror",
  "tokio",
 ]
 
