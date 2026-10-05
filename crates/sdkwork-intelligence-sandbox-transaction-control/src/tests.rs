@@ -394,3 +394,90 @@ fn a_ledger_never_infers_a_stage_from_a_later_one() {
         .sandbox_completed_ref(SandboxOrchestrationStage::EnvironmentReady)
         .is_some());
 }
+
+#[test]
+fn a_transaction_identity_is_never_rebound_under_a_fresh_operation() {
+    let control =
+        BoundedSandboxWorkspaceTransactionControl::sandbox_with_clock(std::sync::Arc::new(|| {
+            1_000
+        }));
+    let outcome = sandbox_drive_to_release(&control, "op-1", "session-1");
+    assert_eq!(outcome, SandboxTerminalOutcome::Released);
+    // Re-binding the released identity under a fresh operation is refused:
+    // `txn-op-1` already exists and only op-1's replay may observe it.
+    let mut reborn = sandbox_request("op-9", "session-1", SandboxWorkspaceMountMode::ReadOnly);
+    reborn.sandbox_workspace_runtime_transaction_id = "txn-op-1".into();
+    reborn.sandbox_fencing_token = 1;
+    assert!(matches!(
+        control.sandbox_begin(reborn),
+        Err(SandboxWorkspaceRuntimeError::SandboxWorkspaceRuntimeInvalidRequest),
+    ));
+    // The original operation still replays the original transaction record.
+    let replay = control
+        .sandbox_begin(sandbox_request(
+            "op-1",
+            "session-1",
+            SandboxWorkspaceMountMode::ReadWrite,
+        ))
+        .expect("replay");
+    assert_eq!(replay.sandbox_workspace_runtime_transaction_id, "txn-op-1");
+    assert_eq!(
+        replay.sandbox_state,
+        SandboxWorkspaceRuntimeTransactionState::Released
+    );
+}
+
+#[test]
+fn compensation_freezes_the_ledger_until_a_terminal_outcome() {
+    let control =
+        BoundedSandboxWorkspaceTransactionControl::sandbox_with_clock(std::sync::Arc::new(|| {
+            1_000
+        }));
+    let handle = control
+        .sandbox_begin(sandbox_request(
+            "op-1",
+            "session-1",
+            SandboxWorkspaceMountMode::ReadOnly,
+        ))
+        .expect("begin");
+    let token = handle.sandbox_fencing_token;
+    for (stage, seed) in [
+        (
+            SandboxOrchestrationStage::WorkspaceAuthorizationVerified,
+            1u8,
+        ),
+        (SandboxOrchestrationStage::KernelPlacementVerified, 2),
+        (SandboxOrchestrationStage::AdmissionConfirmed, 3),
+    ] {
+        control
+            .sandbox_advance_stage(
+                "txn-op-1",
+                stage,
+                SandboxStageEvidence::Completed {
+                    sandbox_evidence_fingerprint: sandbox_fingerprint(seed),
+                },
+                token,
+            )
+            .expect("stage completes on the orchestration path");
+    }
+    control
+        .sandbox_enter_compensation("txn-op-1", token)
+        .expect("compensation window opens");
+    // No stage completes inside the failure window: the closed table offers
+    // `compensating` no transition back to a running state.
+    assert!(control
+        .sandbox_advance_stage(
+            "txn-op-1",
+            SandboxOrchestrationStage::CapacityReservationConfirmed,
+            SandboxStageEvidence::Completed {
+                sandbox_evidence_fingerprint: sandbox_fingerprint(4),
+            },
+            token,
+        )
+        .is_err());
+    // The security-failure terminal still closes the transaction.
+    let outcome = control
+        .sandbox_quarantine("txn-op-1", token)
+        .expect("quarantine");
+    assert_eq!(outcome, SandboxTerminalOutcome::Quarantined);
+}

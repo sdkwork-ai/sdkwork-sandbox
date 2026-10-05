@@ -278,6 +278,17 @@ impl BoundedSandboxWorkspaceTransactionControl {
                 Err(SandboxWorkspaceRuntimeError::SandboxWorkspaceRuntimeInvalidRequest)
             };
         }
+        // A transaction identity is bound exactly once: only the exact
+        // operation replay above may observe it again. Re-binding it under a
+        // fresh operation would let that operation's replay later resolve to
+        // a different transaction, so it is refused before any mutation (the
+        // durable authority enforces the same uniqueness as a primary key).
+        if state
+            .sandbox_transactions
+            .contains_key(&request.sandbox_workspace_runtime_transaction_id)
+        {
+            return Err(SandboxWorkspaceRuntimeError::SandboxWorkspaceRuntimeInvalidRequest);
+        }
         if state
             .sandbox_active_by_binding
             .contains_key(&request.sandbox_session_id)
@@ -345,9 +356,15 @@ impl BoundedSandboxWorkspaceTransactionControl {
             record.sandbox_state,
             SandboxWorkspaceRuntimeTransactionState::Released
                 | SandboxWorkspaceRuntimeTransactionState::Quarantined
+                | SandboxWorkspaceRuntimeTransactionState::Compensating
         ) {
             return Err(SandboxWorkspaceRuntimeError::SandboxWorkspaceRuntimeInvalidRequest);
         }
+        // Compensation is the failure window: the closed table offers it no
+        // transition back to a running state, so stages may not complete
+        // inside it — recording them here would let a compensating
+        // transaction walk into `released` without ever passing through the
+        // states those stages map to.
         record.sandbox_ledger.sandbox_record(stage, evidence)?;
         let next_state = Self::sandbox_state_for_stage(record, stage)?;
         if next_state != record.sandbox_state {

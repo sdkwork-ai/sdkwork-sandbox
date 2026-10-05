@@ -1308,8 +1308,11 @@ test("the repository's own coverage table accounts for every test the workspace 
   const assessment = assessE2bParityMatrix({ repoRoot });
 
   assert.equal(assessment.ok, true, formatE2bParityMatrixReport(assessment));
-  // 2026-10-05: the Workspace runtime transaction control-plane slice adds
-  // 13 Rust tests and the Snapshot/Fork authority-model slice adds 6 more.
+  // 2026-10-05: the deep-regression hardening of the transaction control
+  // plane adds 2 more Rust tests (identity non-rebinding, compensation
+  // freezes the ledger) on top of the same-day slices: the Workspace runtime
+  // transaction control-plane slice added 13 Rust tests and the Snapshot/Fork
+  // authority-model slice added 6 more.
   // 2026-10-04: 237 declared tests (235 runnable + the two external-PostgreSQL
   // ignored ones) after the 2026-09-29 state (180) gained the Runtime Pool
   // control-plane slice (29 tests, crates/sdkwork-intelligence-sandbox-pool-control),
@@ -1317,8 +1320,8 @@ test("the repository's own coverage table accounts for every test the workspace 
   // app-api route/payload, offset listing) and the Template authority-model
   // slice (7 tests, crates/sdkwork-intelligence-sandbox-template-authority);
   // the coverage table in the audit document accounts for each of them.
-  assert.equal(assessment.workspaceTests, 256);
-  assert.equal(assessment.coveredTests, 256);
+  assert.equal(assessment.workspaceTests, 258);
+  assert.equal(assessment.coveredTests, 258);
 
   const discovered = discoverWorkspaceTests(repoRoot);
   let runnable = 0;
@@ -1329,9 +1332,9 @@ test("the repository's own coverage table accounts for every test the workspace 
       else runnable += 1;
     }
   }
-  // The two readings the audit quotes have to agree with the code: 256 declared, 254 of them
+  // The two readings the audit quotes have to agree with the code: 258 declared, 256 of them
   // runnable because two declare they need an external PostgreSQL.
-  assert.equal(runnable + ignored, 256);
+  assert.equal(runnable + ignored, 258);
   assert.equal(ignored, 2);
 });
 
