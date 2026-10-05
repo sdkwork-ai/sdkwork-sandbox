@@ -165,7 +165,7 @@ Terminal Stream、Operational Log、Audit Event 与 Metric 是不同数据类别
 
 | # | 能力 | 承载与状态 |
 | --- | --- | --- |
-| 1 | Sandbox Create | `REQ-2026-0002`（候选实现）、`REQ-2026-0019`（池化分配，`ready`，控制面切片已落地）、`REQ-2026-0033`（`ready`，fast-start launch 权威模型切片已授权落地）+ `REQ-2026-0034`（draft，Worker/启动执行载体已登记，本地车道优先） |
+| 1 | Sandbox Create | `REQ-2026-0002`（候选实现）、`REQ-2026-0019`（池化分配，`ready`，控制面切片已落地）、`REQ-2026-0033`（`ready`，fast-start launch 权威模型切片已授权落地）+ `REQ-2026-0034`（`ready`，Worker 执行权威模型切片已授权落地，本地车道执行适配器未实现） |
 | 2 | Sandbox Delete | `REQ-2026-0002`（候选实现） |
 | 3 | Pause | `REQ-2026-0008`/`0021` 门禁（`ready`，运行时实现未落地）；产品行为见 [PRD-runtime-execution-model.md](PRD-runtime-execution-model.md) 第 9 节 |
 | 4 | Resume | 同上 |

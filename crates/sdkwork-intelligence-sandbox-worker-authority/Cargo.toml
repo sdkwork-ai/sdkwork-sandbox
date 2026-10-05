@@ -1,0 +1,21 @@
+[package]
+rust-version.workspace = true
+name = "sdkwork-intelligence-sandbox-worker-authority"
+description = "Provider-neutral SDKWork Sandbox worker launch-execution authority model: terminal-immutable execution records, closed six-state lifecycle, single-plan handoff, lane-scoped evidence gates."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[dev-dependencies]
+
+[lib]
+name = "sdkwork_intelligence_sandbox_worker_authority"
+path = "src/lib.rs"
+
+[lints]
+workspace = true

@@ -19,21 +19,88 @@ function readStatus(relativePath) {
 
 const contract = readJson("specs/sandbox-worker.contract.json");
 
-test("Worker launch execution is a draft carrier with no implementation authorization", () => {
+test("Worker launch execution is ready and the contract authorizes the authority-model slice", () => {
   assert.equal(contract.kind, "sdkwork.sandbox.worker-contract");
-  // 2026-10-06: the carrier registers the Worker/launch-execution capability
-  // class as draft. No slice is authorized, no crate exists for it, and the
-  // Firecracker lane plus every runtime surface stay behind the forbidden
-  // block until their own reviews land.
+  // 2026-10-06: REVIEW-20261006 (WRK-01..07) accepted via single-owner
+  // structured approval; the authority-model slice landed as
+  // crates/sdkwork-intelligence-sandbox-worker-authority, so the contract's
+  // implementation gate is open for that slice only. The local-lane
+  // execution adapter, Firecracker VMM runtime, warm-slot consumption, CLI,
+  // public API/SDK and deployment stay forbidden, and the contract remains
+  // draft.
   assert.equal(contract.status, "draft");
-  assert.equal(contract.implementationAuthorized, false);
+  assert.equal(contract.implementationAuthorized, true);
   assert.equal(contract["x-sdkwork-status"], "draft");
   assert.equal(contract["x-sdkwork-require-human-review"], true);
   assert.equal(
     readStatus("docs/product/requirements/REQ-2026-0034-sandbox-worker-launch-execution.md"),
-    "draft",
+    "ready",
+  );
+  assert.equal(
+    readStatus("docs/architecture/decisions/ADR-20261006-sandbox-worker-authority.md"),
+    "accepted",
+  );
+  assert.equal(
+    readStatus("docs/engineering/reviews/REVIEW-20261006-sandbox-worker-authority.md"),
+    "accepted",
   );
   assert.equal(contract.requirementId, "REQ-2026-0034");
+});
+
+test("The landed worker-authority crate implements the pinned states, fields, gates and layering", () => {
+  const crateRoot = path.join(repoRoot, "crates/sdkwork-intelligence-sandbox-worker-authority");
+  const source = (relative) => readFileSync(path.join(crateRoot, "src", relative), "utf8");
+  const stateSource = source("state.rs");
+  for (const stateName of contract.execution.states) {
+    assert.ok(
+      stateSource.includes(`"${stateName}"`),
+      `execution state ${stateName} must exist in the crate state machine`,
+    );
+  }
+  const executionSource = source("execution.rs");
+  for (const field of contract.execution.requiredFields) {
+    assert.ok(
+      executionSource.includes(field),
+      `execution field ${field} must exist in the crate record`,
+    );
+  }
+  assert.equal(
+    executionSource.includes("sandbox_can_transition_to"),
+    contract.execution.illegalTransitionRejected === true,
+  );
+  const gatesSource = source("gates.rs");
+  for (const gate of [
+    "realWorkerExecutionEvidenceRequired",
+    "kvmLaneEvidenceRequired",
+    "firstCommandZeroWaitEvidenceRequired",
+  ]) {
+    assert.equal(contract.evidenceGates[gate], true, `${gate} must stay blocking`);
+  }
+  for (const layering of [
+    ["launchPlanAuthority", contract.layering.launchPlanAuthority],
+    ["commandExecutionAuthority", contract.layering.commandExecutionAuthority],
+    ["providerSpiBoundary", contract.layering.providerSpiBoundary],
+    ["firecrackerProviderAuthority", contract.layering.firecrackerProviderAuthority],
+    ["warmMicroVmSlotGate", contract.layering.warmMicroVmSlotGate],
+  ]) {
+    assert.equal(
+      gatesSource.includes(`"${layering[1]}"`),
+      true,
+      `the ${layering[0]} authority ${layering[1]} must be named by the crate`,
+    );
+  }
+  assert.equal(
+    contract.evidenceGates.workerAuthorityModelSliceAuthorized,
+    true,
+    "the landed authority-model slice is the authorized one",
+  );
+  assert.equal(contract.evidenceGates.localLaneExecutionSliceAuthorized, false);
+  assert.equal(contract.evidenceGates.firecrackerLaneExecutionAuthorized, false);
+  const forbiddenFlags = Object.values(contract.forbidden);
+  assert.ok(
+    forbiddenFlags.length === 5 && forbiddenFlags.every((flag) => flag === true),
+    "the contract forbidden block must stay closed",
+  );
 });
 
 test("The execution record shape is sandbox-prefixed with a closed six-state lifecycle", () => {
@@ -92,7 +159,9 @@ test("Real worker, KVM-lane and first-command-zero-wait evidence stay blocking",
   assert.equal(gates.realWorkerExecutionEvidenceRequired, true);
   assert.equal(gates.kvmLaneEvidenceRequired, true);
   assert.equal(gates.firstCommandZeroWaitEvidenceRequired, true);
-  assert.equal(gates.workerAuthorityModelSliceAuthorized, false);
+  // The authority-model slice is the authorized one; every runtime surface
+  // behind it stays closed.
+  assert.equal(gates.workerAuthorityModelSliceAuthorized, true);
   assert.equal(gates.localLaneExecutionSliceAuthorized, false);
   assert.equal(gates.firecrackerLaneExecutionAuthorized, false);
 });

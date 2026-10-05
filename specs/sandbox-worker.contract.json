@@ -9,7 +9,7 @@
     "REQ-2026-0019",
     "REQ-2026-0033"
   ],
-  "implementationAuthorized": false,
+  "implementationAuthorized": true,
   "execution": {
     "type": "SandboxWorkerExecution",
     "immutableAfterTerminalState": true,
@@ -68,7 +68,7 @@
     "realWorkerExecutionEvidenceRequired": true,
     "kvmLaneEvidenceRequired": true,
     "firstCommandZeroWaitEvidenceRequired": true,
-    "workerAuthorityModelSliceAuthorized": false,
+    "workerAuthorityModelSliceAuthorized": true,
     "localLaneExecutionSliceAuthorized": false,
     "firecrackerLaneExecutionAuthorized": false
   },

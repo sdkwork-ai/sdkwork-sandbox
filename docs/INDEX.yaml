@@ -229,7 +229,7 @@ entries:
     path: docs/product/requirements/REQ-2026-0034-sandbox-worker-launch-execution.md
     layer: product
     audience: [product, architecture, engineering, security, review]
-    status: draft
+    status: ready
   - id: REQ-2026-0028
     path: docs/product/requirements/REQ-2026-0028-sandbox-e2b-compatible-api-sdk-family.md
     layer: work
@@ -397,6 +397,11 @@ entries:
     status: accepted
   - id: ADR-20261006-SANDBOX-INSTANCE-FAST-START-AUTHORITY
     path: docs/architecture/decisions/ADR-20261006-sandbox-instance-fast-start-authority.md
+    layer: work
+    audience: [product, architecture, engineering, security, review]
+    status: accepted
+  - id: ADR-20261006-SANDBOX-WORKER-AUTHORITY
+    path: docs/architecture/decisions/ADR-20261006-sandbox-worker-authority.md
     layer: work
     audience: [product, architecture, engineering, security, review]
     status: accepted
@@ -692,6 +697,11 @@ entries:
     status: accepted
   - id: REVIEW-20261006-INSTANCE-FAST-START-AUTHORITY
     path: docs/engineering/reviews/REVIEW-20261006-sandbox-instance-fast-start-authority.md
+    layer: work
+    audience: [product, architecture, engineering, security, review]
+    status: accepted
+  - id: REVIEW-20261006-SANDBOX-WORKER-AUTHORITY
+    path: docs/engineering/reviews/REVIEW-20261006-sandbox-worker-authority.md
     layer: work
     audience: [product, architecture, engineering, security, review]
     status: accepted

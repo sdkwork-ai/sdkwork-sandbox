@@ -2,7 +2,7 @@
 id: REQ-2026-0034
 title: 交付 Sandbox Worker 与启动执行权威（本地车道优先）
 owner: SDKWork Runtime Platform
-status: draft
+status: ready
 priority: high
 source: customer
 problem: 快启动链的治理面已完整（REQ-2026-0029 模板定义 → 0032 构建记录 → 0012 制品 Tuple → 0019 池槽/fenced claim → 0033 启动计划），且跨 crate 组合已被测试机械证明——但没有任何东西执行：REQ-2026-0033 契约明文把启动执行运行时与 Worker 锁在其各自需求切片之后，启动计划只能停在 `consumed`，模板的 start command 无处执行，"沙箱创建时进程已在运行"在所有车道上都未发生。这是快启动链上最后一个空环。
@@ -53,4 +53,12 @@ Decisions: 后续提交随命名评审包登记。
 
 ## Release Boundary
 
-在 Worker 权威/控制面切片单独评审并授权之前不写实现；在 Firecracker 车道切片单独授权并落地之前，Worker 不得驱动 VMM，也不得宣称 E2B 快速创建（首命令零等待）能力对齐；本地车道实现切片的行为范围以本需求明文为限。
+在 Firecracker 车道切片单独授权并落地之前，Worker 不得驱动 VMM，也不得宣称 E2B 快速创建（首命令零等待）能力对齐；本地车道执行适配器是独立后续切片。权威模型切片（记录类型、生命周期校验、绑定规则、证据门文档）已于 2026-10-06 授权并落地。
+
+## Implementation Gate
+
+`ready` since 2026-10-06: REVIEW-20261006（命名、数据所有权、绑定语义、证据门、forbidden 面）由仓库所有者以单一所有者结构化决策接受，ADR-20261006 同日 `accepted`。授权的实现切片仅为权威模型：`crates/sdkwork-intelligence-sandbox-worker-authority` 承载 `SandboxWorkerExecution` 记录、生命周期校验、绑定规则与机器契约对齐测试；`specs/sandbox-worker.contract.json` 对该切片翻转为 `implementationAuthorized: true` 并保持 `draft`。本地车道执行适配器、Firecracker VMM 运行时、Warm 槽消费、CLI、公共 API/SDK 与部署 profile 仍被契约 `forbidden` 块与 WRK-07 锁住，直到各自的后续需求切片落地；本地车道适配器落地并证明真实执行之前不得宣称 E2B 快速创建能力对齐。
+
+## Implementation Authorization
+
+`ready` since 2026-10-06：批准记录见 REVIEW-20261006 的 approval basis（本会话重复的镜像/snapshot 能力指令 + REVIEW-20260929 结构化指令延续，单一所有者惯例）。权威模型切片已随码与测试落地；Blocking Findings（执行适配器/VMM 缺失、CLI/API 未定、真实 Worker 执行与 KVM 车道证据缺失、适配器三线组合未批、Warm 槽桥未批）全部保持为后续切片的持续证据义务。
