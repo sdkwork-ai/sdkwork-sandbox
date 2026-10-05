@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.sandbox.template-build-contract",
+  "status": "draft",
+  "requirementId": "REQ-2026-0032",
+  "relatedRequirementIds": [
+    "REQ-2026-0012",
+    "REQ-2026-0019",
+    "REQ-2026-0029"
+  ],
+  "implementationAuthorized": false,
+  "build": {
+    "type": "SandboxTemplateBuild",
+    "immutableAfterTerminalState": true,
+    "unknownStateRejected": true,
+    "illegalTransitionRejected": true,
+    "allSandboxOwnedFieldsRequirePrefix": "sandbox_",
+    "referencesAreOpaque": true,
+    "providerPrivateMetadataAllowed": false,
+    "requiredFields": [
+      "sandbox_template_build_id",
+      "sandbox_template_definition_id",
+      "sandbox_template_version_id",
+      "sandbox_template_build_input_ref",
+      "sandbox_template_build_state",
+      "sandbox_artifact_tuple_ref",
+      "sandbox_requested_at",
+      "sandbox_updated_at"
+    ],
+    "states": [
+      "requested",
+      "building",
+      "succeeded",
+      "failed",
+      "quarantined"
+    ],
+    "initialState": "requested",
+    "terminalStates": [
+      "succeeded",
+      "failed",
+      "quarantined"
+    ]
+  },
+  "lifecycleOperations": [
+    "sandbox_request_build",
+    "sandbox_record_building",
+    "sandbox_record_build_outcome",
+    "sandbox_quarantine_build"
+  ],
+  "fixedOperationsOnly": true,
+  "failureSemantics": {
+    "uncertainOutcomeQuarantines": true,
+    "silentSuccessAllowed": false,
+    "silentFailureAllowed": false,
+    "timeoutAloneMaySucceed": false
+  },
+  "evidenceGates": {
+    "realBuilderExecutionEvidenceRequired": true,
+    "buildArtifactTupleEvidenceRequired": true,
+    "buildAuthorityModelSliceAuthorized": false,
+    "builderRuntimeOrPipelineAuthorized": false,
+    "registryServiceAuthorized": false
+  },
+  "artifactBoundary": {
+    "artifactAuthority": "REQ-2026-0012",
+    "successRequiresArtifactTupleRef": true,
+    "buildReferencesArtifactTuple": true,
+    "buildOwnsEvidenceOrSignature": false,
+    "secondSupplyChainAuthorityAllowed": false
+  },
+  "layering": {
+    "templateAuthority": "REQ-2026-0029",
+    "buildDoesNotRedefineTemplateDefinitionOrBuildInput": true,
+    "cachePolicyAuthority": "REQ-2026-0029",
+    "buildDoesNotImplementCacheBackendOrEviction": true,
+    "warmMicroVmSlotGate": "REQ-2026-0019",
+    "registrationDoesNotEnableWarmSlot": true,
+    "registrationDoesNotBindableAnyRealArtifact": true
+  },
+  "forbidden": {
+    "builderRuntime": true,
+    "buildPipelineExecution": true,
+    "buildArtifactOrCacheStorageBackend": true,
+    "registryService": true,
+    "cliSurface": true,
+    "publicApiOrSdkSurface": true,
+    "deploymentProfile": true
+  },
+  "x-sdkwork-status": "draft",
+  "x-sdkwork-require-human-review": true,
+  "x-sdkwork-no-runtime-implementation": true,
+  "x-sdkwork-no-storage-backend": true,
+  "x-sdkwork-no-api-sdk-deployment": true
+}

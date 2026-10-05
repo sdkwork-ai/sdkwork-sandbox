@@ -215,6 +215,11 @@ entries:
     layer: product
     audience: [product, architecture, engineering, security, review]
     status: ready
+  - id: REQ-2026-0032
+    path: docs/product/requirements/REQ-2026-0032-sandbox-template-build.md
+    layer: product
+    audience: [product, architecture, engineering, security, review]
+    status: draft
   - id: REQ-2026-0028
     path: docs/product/requirements/REQ-2026-0028-sandbox-e2b-compatible-api-sdk-family.md
     layer: work
