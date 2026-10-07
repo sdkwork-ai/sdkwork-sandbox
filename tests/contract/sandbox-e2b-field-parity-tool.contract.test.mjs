@@ -409,7 +409,7 @@ test("the gate's report names the coverage it verified", () => {
   assert.match(report, /0 row\(s\) rest on the documentation index \(ceiling 0\)/);
   assert.match(report, /71 operation\(s\), 70 judged by a row, 1 recorded unjudged/);
   assert.match(report, /34 product row\(s\), 57 baseline row\(s\) mapped, 21 registered unmapped, 9 product row\(s\) registered without a baseline row/);
-  assert.match(report, /722 contract test\(s\) recomputed from tests\/contract, 297 Rust test\(s\) recorded/);
+  assert.match(report, /722 contract test\(s\) recomputed from tests\/contract, 298 Rust test\(s\) recorded/);
   assert.match(report, /11 rule families declared consistently in 4 surface\(s\)/);
 });
 
