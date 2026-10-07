@@ -17,6 +17,9 @@ sdkwork-sandbox-provider-spi.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
+sdkwork-intelligence-sandbox-launch-authority.workspace = true
+sdkwork-intelligence-sandbox-pool-control.workspace = true
+sdkwork-intelligence-sandbox-worker-authority.workspace = true
 
 [lib]
 name = "sdkwork_intelligence_sandbox_worker_local_exec"

@@ -1330,8 +1330,8 @@ test("the repository's own coverage table accounts for every test the workspace 
   // app-api route/payload, offset listing) and the Template authority-model
   // slice (7 tests, crates/sdkwork-intelligence-sandbox-template-authority);
   // the coverage table in the audit document accounts for each of them.
-  assert.equal(assessment.workspaceTests, 299);
-  assert.equal(assessment.coveredTests, 299);
+  assert.equal(assessment.workspaceTests, 300);
+  assert.equal(assessment.coveredTests, 300);
 
   const discovered = discoverWorkspaceTests(repoRoot);
   let runnable = 0;
@@ -1342,9 +1342,9 @@ test("the repository's own coverage table accounts for every test the workspace 
       else runnable += 1;
     }
   }
-  // The two readings the audit quotes have to agree with the code: 299 declared, 297 of them
+  // The two readings the audit quotes have to agree with the code: 300 declared, 298 of them
   // runnable because two declare they need an external PostgreSQL.
-  assert.equal(runnable + ignored, 299);
+  assert.equal(runnable + ignored, 300);
   assert.equal(ignored, 2);
 });
 

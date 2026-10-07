@@ -43,7 +43,7 @@ const REAL_CONTRACT_TESTS = 722;
 // and the Firecracker-provider Gate 0 boundary crate took the workspace to
 // 178 runnable + 2 external-PostgreSQL ignored tests; the 2026-10-04 Runtime Pool
 // control-plane slice (+29) and app-api console-face slice (+21) take it to 228.
-const REAL_RUST_WORKSPACE = { command: "cargo test --workspace", passed: 297, failed: 0, ignored: 2 };
+const REAL_RUST_WORKSPACE = { command: "cargo test --workspace", passed: 298, failed: 0, ignored: 2 };
 const REAL_RULE_FAMILIES = 11;
 /** The product matrix join: PRD section 11 rows vs the baseline rows that map onto them. */
 const REAL_MATRIX_ROWS = 34;
