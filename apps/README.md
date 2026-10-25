@@ -6,7 +6,7 @@ Owner: SDKWork Runtime Platform maintainers.
 
 ## Primary App Surface
 
-The repository root is the primary application surface and will own the CLI and service-host composition. Phase 0 contains only a non-operational CLI scaffold and does not yet declare `sdkwork.app.config.json`.
+The repository root is the primary application surface and will own the CLI and service-host composition. Phase 0 contains only a non-operational CLI scaffold and does not yet declare `agent.app.config.json`.
 
 ## Directory Index
 

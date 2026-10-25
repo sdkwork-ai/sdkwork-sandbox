@@ -16,7 +16,7 @@ Risk: critical - MicroVm release inputs, executable integrity, signature trust, 
 
 本 Review 请求人工评审 `SandboxFirecrackerArtifactManifest` 的候选命名、Artifact Roles、Architecture-specific Compatibility Tuple、Evidence、Signature/Key Authority、Runtime Materialization、TOCTOU 防护、Revocation/Advisory、Rollback、Public Redaction 和 Ownership。
 
-本 Review 不批准真实 Artifact/Manifest、版本或 Digest、Build/Release Workflow、Signing Key、Registry、Download、Provider/Broker Runtime、Node Service、Config、Secret/KMS、Deployment Profile 或 `sdkwork.app.config.json`。
+本 Review 不批准真实 Artifact/Manifest、版本或 Digest、Build/Release Workflow、Signing Key、Registry、Download、Provider/Broker Runtime、Node Service、Config、Secret/KMS、Deployment Profile 或 `agent.app.config.json`。
 
 ## Candidate Contract Evidence
 

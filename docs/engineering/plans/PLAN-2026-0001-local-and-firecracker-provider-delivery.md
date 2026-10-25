@@ -92,7 +92,7 @@ Expected evidence: pinned artifact inventory, Node Trust/attestation evidence, r
 2. `standalone/local` 只启用通过 Local Host Boundary 的 Capability；`standalone/firecracker` 在 Broker/Artifact/Workspace/Network/Resource 冷启动 Gate 满足后才声明 `MicroVm`；`cloud/firecracker` 还必须满足 REQ-2026-0017 Verified Node、REQ-2026-0018 PostgreSQL Persistence 和 REQ-2026-0016 Admission/Capacity Gate。
 3. Command/Terminal 需要 Provider Descriptor、`SandboxCommandExecutor` 和共同/平台 Conformance 同时通过。Runtime Pool 是 Cloud Firecracker 的可选加速 Overlay，不是 Cold Firecracker 的交付前提。
 4. 定义 Health/Readiness、Metric/Trace/Audit、PKI/Verifier Outage、Identity Rotation/Revocation、Node Drain/Quarantine、Provider Outage、Artifact Rollback、Workspace Recovery 与 Incident Runbook。
-5. 运行 Sandbox、Kernel、Agents 全依赖链验证和所有适用 SDKWork Merge/Release Gate；`sdkwork.app.config.json` 只在实际包装、注册或部署进入范围时创建。
+5. 运行 Sandbox、Kernel、Agents 全依赖链验证和所有适用 SDKWork Merge/Release Gate；`agent.app.config.json` 只在实际包装、注册或部署进入范围时创建。
 
 ## Verification Matrix
 

@@ -76,7 +76,7 @@ node ../sdkwork-specs/tools/check-rust-backend-composition.mjs --root .
 
 ## Release And Review Boundary
 
-本需求不激活应用发布面，也不创建 `sdkwork.app.config.json`。Provider SPI、`SandboxSessionLifecyclePort` 与 Memory Repository 的公共命名在人工架构评审前保持 `0.1` 候选状态；Kernel 跨仓库映射由 REQ-2026-0004 管理，真实 Local/Firecracker Provider、Production Persistence 和 API/SDK 分别由后续 Ready Requirement 与 ADR 管理，Docker Provider 当前延期。
+本需求不激活应用发布面，也不创建 `agent.app.config.json`。Provider SPI、`SandboxSessionLifecyclePort` 与 Memory Repository 的公共命名在人工架构评审前保持 `0.1` 候选状态；Kernel 跨仓库映射由 REQ-2026-0004 管理，真实 Local/Firecracker Provider、Production Persistence 和 API/SDK 分别由后续 Ready Requirement 与 ADR 管理，Docker Provider 当前延期。
 
 ## Current Evidence
 

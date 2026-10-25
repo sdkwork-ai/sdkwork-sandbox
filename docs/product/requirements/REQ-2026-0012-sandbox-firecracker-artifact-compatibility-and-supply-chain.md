@@ -78,4 +78,4 @@ Decisions: [ADR-20260729: Sandbox Firecracker Artifact Compatibility And Supply 
 
 ## Release Boundary
 
-本需求只定义 Gate 0 候选边界。它不发布真实 Manifest/Artifact，不创建 Runtime、Config、Secret、Registry、Workflow、Deployment Profile 或 `sdkwork.app.config.json`。在人工评审、真实 Tuple、Key/Release/Advisory Owner 和 Linux KVM Evidence 完成前，REQ 保持 `draft`，不得将静态契约测试解释为 Artifact Integrity 或 `MicroVm` Assurance。
+本需求只定义 Gate 0 候选边界。它不发布真实 Manifest/Artifact，不创建 Runtime、Config、Secret、Registry、Workflow、Deployment Profile 或 `agent.app.config.json`。在人工评审、真实 Tuple、Key/Release/Advisory Owner 和 Linux KVM Evidence 完成前，REQ 保持 `draft`，不得将静态契约测试解释为 Artifact Integrity 或 `MicroVm` Assurance。

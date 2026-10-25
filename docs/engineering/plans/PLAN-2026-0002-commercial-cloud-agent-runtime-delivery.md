@@ -23,7 +23,7 @@ Current release decision: **No-Go**. The repository is internally consistent at 
 - Kernel Execution Placement and Sandbox Capacity Placement/Runtime Allocation are correlated by opaque reference and generation but never share record identity, lease, fencing token, operation/idempotency scope or reconciliation authority.
 - Drive or an independently approved Block-volume authority owns Workspace bytes and Checkpoint Candidate storage; Sandbox and BirdCoder do not create parallel object-storage lifecycle.
 - Commerce owns SKU/price/invoice/payment. Sandbox metrics are never Billing Truth.
-- Deployment, packaging and `sdkwork.app.config.json` remain out of scope until the related Requirements are `ready` and production topology receives human approval.
+- Deployment, packaging and `agent.app.config.json` remain out of scope until the related Requirements are `ready` and production topology receives human approval.
 
 ## Target Architecture
 
@@ -162,7 +162,7 @@ This slice is cross-repository work and requires human review before source chan
 
 ### Slice F: Commercial Release
 
-1. Create `sdkwork.app.config.json`, runtime profiles and deployment assets only when packaging/deployment Requirements are ready; validate against `APP_MANIFEST_SPEC.md`.
+1. Create `agent.app.config.json`, runtime profiles and deployment assets only when packaging/deployment Requirements are ready; validate against `APP_MANIFEST_SPEC.md`.
 2. Ship separate control-plane and KVM node artifacts, signed with SBOM/provenance and rollback metadata.
 3. Publish one approved immutable REQ-2026-0027 release set with exact source, Workspace/storage, RPC/Proto, generated SDK, config, provider/artifact and evidence revisions; mutable tags and local patches are not release identity.
 4. Provide staging soak, canary, kill switch, stop-new-placement, transaction drain, schema rollback/forward recovery, artifact rollback, downgrade denial, end-of-support and compromised-node quarantine procedures.
@@ -277,7 +277,7 @@ Superseded by the 2026-09-22 checkpoint above; retained as a dated record of wha
 | `node --test tests/contract/*.test.mjs` | PASS: 190/190, including 6 PostgreSQL evidence-runner safety contracts, 9 Command Policy, 13 Local Host Boundary, 21 Service Host Bootstrap/Profile/Capability gates, 11 Runtime Pool, 10 Lifecycle History/Idempotency Gate 0, 12 Workspace Runtime Transaction/Checkpoint gates, 12 Standalone Data Residency/Recovery gates, and 3 documentation status/index/prose alignment tests. |
 | Repository docs/debt, Database Framework, packages layout, strict component ports, application layering, Rust backend composition, identity naming and baseline audit validators | PASS |
 | `node ../sdkwork-specs/tools/check-unified-postgres-profile.mjs --root .` | PASS; canonical `SDKWORK_DATABASE_TEST_POSTGRES_URL` usage is accepted by the current global validator. |
-| `node ../sdkwork-specs/tools/check-pnpm-script-standard.mjs --root . --application-code-prefix sandbox` | NOT APPLICABLE at Phase 0: it requires the full application lifecycle script set, while this repository has no `sdkwork.app.config.json`, executable Service Host, packaging or deployment authority. Adding placeholder `dev`, `build`, `check`, `verify` or `clean` scripts would misrepresent unavailable product capabilities. Apply this gate when the Service Host/application lifecycle requirement is ready and the application manifest enters scope. |
+| `node ../sdkwork-specs/tools/check-pnpm-script-standard.mjs --root . --application-code-prefix sandbox` | NOT APPLICABLE at Phase 0: it requires the full application lifecycle script set, while this repository has no `agent.app.config.json`, executable Service Host, packaging or deployment authority. Adding placeholder `dev`, `build`, `check`, `verify` or `clean` scripts would misrepresent unavailable product capabilities. Apply this gate when the Service Host/application lifecycle requirement is ready and the application manifest enters scope. |
 | `git diff --check` | PASS; only Git line-ending normalization warnings were reported. |
 
 This checkpoint proves Sandbox code, contract and sdkwork-specs Gate 0 consistency. It is not Local Host execution, PostgreSQL release, KVM, tenant isolation, Pool latency or commercial readiness evidence.

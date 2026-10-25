@@ -10,7 +10,7 @@ Canonical standards are rooted at `../sdkwork-specs/README.md`. This repository 
 
 ## Application Identity
 
-The application code is `sandbox`, and the repository is `sdkwork-sandbox`. The repository declares `sdkwork.app.config.json`; keep it validated against `../sdkwork-specs/APP_MANIFEST_SPEC.md` (`node ../sdkwork-specs/tools/check-app-manifest-standard.mjs --root .` and `node ../sdkwork-specs/tools/check-app-manifest-deployment-standard.mjs --root .`) whenever application identity, packaging, or deployment changes. Publication stays `DRAFT` until the commercial-readiness contract authorizes a release.
+The application code is `sandbox`, and the repository is `sdkwork-sandbox`. The repository declares `agent.app.config.json`; keep it validated against `../sdkwork-specs/APP_MANIFEST_SPEC.md` (`node ../sdkwork-specs/tools/check-app-manifest-standard.mjs --root .` and `node ../sdkwork-specs/tools/check-app-manifest-deployment-standard.mjs --root .`) whenever application identity, packaging, or deployment changes. Publication stays `DRAFT` until the commercial-readiness contract authorizes a release.
 
 ## Local Dictionary Structure
 
@@ -33,7 +33,7 @@ The application code is `sandbox`, and the repository is `sdkwork-sandbox`. The 
 ## Spec Resolution Order
 
 1. Read this file and any nearer component `AGENTS.md` if later introduced.
-2. Read `sdkwork.app.config.json` only when application identity, runtime configuration, packaging, release, or deployment is touched.
+2. Read `agent.app.config.json` only when application identity, runtime configuration, packaging, release, or deployment is touched.
 3. Read the touched component's `specs/component.spec.json`.
 4. Read repository `specs/` only for cross-component work.
 5. Read `.sdkwork/README.md` and only the matching local skill or plugin when relevant.

@@ -85,7 +85,7 @@
     ],
     "sandbox_forbidden_sources": [
       "dotenv",
-      "sdkwork.app.config.json-runtime-values",
+      "agent.app.config.json-runtime-values",
       "committed-secret-file",
       "source-checkout-metadata",
       "global-mutable-state",

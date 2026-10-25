@@ -17,7 +17,7 @@ non_goals:
   - Add an HTTP/RPC listener, internal API, generated SDK, Scheduler, Pool, Quota/Metering, Snapshot, or public Operator API.
   - Read environment variables, `.env` files, source checkout metadata, or Secret Material from L2/L3 code.
   - Create database pools, run migrations, own PostgreSQL schema, or use Memory Repository as a server fallback.
-  - Create `sdkwork.app.config.json` or a deployable profile before packaging/deployment is explicitly in scope.
+  - Create `agent.app.config.json` or a deployable profile before packaging/deployment is explicitly in scope.
 users:
   - SDKWork Runtime Platform maintainers
   - Sandbox Service Host and release operators

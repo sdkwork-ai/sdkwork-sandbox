@@ -41,7 +41,7 @@ Date: 2026-07-28
 - 当前 Source 只执行 Provider-neutral Lifecycle Command，不执行 Host Command、不访问 Host、不发起 Network、不声明 Secret/Config/API/SDK，也不使用 Unsafe Rust。
 - Provider SPI、Lifecycle Service 与 Memory Repository 已物化候选 Public Export/Port；Local Provider、Service Host 与 CLI 的 Component Contract 继续保持未激活边界。
 - `ADR-20260728-runtime-boundary-and-rust-workspace` 及后续跨仓库/安全 ADR 保持 `proposed`，因为 Provider Isolation、Attachment Persistence 与 Public Naming 仍需 Human Review。
-- `sdkwork.app.config.json` 被刻意延后；当前没有 Registration、Package Matrix、Media Asset 或 Release Surface，提前创建会产生虚假发布声明。
+- `agent.app.config.json` 被刻意延后；当前没有 Registration、Package Matrix、Media Asset 或 Release Surface，提前创建会产生虚假发布声明。
 
 ## Residual Risk
 
